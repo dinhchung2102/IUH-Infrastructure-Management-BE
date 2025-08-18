@@ -1,0 +1,44 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Role } from './role.schema';
+import { Gender } from '../enum/gender.enum';
+import { Types } from 'mongoose';
+
+export type AccountDocument = Account & Document;
+
+@Schema({ timestamps: true })
+export class Account {
+  @Prop({ required: true, unique: true })
+  username: string;
+
+  @Prop({ required: true })
+  password: string;
+
+  @Prop({ required: true, type: [Types.ObjectId], ref: Role.name })
+  roles: Role[];
+
+  @Prop({ required: true, unique: true })
+  email: string;
+
+  @Prop({ required: true, default: true })
+  isActive: boolean;
+
+  @Prop({ required: true })
+  fullName: string;
+
+  @Prop({ required: false, unique: true })
+  phoneNumber: string;
+
+  @Prop({ required: false })
+  address: string;
+
+  @Prop({ required: false })
+  avatar: string;
+
+  @Prop({ required: false, enum: Gender })
+  gender: Gender;
+
+  @Prop({ required: false })
+  dateOfBirth: Date;
+}
+
+export const AccountSchema = SchemaFactory.createForClass(Account);
