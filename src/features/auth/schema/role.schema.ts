@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { RoleName } from '../enum/role.enum';
-import { Action } from '../enum/action.enum';
-import { Resource } from '../enum/resource.enum';
+import { Types } from 'mongoose';
+import { Permission, PermissionDocument } from './permission.schema';
 
 export type RoleDocument = Role & Document;
 
@@ -20,18 +20,9 @@ export class Role {
 
   @Prop({
     required: true,
-    default: true,
-    enum: Action,
-    type: [String],
+    type: [Types.ObjectId],
+    ref: Permission.name,
   })
-  actions: Action[];
-
-  @Prop({
-    required: true,
-    default: true,
-    enum: Resource,
-    type: [String],
-  })
-  resources: Resource[];
+  permissions: PermissionDocument[];
 }
 export const RoleSchema = SchemaFactory.createForClass(Role);
