@@ -2,6 +2,8 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Account } from './schema/account.schema';
@@ -14,6 +16,7 @@ import { PermissionDto } from './dto/permission.dto';
 import { Permission } from './schema/permission.schema';
 import { CreateRoleDto } from './dto/role.dto';
 import { AUTH_CONFIG } from './config/auth.config';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -130,6 +133,44 @@ export class AuthService {
           dateOfBirth: savedAccount.dateOfBirth,
           roles: savedAccount.roles,
           isActive: savedAccount.isActive,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error);
+    }
+  }
+
+  async login(loginDto: LoginDto) {
+    const { username, password } = loginDto;
+
+    try {
+      const account = await this.accountModel
+        .findOne({ username })
+        .populate('roles', 'roleName');
+
+      if (!account) {
+        throw new NotFoundException('Tài khoản không tồn tại');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, account.password);
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Mật khẩu không chính xác');
+      }
+
+      return {
+        message: 'Đăng nhập thành công',
+        account: {
+          username: account.username,
+          email: account.email,
+          fullName: account.fullName,
+          phoneNumber: account.phoneNumber,
+          address: account.address,
+          avatar: account.avatar,
+          gender: account.gender,
+          dateOfBirth: account.dateOfBirth,
+          roles: account.roles,
+          isActive: account.isActive,
         },
       };
     } catch (error) {
