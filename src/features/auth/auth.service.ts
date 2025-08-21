@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Account } from './schema/account.schema';
 import { Model, Types } from 'mongoose';
@@ -9,9 +13,12 @@ import * as bcrypt from 'bcryptjs';
 import { PermissionDto } from './dto/permission.dto';
 import { Permission } from './schema/permission.schema';
 import { CreateRoleDto } from './dto/role.dto';
+import { AUTH_CONFIG } from './config/auth.config';
 
 @Injectable()
 export class AuthService {
+  private readonly SALT_ROUNDS = AUTH_CONFIG.SALT_ROUNDS;
+
   constructor(
     @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Role.name) private roleModel: Model<Role>,
@@ -53,39 +60,80 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const existingUser = await this.accountModel.findOne({
-      $or: [{ username: registerDto.username }, { email: registerDto.email }],
-    });
+    try {
+      const existingUsername = await this.accountModel.findOne({
+        username: registerDto.username,
+      });
 
-    if (existingUser) {
-      throw new ConflictException('Username hoặc email đã tồn tại');
+      if (existingUsername) {
+        throw new ConflictException('Username đã tồn tại');
+      }
+
+      const existingEmail = await this.accountModel.findOne({
+        email: registerDto.email,
+      });
+
+      if (existingEmail) {
+        throw new ConflictException('Email đã tồn tại');
+      }
+
+      if (registerDto.phoneNumber) {
+        const existingPhone = await this.accountModel.findOne({
+          phoneNumber: registerDto.phoneNumber,
+        });
+
+        if (existingPhone) {
+          throw new ConflictException('Số điện thoại đã tồn tại');
+        }
+      }
+
+      // Lấy role mặc định (GUEST) - kiểm tra trước khi tạo account
+      const defaultRole = await this.roleModel.findOne({
+        roleName: AUTH_CONFIG.DEFAULT_ROLE as RoleName,
+      });
+
+      if (!defaultRole) {
+        throw new InternalServerErrorException(
+          'Không thể tìm thấy role mặc định. Vui lòng liên hệ admin.',
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(
+        registerDto.password,
+        this.SALT_ROUNDS,
+      );
+
+      const accountData = {
+        ...registerDto,
+        password: hashedPassword,
+        roles: [defaultRole._id],
+        isActive: true,
+      };
+
+      if (registerDto.dateOfBirth) {
+        accountData.dateOfBirth = registerDto.dateOfBirth;
+      }
+
+      const newAccount = new this.accountModel(accountData);
+      const savedAccount = await newAccount.save();
+
+      return {
+        message: 'Tạo tài khoản thành công',
+        newAccount: {
+          username: savedAccount.username,
+          email: savedAccount.email,
+          fullName: savedAccount.fullName,
+          phoneNumber: savedAccount.phoneNumber,
+          address: savedAccount.address,
+          avatar: savedAccount.avatar,
+          gender: savedAccount.gender,
+          dateOfBirth: savedAccount.dateOfBirth,
+          roles: savedAccount.roles,
+          isActive: savedAccount.isActive,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(error);
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-
-    // Lấy role mặc định (GUEST)
-    const defaultRole = await this.roleModel.findOne({
-      roleName: RoleName.GUEST,
-    });
-
-    // Tạo account mới
-    const newAccount = new this.accountModel({
-      ...registerDto,
-      password: hashedPassword,
-      roles: defaultRole ? [defaultRole._id] : [],
-    });
-
-    const savedAccount = await newAccount.save();
-
-    return {
-      user: {
-        id: savedAccount._id.toString(),
-        username: savedAccount.username,
-        email: savedAccount.email,
-        fullName: savedAccount.fullName,
-        roles: [RoleName.GUEST],
-      },
-    };
   }
 }
