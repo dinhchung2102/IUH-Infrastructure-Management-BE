@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './features/auth/auth.module';
@@ -9,6 +10,7 @@ import { CampusController } from './features/campus/campus.controller';
 import { CampusModule } from './features/campus/campus.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthGuard } from './features/auth/guards/auth.guard';
 
 @Module({
   imports: [
@@ -26,6 +28,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     CampusModule,
   ],
   controllers: [AppController, CampusController],
-  providers: [AppService, CampusService],
+  providers: [
+    AppService,
+    CampusService,
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+  ],
 })
 export class AppModule {}

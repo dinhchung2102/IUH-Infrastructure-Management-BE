@@ -17,6 +17,7 @@ import { Permission } from './schema/permission.schema';
 import { CreateRoleDto } from './dto/role.dto';
 import { AUTH_CONFIG } from './config/auth.config';
 import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,7 @@ export class AuthService {
     @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Role.name) private roleModel: Model<Role>,
     @InjectModel(Permission.name) private permissionModel: Model<Permission>,
+    private jwtService: JwtService,
   ) {}
 
   async createPermission(permissionDto: PermissionDto) {
@@ -144,9 +146,13 @@ export class AuthService {
     const { username, password } = loginDto;
 
     try {
-      const account = await this.accountModel
-        .findOne({ username })
-        .populate('roles', 'roleName');
+      const account = await this.accountModel.findOne({ username }).populate({
+        path: 'roles',
+        populate: {
+          path: 'permissions',
+          select: 'resource action',
+        },
+      });
 
       if (!account) {
         throw new NotFoundException('Tài khoản không tồn tại');
@@ -158,19 +164,36 @@ export class AuthService {
         throw new UnauthorizedException('Mật khẩu không chính xác');
       }
 
+      const roleNames = (account.roles as Role[]).map(
+        (role: Role) => role.roleName,
+      );
+
+      const permissionSet = new Set<string>();
+      (account.roles as Role[]).forEach((role: Role) => {
+        if (role.permissions) {
+          (role.permissions as Permission[]).forEach(
+            (permission: Permission) => {
+              permissionSet.add(`${permission.resource}:${permission.action}`);
+            },
+          );
+        }
+      });
+      const permissions = Array.from(permissionSet);
+
+      const payload = {
+        sub: account._id,
+        roles: roleNames,
+        permissions,
+      };
+
+      const access_token = await this.jwtService.signAsync(payload);
+
       return {
         message: 'Đăng nhập thành công',
+        access_token,
         account: {
-          username: account.username,
-          email: account.email,
-          fullName: account.fullName,
-          phoneNumber: account.phoneNumber,
-          address: account.address,
-          avatar: account.avatar,
-          gender: account.gender,
-          dateOfBirth: account.dateOfBirth,
-          roles: account.roles,
-          isActive: account.isActive,
+          roles: roleNames,
+          permissions: permissions,
         },
       };
     } catch (error) {
