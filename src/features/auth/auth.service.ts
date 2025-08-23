@@ -65,139 +65,129 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    try {
-      const existingUsername = await this.accountModel.findOne({
-        username: registerDto.username,
-      });
+    const existingUsername = await this.accountModel.findOne({
+      username: registerDto.username,
+    });
 
-      if (existingUsername) {
-        throw new ConflictException('Username đã tồn tại');
-      }
-
-      const existingEmail = await this.accountModel.findOne({
-        email: registerDto.email,
-      });
-
-      if (existingEmail) {
-        throw new ConflictException('Email đã tồn tại');
-      }
-
-      if (registerDto.phoneNumber) {
-        const existingPhone = await this.accountModel.findOne({
-          phoneNumber: registerDto.phoneNumber,
-        });
-
-        if (existingPhone) {
-          throw new ConflictException('Số điện thoại đã tồn tại');
-        }
-      }
-
-      // Lấy role mặc định (GUEST) - kiểm tra trước khi tạo account
-      const defaultRole = await this.roleModel.findOne({
-        roleName: AUTH_CONFIG.DEFAULT_ROLE as RoleName,
-      });
-
-      if (!defaultRole) {
-        throw new InternalServerErrorException(
-          'Không thể tìm thấy role mặc định. Vui lòng liên hệ admin.',
-        );
-      }
-
-      const hashedPassword = await bcrypt.hash(
-        registerDto.password,
-        this.SALT_ROUNDS,
-      );
-
-      const accountData = {
-        ...registerDto,
-        password: hashedPassword,
-        roles: [defaultRole._id],
-        isActive: true,
-      };
-
-      if (registerDto.dateOfBirth) {
-        accountData.dateOfBirth = registerDto.dateOfBirth;
-      }
-
-      const newAccount = new this.accountModel(accountData);
-      const savedAccount = await newAccount.save();
-
-      return {
-        message: 'Tạo tài khoản thành công',
-        newAccount: {
-          username: savedAccount.username,
-          email: savedAccount.email,
-          fullName: savedAccount.fullName,
-          phoneNumber: savedAccount.phoneNumber,
-          address: savedAccount.address,
-          avatar: savedAccount.avatar,
-          gender: savedAccount.gender,
-          dateOfBirth: savedAccount.dateOfBirth,
-          roles: savedAccount.roles,
-          isActive: savedAccount.isActive,
-        },
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    if (existingUsername) {
+      throw new ConflictException('Username đã tồn tại');
     }
+
+    const existingEmail = await this.accountModel.findOne({
+      email: registerDto.email,
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('Email đã tồn tại');
+    }
+
+    if (registerDto.phoneNumber) {
+      const existingPhone = await this.accountModel.findOne({
+        phoneNumber: registerDto.phoneNumber,
+      });
+
+      if (existingPhone) {
+        throw new ConflictException('Số điện thoại đã tồn tại');
+      }
+    }
+
+    // Lấy role mặc định (GUEST) - kiểm tra trước khi tạo account
+    const defaultRole = await this.roleModel.findOne({
+      roleName: AUTH_CONFIG.DEFAULT_ROLE as RoleName,
+    });
+
+    if (!defaultRole) {
+      throw new InternalServerErrorException(
+        'Không thể tìm thấy role mặc định. Vui lòng liên hệ admin.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      registerDto.password,
+      this.SALT_ROUNDS,
+    );
+
+    const accountData = {
+      ...registerDto,
+      password: hashedPassword,
+      roles: [defaultRole._id],
+      isActive: true,
+    };
+
+    if (registerDto.dateOfBirth) {
+      accountData.dateOfBirth = registerDto.dateOfBirth;
+    }
+
+    const newAccount = new this.accountModel(accountData);
+    const savedAccount = await newAccount.save();
+
+    return {
+      message: 'Tạo tài khoản thành công',
+      newAccount: {
+        username: savedAccount.username,
+        email: savedAccount.email,
+        fullName: savedAccount.fullName,
+        phoneNumber: savedAccount.phoneNumber,
+        address: savedAccount.address,
+        avatar: savedAccount.avatar,
+        gender: savedAccount.gender,
+        dateOfBirth: savedAccount.dateOfBirth,
+        roles: savedAccount.roles,
+        isActive: savedAccount.isActive,
+      },
+    };
   }
 
   async login(loginDto: LoginDto) {
     const { username, password } = loginDto;
 
-    try {
-      const account = await this.accountModel.findOne({ username }).populate({
-        path: 'roles',
-        populate: {
-          path: 'permissions',
-          select: 'resource action',
-        },
-      });
+    const account = await this.accountModel.findOne({ username }).populate({
+      path: 'roles',
+      populate: {
+        path: 'permissions',
+        select: 'resource action',
+      },
+    });
 
-      if (!account) {
-        throw new NotFoundException('Tài khoản không tồn tại');
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, account.password);
-
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('Mật khẩu không chính xác');
-      }
-
-      const roleNames = (account.roles as Role[]).map(
-        (role: Role) => role.roleName,
-      );
-
-      const permissionSet = new Set<string>();
-      (account.roles as Role[]).forEach((role: Role) => {
-        if (role.permissions) {
-          (role.permissions as Permission[]).forEach(
-            (permission: Permission) => {
-              permissionSet.add(`${permission.resource}:${permission.action}`);
-            },
-          );
-        }
-      });
-      const permissions = Array.from(permissionSet);
-
-      const payload = {
-        sub: account._id,
-        roles: roleNames,
-        permissions,
-      };
-
-      const access_token = await this.jwtService.signAsync(payload);
-
-      return {
-        message: 'Đăng nhập thành công',
-        access_token,
-        account: {
-          roles: roleNames,
-          permissions: permissions,
-        },
-      };
-    } catch (error) {
-      throw new InternalServerErrorException(error);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
     }
+
+    const isPasswordValid = await bcrypt.compare(password, account.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Mật khẩu không chính xác');
+    }
+
+    const roleNames = (account.roles as Role[]).map(
+      (role: Role) => role.roleName,
+    );
+
+    const permissionSet = new Set<string>();
+    (account.roles as Role[]).forEach((role: Role) => {
+      if (role.permissions) {
+        (role.permissions as Permission[]).forEach((permission: Permission) => {
+          permissionSet.add(`${permission.resource}:${permission.action}`);
+        });
+      }
+    });
+    const permissions = Array.from(permissionSet);
+
+    const payload = {
+      sub: account._id,
+      roles: roleNames,
+      permissions,
+    };
+
+    const access_token = await this.jwtService.signAsync(payload);
+
+    return {
+      message: 'Đăng nhập thành công',
+      access_token,
+      account: {
+        roles: roleNames,
+        permissions: permissions,
+      },
+    };
   }
 }
