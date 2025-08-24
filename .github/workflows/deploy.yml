@@ -4,9 +4,17 @@ on:
   push:
     branches:
       - main
+
+env:
+  NODE_VERSION: '22'
+
 jobs:
   deploy:
-    runs-on: iuh-infras-runner
+    runs-on: self-hosted
+
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
 
     steps:
       - name: Checkout source code
@@ -15,14 +23,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
         run: npm install
+        shell: cmd
 
       - name: Build project
         run: npm run build
+        shell: cmd
 
       - name: Start/Restart app using PM2
+        id: deploy
         run: |
-          pm2 start dist/main.js --name iuh-infrastructure|| pm2 restart iuh-infrastructure
+          pm2 restart iuh-infrastructure-be || pm2 start dist/main.js --name iuh-infrastructure-be
+        shell: cmd
+
+      - name: Copy .env from external location
+        run: copy C:\envs\iuh-infrastructure-be\.env .env
+        shell: cmd
