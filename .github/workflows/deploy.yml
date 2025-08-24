@@ -1,0 +1,28 @@
+name: Deploy to Windows Server
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: iuh-infras-runner
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Start/Restart app using PM2
+        run: |
+          pm2 start dist/main.js --name iuh-infrastructure|| pm2 restart iuh-infrastructure
