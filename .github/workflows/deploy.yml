@@ -18,7 +18,9 @@ jobs:
 
     steps:
       - name: Stop running app (if any)
-        run: pm2 stop iuh-infrastructure-be || echo "App not running"
+        run: |
+          pm2 stop iuh-infrastructure-be
+          if %ERRORLEVEL% neq 0 echo App not running
         shell: cmd
 
       - name: Checkout source code
