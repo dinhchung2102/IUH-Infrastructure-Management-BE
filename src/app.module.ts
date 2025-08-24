@@ -11,6 +11,8 @@ import { CampusModule } from './features/campus/campus.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './features/auth/guards/auth.guard';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 
 @Module({
   imports: [
@@ -22,6 +24,32 @@ import { AuthGuard } from './features/auth/guards/auth.guard';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
+    MailerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        transport: {
+          host: 'smtp.gmail.com',
+          port: parseInt(config.get<string>('EMAIL_PORT') || '587'),
+          secure: false,
+          auth: {
+            user: config.get<string>('EMAIL_USER'),
+            pass: config.get<string>('EMAIL_PASSWORD'),
+          },
+        },
+        defaults: {
+          from: `"No Reply" <${config.get<string>('EMAIL_USER')}>`,
+        },
+        preview: false,
+        template: {
+          dir: process.cwd() + '/src/shared/email/templates/',
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+      }),
+    }),
+
     AuthModule,
     AuditModule,
     AssetsModule,
