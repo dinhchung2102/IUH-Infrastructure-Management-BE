@@ -17,6 +17,10 @@ jobs:
       url: ${{ steps.deploy.outputs.url }}
 
     steps:
+      - name: Stop running app (if any)
+        run: pm2 stop iuh-infrastructure-be || echo "App not running"
+        shell: cmd
+
       - name: Checkout source code
         uses: actions/checkout@v4
 
