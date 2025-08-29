@@ -9,6 +9,7 @@ import { CampusService } from './features/campus/campus.service';
 import { CampusController } from './features/campus/campus.controller';
 import { CampusModule } from './features/campus/campus.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { HealthModule } from './features/health/health.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './features/auth/guards/auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
@@ -54,6 +55,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
     AuditModule,
     AssetsModule,
     CampusModule,
+    HealthModule,
   ],
   controllers: [AppController, CampusController],
   providers: [
