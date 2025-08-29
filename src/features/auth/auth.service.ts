@@ -121,7 +121,7 @@ export class AuthService {
     const accountData = {
       ...registerDto,
       password: hashedPassword,
-      roles: [defaultRole._id],
+      role: defaultRole._id,
       isActive: true,
     };
 
@@ -143,7 +143,7 @@ export class AuthService {
         avatar: savedAccount.avatar,
         gender: savedAccount.gender,
         dateOfBirth: savedAccount.dateOfBirth,
-        roles: savedAccount.roles,
+        role: savedAccount.role,
         isActive: savedAccount.isActive,
       },
     };
@@ -153,7 +153,7 @@ export class AuthService {
     const { username, password } = loginDto;
 
     const account = await this.accountModel.findOne({ username }).populate({
-      path: 'roles',
+      path: 'role',
       populate: {
         path: 'permissions',
         select: 'resource action',
@@ -170,23 +170,19 @@ export class AuthService {
       throw new UnauthorizedException('Mật khẩu không chính xác');
     }
 
-    const roleNames = (account.roles as Role[]).map(
-      (role: Role) => role.roleName,
-    );
+    const role = account.role as Role;
+    const roleName = role.roleName;
 
-    const permissionSet = new Set<string>();
-    (account.roles as Role[]).forEach((role: Role) => {
-      if (role.permissions) {
-        (role.permissions as Permission[]).forEach((permission: Permission) => {
-          permissionSet.add(`${permission.resource}:${permission.action}`);
-        });
-      }
-    });
-    const permissions = Array.from(permissionSet);
+    const permissions: string[] = [];
+    if (role.permissions) {
+      (role.permissions as Permission[]).forEach((permission: Permission) => {
+        permissions.push(`${permission.resource}:${permission.action}`);
+      });
+    }
 
     const payload = {
       sub: account._id,
-      roles: roleNames,
+      role: roleName,
       permissions,
     };
 
@@ -230,7 +226,7 @@ export class AuthService {
         gender: account.gender,
         dateOfBirth: account.dateOfBirth,
         isActive: account.isActive,
-        roles: roleNames,
+        role: roleName,
         permissions: permissions,
       },
     };
@@ -368,7 +364,7 @@ export class AuthService {
     );
 
     const account = await this.accountModel.findById(payload.sub).populate({
-      path: 'roles',
+      path: 'role',
       populate: {
         path: 'permissions',
         select: 'resource action',
@@ -387,23 +383,19 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
 
-    const roleNames = (account.roles as Role[]).map(
-      (role: Role) => role.roleName,
-    );
+    const role = account.role as Role;
+    const roleName = role.roleName;
 
-    const permissionSet = new Set<string>();
-    (account.roles as Role[]).forEach((role: Role) => {
-      if (role.permissions) {
-        (role.permissions as Permission[]).forEach((permission: Permission) => {
-          permissionSet.add(`${permission.resource}:${permission.action}`);
-        });
-      }
-    });
-    const permissions = Array.from(permissionSet);
+    const permissions: string[] = [];
+    if (role.permissions) {
+      (role.permissions as Permission[]).forEach((permission: Permission) => {
+        permissions.push(`${permission.resource}:${permission.action}`);
+      });
+    }
 
     const newPayload = {
       sub: account._id,
-      roles: roleNames,
+      role: roleName,
       permissions,
     };
 
@@ -447,7 +439,7 @@ export class AuthService {
         gender: account.gender,
         dateOfBirth: account.dateOfBirth,
         isActive: account.isActive,
-        roles: roleNames,
+        role: roleName,
         permissions: permissions,
       },
     };
@@ -467,7 +459,7 @@ export class AuthService {
     const account = await this.accountModel
       .findById(accountId)
       .populate({
-        path: 'roles',
+        path: 'role',
         populate: {
           path: 'permissions',
           select: 'resource action',
@@ -479,19 +471,15 @@ export class AuthService {
       throw new NotFoundException('Tài khoản không tồn tại');
     }
 
-    const roleNames = (account.roles as Role[]).map(
-      (role: Role) => role.roleName,
-    );
+    const role = account.role as Role;
+    const roleName = role.roleName;
 
-    const permissionSet = new Set<string>();
-    (account.roles as Role[]).forEach((role: Role) => {
-      if (role.permissions) {
-        (role.permissions as Permission[]).forEach((permission: Permission) => {
-          permissionSet.add(`${permission.resource}:${permission.action}`);
-        });
-      }
-    });
-    const permissions = Array.from(permissionSet);
+    const permissions: string[] = [];
+    if (role.permissions) {
+      (role.permissions as Permission[]).forEach((permission: Permission) => {
+        permissions.push(`${permission.resource}:${permission.action}`);
+      });
+    }
 
     return {
       message: 'Thông tin profile',
@@ -506,7 +494,7 @@ export class AuthService {
         gender: account.gender,
         dateOfBirth: account.dateOfBirth,
         isActive: account.isActive,
-        roles: roleNames,
+        role: roleName,
         permissions: permissions,
       },
     };

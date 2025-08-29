@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Role, RoleDocument } from './role.schema';
+import type { RoleDocument } from './role.schema';
+import { Role } from './role.schema';
 import { Gender } from '../enum/gender.enum';
 import { Types } from 'mongoose';
 import { Exclude } from 'class-transformer';
@@ -15,8 +16,8 @@ export class Account {
   @Exclude()
   password: string;
 
-  @Prop({ required: true, type: [Types.ObjectId], ref: Role.name })
-  roles: RoleDocument[];
+  @Prop({ required: true, type: Types.ObjectId, ref: Role.name })
+  role: RoleDocument;
 
   @Prop({ required: true, unique: true })
   email: string;

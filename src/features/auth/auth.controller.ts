@@ -81,7 +81,7 @@ export class AuthController {
   getMyInfo(@CurrentUser() user: JwtPayload) {
     return {
       message: 'Thông tin user từ JWT',
-      roles: user.roles,
+      role: user.role,
       permissions: user.permissions,
     };
   }
