@@ -220,6 +220,16 @@ export class AuthService {
       access_token,
       refresh_token,
       account: {
+        _id: account._id,
+        username: account.username,
+        email: account.email,
+        fullName: account.fullName,
+        phoneNumber: account.phoneNumber,
+        address: account.address,
+        avatar: account.avatar,
+        gender: account.gender,
+        dateOfBirth: account.dateOfBirth,
+        isActive: account.isActive,
         roles: roleNames,
         permissions: permissions,
       },
@@ -427,6 +437,16 @@ export class AuthService {
       access_token,
       refresh_token: new_refresh_token,
       account: {
+        _id: account._id,
+        username: account.username,
+        email: account.email,
+        fullName: account.fullName,
+        phoneNumber: account.phoneNumber,
+        address: account.address,
+        avatar: account.avatar,
+        gender: account.gender,
+        dateOfBirth: account.dateOfBirth,
+        isActive: account.isActive,
         roles: roleNames,
         permissions: permissions,
       },
@@ -440,6 +460,55 @@ export class AuthService {
 
     return {
       message: 'Đăng xuất thành công',
+    };
+  }
+
+  async getProfile(accountId: string) {
+    const account = await this.accountModel
+      .findById(accountId)
+      .populate({
+        path: 'roles',
+        populate: {
+          path: 'permissions',
+          select: 'resource action',
+        },
+      })
+      .select('-password -refreshToken');
+
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    const roleNames = (account.roles as Role[]).map(
+      (role: Role) => role.roleName,
+    );
+
+    const permissionSet = new Set<string>();
+    (account.roles as Role[]).forEach((role: Role) => {
+      if (role.permissions) {
+        (role.permissions as Permission[]).forEach((permission: Permission) => {
+          permissionSet.add(`${permission.resource}:${permission.action}`);
+        });
+      }
+    });
+    const permissions = Array.from(permissionSet);
+
+    return {
+      message: 'Thông tin profile',
+      account: {
+        _id: account._id,
+        username: account.username,
+        email: account.email,
+        fullName: account.fullName,
+        phoneNumber: account.phoneNumber,
+        address: account.address,
+        avatar: account.avatar,
+        gender: account.gender,
+        dateOfBirth: account.dateOfBirth,
+        isActive: account.isActive,
+        roles: roleNames,
+        permissions: permissions,
+      },
     };
   }
 }

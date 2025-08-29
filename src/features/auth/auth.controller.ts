@@ -70,13 +70,10 @@ export class AuthController {
     return responseWithoutRefreshToken;
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
+  @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@CurrentUser() user: JwtPayload) {
-    return {
-      message: 'Thông tin profile',
-      user,
-    };
+  async getProfile(@CurrentUser() user: JwtPayload) {
+    return this.authService.getProfile(user.sub);
   }
 
   @UseGuards(AuthGuard)
