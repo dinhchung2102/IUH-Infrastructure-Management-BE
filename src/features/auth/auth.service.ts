@@ -23,6 +23,9 @@ import { RedisService } from 'src/shared/redis/redis.service';
 import { SendOtpDto, VerifyOTPDto } from './dto/otp.dto';
 import { generateOTP } from 'src/shared/email/generateOTP';
 import { ResetPasswordDto } from './dto/password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ConfigService } from '@nestjs/config';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +36,7 @@ export class AuthService {
     @InjectModel(Role.name) private roleModel: Model<Role>,
     @InjectModel(Permission.name) private permissionModel: Model<Permission>,
     private jwtService: JwtService,
-
+    private configService: ConfigService,
     private readonly mailerService: MailerService,
     private readonly redisService: RedisService,
   ) {}
@@ -187,11 +190,35 @@ export class AuthService {
       permissions,
     };
 
-    const access_token = await this.jwtService.signAsync(payload);
+    const access_token = await this.jwtService.signAsync(payload, {
+      expiresIn: this.configService.get<string>(
+        'JWT_ACCESS_TOKEN_EXPIRES_IN',
+        '15m',
+      ),
+    });
+
+    const refresh_token = await this.jwtService.signAsync(
+      { sub: account._id },
+      {
+        expiresIn: this.configService.get<string>(
+          'JWT_REFRESH_TOKEN_EXPIRES_IN',
+          '7d',
+        ),
+      },
+    );
+
+    const hashedRefreshToken = await bcrypt.hash(
+      refresh_token,
+      this.SALT_ROUNDS,
+    );
+    await this.accountModel.findByIdAndUpdate(account._id, {
+      refreshToken: hashedRefreshToken,
+    });
 
     return {
       message: 'Đăng nhập thành công',
       access_token,
+      refresh_token,
       account: {
         roles: roleNames,
         permissions: permissions,
@@ -317,6 +344,102 @@ export class AuthService {
     await account.save();
     return {
       message: 'Mật khẩu đã được thay đổi thành công',
+    };
+  }
+
+  async refreshToken(refreshTokenDto: RefreshTokenDto) {
+    const { refreshToken } = refreshTokenDto;
+
+    const payload: JwtPayload = await this.jwtService.verifyAsync(
+      refreshToken,
+      {
+        secret: this.configService.get<string>('JWT_SECRET'),
+      },
+    );
+
+    const account = await this.accountModel.findById(payload.sub).populate({
+      path: 'roles',
+      populate: {
+        path: 'permissions',
+        select: 'resource action',
+      },
+    });
+
+    if (!account || !account.refreshToken) {
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
+
+    const isRefreshTokenValid = await bcrypt.compare(
+      refreshToken,
+      account.refreshToken,
+    );
+    if (!isRefreshTokenValid) {
+      throw new UnauthorizedException('Refresh token không hợp lệ');
+    }
+
+    const roleNames = (account.roles as Role[]).map(
+      (role: Role) => role.roleName,
+    );
+
+    const permissionSet = new Set<string>();
+    (account.roles as Role[]).forEach((role: Role) => {
+      if (role.permissions) {
+        (role.permissions as Permission[]).forEach((permission: Permission) => {
+          permissionSet.add(`${permission.resource}:${permission.action}`);
+        });
+      }
+    });
+    const permissions = Array.from(permissionSet);
+
+    const newPayload = {
+      sub: account._id,
+      roles: roleNames,
+      permissions,
+    };
+
+    const access_token = await this.jwtService.signAsync(newPayload, {
+      expiresIn: this.configService.get<string>(
+        'JWT_ACCESS_TOKEN_EXPIRES_IN',
+        '15m',
+      ),
+    });
+
+    const new_refresh_token = await this.jwtService.signAsync(
+      { sub: account._id },
+      {
+        expiresIn: this.configService.get<string>(
+          'JWT_REFRESH_TOKEN_EXPIRES_IN',
+          '7d',
+        ),
+      },
+    );
+
+    const hashedRefreshToken = await bcrypt.hash(
+      new_refresh_token,
+      this.SALT_ROUNDS,
+    );
+    await this.accountModel.findByIdAndUpdate(account._id, {
+      refreshToken: hashedRefreshToken,
+    });
+
+    return {
+      message: 'Token đã được làm mới thành công',
+      access_token,
+      refresh_token: new_refresh_token,
+      account: {
+        roles: roleNames,
+        permissions: permissions,
+      },
+    };
+  }
+
+  async logout(accountId: string) {
+    await this.accountModel.findByIdAndUpdate(accountId, {
+      refreshToken: null,
+    });
+
+    return {
+      message: 'Đăng xuất thành công',
     };
   }
 }

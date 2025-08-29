@@ -41,6 +41,10 @@ export class Account {
 
   @Prop({ required: false })
   dateOfBirth: Date;
+
+  @Prop({ required: false })
+  @Exclude()
+  refreshToken: string;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

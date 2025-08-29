@@ -7,7 +7,10 @@ import {
   HttpCode,
   HttpStatus,
   Put,
+  Res,
+  Req,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
@@ -21,6 +24,7 @@ import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { RequirePermissions } from './decorators';
 import { SendOtpDto, VerifyOTPDto } from './dto/otp.dto';
 import { ChangePasswordDto, ResetPasswordDto } from './dto/password.dto';
+import { UnauthorizedException } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
@@ -48,8 +52,22 @@ export class AuthController {
 
   @Public()
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.login(loginDto);
+
+    response.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refresh_token, ...responseWithoutRefreshToken } = result;
+    return responseWithoutRefreshToken;
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -114,5 +132,53 @@ export class AuthController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.authService.changePassword(user.sub, dto.newPassword);
+  }
+
+  @Public()
+  @Post('refresh-token')
+  @HttpCode(HttpStatus.OK)
+  async refreshToken(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const cookieHeader = request.headers.cookie;
+    const refreshToken = cookieHeader
+      ?.split(';')
+      .find((cookie) => cookie.trim().startsWith('refreshToken='))
+      ?.split('=')[1];
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token không được tìm thấy');
+    }
+
+    const result = await this.authService.refreshToken({ refreshToken });
+
+    response.cookie('refreshToken', result.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refresh_token, ...responseWithoutRefreshToken } = result;
+    return responseWithoutRefreshToken;
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    // Clear refresh token cookie
+    response.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    return this.authService.logout(user.sub);
   }
 }
