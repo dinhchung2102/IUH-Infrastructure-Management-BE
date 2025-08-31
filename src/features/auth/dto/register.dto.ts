@@ -56,7 +56,7 @@ export class RegisterDto {
   @MaxLength(AUTH_CONFIG.ADDRESS_MAX_LENGTH)
   address?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(Gender, { message: 'Gender phải là MALE hoặc FEMALE' })
   gender?: Gender;
 
