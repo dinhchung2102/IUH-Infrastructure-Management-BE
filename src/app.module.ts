@@ -17,7 +17,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { ReportModule } from './features/report/report.module';
 import { ReportController } from './features/report/report.controller';
 import { AssetsController } from './features/assets/assets.controller';
-import { AuthController, AuthService } from './features/auth';
+// import { AuthController, AuthService } from './features/auth';
 import { AuditController } from './features/audit/audit.controller';
 import { AssetsService } from './features/assets/assets.service';
 import { AuditService } from './features/audit/audit.service';
@@ -71,14 +71,12 @@ import { ReportService } from './features/report/report.service';
     CampusController,
     ReportController,
     AssetsController,
-    AuthController,
     AuditController,
   ],
   providers: [
     AppService,
     ReportService,
     AssetsService,
-    AuthService,
     AuditService,
     CampusService,
     {
