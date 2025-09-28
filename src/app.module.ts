@@ -14,6 +14,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthGuard } from './features/auth/guards/auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { ReportModule } from './features/report/report.module';
+import { ReportController } from './features/report/report.controller';
+import { AssetsController } from './features/assets/assets.controller';
+import { AuthController, AuthService } from './features/auth';
+import { AuditController } from './features/audit/audit.controller';
+import { AssetsService } from './features/assets/assets.service';
+import { AuditService } from './features/audit/audit.service';
+import { ReportService } from './features/report/report.service';
 
 @Module({
   imports: [
@@ -56,10 +64,22 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
     AssetsModule,
     CampusModule,
     HealthModule,
+    ReportModule,
   ],
-  controllers: [AppController, CampusController],
+  controllers: [
+    AppController,
+    CampusController,
+    ReportController,
+    AssetsController,
+    AuthController,
+    AuditController,
+  ],
   providers: [
     AppService,
+    ReportService,
+    AssetsService,
+    AuthService,
+    AuditService,
     CampusService,
     {
       provide: APP_GUARD,
