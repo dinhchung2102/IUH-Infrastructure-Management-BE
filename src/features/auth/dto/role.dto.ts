@@ -1,8 +1,19 @@
-import { IsArray, IsBoolean, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { Types } from 'mongoose';
 import { Permission } from '../schema/permission.schema';
 
 export class RoleDto {
+  @IsNotEmpty()
+  @IsString()
+  @IsOptional()
+  _id: string;
+
   @IsNotEmpty()
   @IsString()
   roleName: string;

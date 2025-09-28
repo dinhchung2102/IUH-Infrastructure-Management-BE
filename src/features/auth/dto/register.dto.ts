@@ -63,4 +63,8 @@ export class RegisterDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  authOTP: string;
 }

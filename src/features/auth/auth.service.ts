@@ -14,7 +14,7 @@ import { RoleName } from './enum/role.enum';
 import * as bcrypt from 'bcryptjs';
 import { PermissionDto } from './dto/permission.dto';
 import { Permission } from './schema/permission.schema';
-import { CreateRoleDto } from './dto/role.dto';
+import { CreateRoleDto, RoleDto } from './dto/role.dto';
 import { AUTH_CONFIG } from './config/auth.config';
 import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -102,17 +102,22 @@ export class AuthService {
       }
     }
 
-    // Lấy role mặc định (GUEST) - kiểm tra trước khi tạo account
-    const defaultRole = await this.roleModel.findOne({
-      roleName: AUTH_CONFIG.DEFAULT_ROLE as RoleName,
-    });
+    let registerRole: RoleDto | null = null;
+    if (registerDto.email.includes('@student.iuh.edu.vn')) {
+      registerRole = await this.roleModel.findOne({
+        roleName: RoleName.STUDENT,
+      });
+    } else {
+      registerRole = await this.roleModel.findOne({
+        roleName: RoleName.GUEST,
+      });
+    }
 
-    if (!defaultRole) {
+    if (!registerRole) {
       throw new InternalServerErrorException(
         'Không thể tìm thấy role mặc định. Vui lòng liên hệ admin.',
       );
     }
-
     const hashedPassword = await bcrypt.hash(
       registerDto.password,
       this.SALT_ROUNDS,
@@ -121,13 +126,25 @@ export class AuthService {
     const accountData = {
       ...registerDto,
       password: hashedPassword,
-      role: defaultRole._id,
+      role: registerRole._id,
       isActive: true,
     };
 
     if (registerDto.dateOfBirth) {
       accountData.dateOfBirth = registerDto.dateOfBirth;
     }
+
+    const { authOTP } = registerDto;
+    const otpRedis = await this.redisService.getOtp(registerDto.email);
+    if (!otpRedis) {
+      throw new UnauthorizedException('OTP không tồn tại hoặc đã hết hạn');
+    }
+
+    if (otpRedis.otp !== authOTP) {
+      throw new UnauthorizedException('OTP không hợp lệ');
+    }
+
+    await this.redisService.delete(`otp:${registerDto.email}`);
 
     const newAccount = new this.accountModel(accountData);
     const savedAccount = await newAccount.save();
@@ -152,13 +169,17 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { username, password } = loginDto;
 
-    const account = await this.accountModel.findOne({ username }).populate({
-      path: 'role',
-      populate: {
-        path: 'permissions',
-        select: 'resource action',
-      },
-    });
+    const account = await this.accountModel
+      .findOne({
+        $or: [{ username: username }, { email: username }],
+      })
+      .populate({
+        path: 'role',
+        populate: {
+          path: 'permissions',
+          select: 'resource action',
+        },
+      });
 
     if (!account) {
       throw new NotFoundException('Tài khoản không tồn tại');
@@ -229,6 +250,33 @@ export class AuthService {
         role: roleName,
         permissions: permissions,
       },
+    };
+  }
+
+  async sendRegisterOTP(dto: SendOtpDto): Promise<{ message: string }> {
+    const { email } = dto;
+    const otp: string = generateOTP();
+
+    // Kiểm tra email đã được sử dụng chưa
+    const existEmail = await this.accountModel.findOne({ email: email });
+    if (existEmail) {
+      throw new ConflictException({
+        message: `Email đã được sử dụng`,
+        errorCode: 'EMAIL_EXISTS',
+      });
+    }
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: `${otp} là mã xác thực đăng ký tài khoản của bạn`,
+      template: 'otp',
+      context: { otp },
+    });
+
+    await this.redisService.setOtp(email, otp);
+
+    return {
+      message: 'OTP đăng ký tài khoản đã được gửi tới email của bạn',
     };
   }
 

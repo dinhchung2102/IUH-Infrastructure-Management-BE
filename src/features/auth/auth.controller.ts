@@ -45,6 +45,13 @@ export class AuthController {
   }
 
   @Public()
+  @Post('send-register-otp')
+  @HttpCode(HttpStatus.OK)
+  async sendRegisterOTP(@Body() dto: SendOtpDto) {
+    return this.authService.sendRegisterOTP(dto);
+  }
+
+  @Public()
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
