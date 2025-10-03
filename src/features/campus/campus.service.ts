@@ -59,14 +59,12 @@ export class CampusService {
 
   async findAll(queryDto: QueryCampusDto): Promise<{
     message: string;
-    data: {
-      campuses: any[];
-      pagination: {
-        currentPage: number;
-        totalPages: number;
-        totalItems: number;
-        itemsPerPage: number;
-      };
+    campuses: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
     };
   }> {
     const {
@@ -118,14 +116,12 @@ export class CampusService {
 
     return {
       message: 'Lấy danh sách campus thành công',
-      data: {
-        campuses,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems: total,
-          itemsPerPage: limitNum,
-        },
+      campuses,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
       },
     };
   }

@@ -65,14 +65,12 @@ export class ZoneAreaMainService {
 
   async findAllAreas(queryDto: QueryAreaDto): Promise<{
     message: string;
-    data: {
-      areas: any[];
-      pagination: {
-        currentPage: number;
-        totalPages: number;
-        totalItems: number;
-        itemsPerPage: number;
-      };
+    areas: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
     };
   }> {
     const {
@@ -132,14 +130,12 @@ export class ZoneAreaMainService {
 
     return {
       message: 'Lấy danh sách khu vực thành công',
-      data: {
-        areas,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems: total,
-          itemsPerPage: limitNum,
-        },
+      areas,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
       },
     };
   }
@@ -264,14 +260,12 @@ export class ZoneAreaMainService {
 
   async findAllBuildings(queryDto: QueryBuildingDto): Promise<{
     message: string;
-    data: {
-      buildings: any[];
-      pagination: {
-        currentPage: number;
-        totalPages: number;
-        totalItems: number;
-        itemsPerPage: number;
-      };
+    buildings: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
     };
   }> {
     const {
@@ -323,14 +317,12 @@ export class ZoneAreaMainService {
 
     return {
       message: 'Lấy danh sách tòa nhà thành công',
-      data: {
-        buildings,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems: total,
-          itemsPerPage: limitNum,
-        },
+      buildings,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
       },
     };
   }
@@ -480,14 +472,12 @@ export class ZoneAreaMainService {
 
   async findAllZones(queryDto: QueryZoneDto): Promise<{
     message: string;
-    data: {
-      zones: any[];
-      pagination: {
-        currentPage: number;
-        totalPages: number;
-        totalItems: number;
-        itemsPerPage: number;
-      };
+    zones: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
     };
   }> {
     const {
@@ -569,14 +559,12 @@ export class ZoneAreaMainService {
 
     return {
       message: 'Lấy danh sách khu vực thành công',
-      data: {
-        zones,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalItems: total,
-          itemsPerPage: limitNum,
-        },
+      zones,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
       },
     };
   }
