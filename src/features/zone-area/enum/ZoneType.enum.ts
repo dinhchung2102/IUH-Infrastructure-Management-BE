@@ -1,0 +1,6 @@
+export enum ZoneType {
+  FUNCTIONAL = 'FUNCTIONAL',
+  TECHNICAL = 'TECHNICAL',
+  SERVICE = 'SERVICE',
+  PUBLIC = 'PUBLIC',
+}

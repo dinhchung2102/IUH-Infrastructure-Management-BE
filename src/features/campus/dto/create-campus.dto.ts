@@ -8,7 +8,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-import { CampusStatus } from '../enum/Campus.enum';
+import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
 
 export class CreateCampusDto {
   @IsNotEmpty({ message: 'Tên campus không được để trống' })
@@ -37,8 +37,8 @@ export class CreateCampusDto {
   email: string;
 
   @IsNotEmpty({ message: 'Trạng thái campus không được để trống' })
-  @IsEnum(CampusStatus, { message: 'Trạng thái campus không hợp lệ' })
-  status: CampusStatus;
+  @IsEnum(CommonStatus, { message: 'Trạng thái campus không hợp lệ' })
+  status: CommonStatus;
 
   @IsNotEmpty({ message: 'Quản lý campus không được để trống' })
   @IsMongoId({ message: 'ID quản lý không hợp lệ' })

@@ -20,6 +20,7 @@ import { AuditController } from './features/audit/audit.controller';
 import { AssetsService } from './features/assets/assets.service';
 import { AuditService } from './features/audit/audit.service';
 import { ReportService } from './features/report/report.service';
+import { ZoneAreaModule } from './features/zone-area/zone-area.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { ReportService } from './features/report/report.service';
     CampusModule,
     HealthModule,
     ReportModule,
+    ZoneAreaModule,
   ],
   controllers: [
     AppController,

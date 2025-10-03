@@ -163,10 +163,13 @@ export class CampusService {
       throw new NotFoundException('Campus không tồn tại');
     }
 
+    // Convert to plain object for easier access
+    const updateData = updateCampusDto as Record<string, any>;
+
     // Kiểm tra tên campus đã tồn tại chưa (nếu có thay đổi)
-    if (updateCampusDto.name && updateCampusDto.name !== existingCampus.name) {
+    if (updateData.name && updateData.name !== existingCampus.name) {
       const duplicateName = await this.campusModel.findOne({
-        name: updateCampusDto.name,
+        name: updateData.name,
         _id: { $ne: id },
       });
 
@@ -176,12 +179,9 @@ export class CampusService {
     }
 
     // Kiểm tra email đã tồn tại chưa (nếu có thay đổi)
-    if (
-      updateCampusDto.email &&
-      updateCampusDto.email !== existingCampus.email
-    ) {
+    if (updateData.email && updateData.email !== existingCampus.email) {
       const duplicateEmail = await this.campusModel.findOne({
-        email: updateCampusDto.email,
+        email: updateData.email,
         _id: { $ne: id },
       });
 
@@ -191,12 +191,9 @@ export class CampusService {
     }
 
     // Kiểm tra phone đã tồn tại chưa (nếu có thay đổi)
-    if (
-      updateCampusDto.phone &&
-      updateCampusDto.phone !== existingCampus.phone
-    ) {
+    if (updateData.phone && updateData.phone !== existingCampus.phone) {
       const duplicatePhone = await this.campusModel.findOne({
-        phone: updateCampusDto.phone,
+        phone: updateData.phone,
         _id: { $ne: id },
       });
 
@@ -206,13 +203,15 @@ export class CampusService {
     }
 
     // Chuẩn bị data update
-    const updateData: Record<string, any> = { ...updateCampusDto };
-    if (updateCampusDto.manager) {
-      updateData.manager = new Types.ObjectId(updateCampusDto.manager);
+    const finalUpdateData: Record<string, any> = { ...updateData };
+    if (updateData.manager) {
+      finalUpdateData.manager = new Types.ObjectId(
+        updateData.manager as string,
+      );
     }
 
     const updatedCampus = await this.campusModel
-      .findByIdAndUpdate(id, updateData, { new: true })
+      .findByIdAndUpdate(id, finalUpdateData, { new: true })
       .populate('manager', 'username fullName email');
 
     return {

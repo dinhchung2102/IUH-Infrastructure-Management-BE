@@ -3,4 +3,7 @@ export enum Resource {
   ROLE = 'ROLE',
   PERMISSION = 'PERMISSION',
   CAMPUS = 'CAMPUS',
+  AREA = 'AREA',
+  BUILDING = 'BUILDING',
+  ZONE = 'ZONE',
 }

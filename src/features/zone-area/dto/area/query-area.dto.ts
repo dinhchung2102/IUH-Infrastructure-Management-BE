@@ -1,8 +1,9 @@
 import { IsOptional, IsString, IsEnum, IsNumberString } from 'class-validator';
 import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { ZoneType } from '../../enum/ZoneType.enum';
 import { Transform } from 'class-transformer';
 
-export class QueryCampusDto {
+export class QueryAreaDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) =>
@@ -11,8 +12,16 @@ export class QueryCampusDto {
   search?: string;
 
   @IsOptional()
-  @IsEnum(CommonStatus, { message: 'Trạng thái campus không hợp lệ' })
+  @IsEnum(CommonStatus, { message: 'Trạng thái không hợp lệ' })
   status?: CommonStatus;
+
+  @IsOptional()
+  @IsString()
+  campus?: string;
+
+  @IsOptional()
+  @IsEnum(ZoneType, { message: 'Loại khu vực không hợp lệ' })
+  zoneType?: ZoneType;
 
   @IsOptional()
   @IsNumberString({}, { message: 'Trang phải là số' })

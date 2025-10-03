@@ -1,4 +1,4 @@
-export enum CampusStatus {
+export enum CommonStatus {
   ACTIVE = 'ACTIVE',
   INACTIVE = 'INACTIVE',
   UNDERMAINTENANCE = 'UNDERMAINTENANCE',
