@@ -5,8 +5,6 @@ import { AppService } from './app.service';
 import { AuthModule } from './features/auth/auth.module';
 import { AuditModule } from './features/audit/audit.module';
 import { AssetsModule } from './features/assets/assets.module';
-import { CampusService } from './features/campus/campus.service';
-import { CampusController } from './features/campus/campus.controller';
 import { CampusModule } from './features/campus/campus.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { HealthModule } from './features/health/health.module';
@@ -68,7 +66,6 @@ import { ReportService } from './features/report/report.service';
   ],
   controllers: [
     AppController,
-    CampusController,
     ReportController,
     AssetsController,
     AuditController,
@@ -78,7 +75,6 @@ import { ReportService } from './features/report/report.service';
     ReportService,
     AssetsService,
     AuditService,
-    CampusService,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,

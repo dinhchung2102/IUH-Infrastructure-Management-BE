@@ -1,0 +1,5 @@
+export enum CampusStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  UNDERMAINTENANCE = 'UNDERMAINTENANCE',
+}
