@@ -61,11 +61,11 @@ export class CreateAssetDto {
   @IsDateString()
   lastMaintenanceDate?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsMongoId()
-  zone: string;
+  zone?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsMongoId()
-  area: string;
+  area?: string;
 }

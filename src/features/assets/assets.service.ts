@@ -283,21 +283,40 @@ export class AssetsService {
     );
     if (!assetCategory)
       throw new NotFoundException('AssetCategory không tồn tại');
+
+    // Kiểm tra ít nhất một trong hai (zone hoặc area) phải có giá trị
+    if (!dto.zone && !dto.area) {
+      throw new BadRequestException(
+        'Zone hoặc Area phải có ít nhất một giá trị',
+      );
+    }
+
     const createData: Record<string, any> = {
       ...dto,
       assetType: new Types.ObjectId(dto.assetType),
       assetCategory: new Types.ObjectId(dto.assetCategory),
-      zone: new Types.ObjectId(dto.zone),
-      area: new Types.ObjectId(dto.area),
     };
+
+    if (dto.zone) {
+      createData.zone = new Types.ObjectId(dto.zone);
+    }
+    if (dto.area) {
+      createData.area = new Types.ObjectId(dto.area);
+    }
     const created = await this.assetModel.create(createData);
-    await created.populate([
+    const populatePaths = [
       { path: 'assetType', select: 'name' },
       { path: 'assetCategory', select: 'name' },
-      { path: 'zone', select: 'name floorLocation' },
-      { path: 'area', select: 'name zoneType' },
-      { path: 'assignedTo', select: 'username fullName email' },
-    ]);
+    ];
+
+    if (dto.zone) {
+      populatePaths.push({ path: 'zone', select: 'name floorLocation' });
+    }
+    if (dto.area) {
+      populatePaths.push({ path: 'area', select: 'name zoneType' });
+    }
+
+    await created.populate(populatePaths);
     return { message: 'Tạo tài sản thành công', data: created };
   }
 

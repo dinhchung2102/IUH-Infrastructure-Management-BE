@@ -51,11 +51,11 @@ export class Asset {
   @Prop()
   lastMaintenanceDate?: Date;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: Zone.name })
-  zone: ZoneDocument;
+  @Prop({ type: Types.ObjectId, ref: Zone.name })
+  zone?: ZoneDocument;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: Area.name })
-  area: AreaDocument;
+  @Prop({ type: Types.ObjectId, ref: Area.name })
+  area?: AreaDocument;
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);
