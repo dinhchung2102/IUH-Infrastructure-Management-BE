@@ -5,7 +5,6 @@ import {
   IsString,
   MaxLength,
   MinLength,
-  IsBoolean,
 } from 'class-validator';
 import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
 
@@ -29,8 +28,4 @@ export class CreateAssetCategoryDto {
   @IsOptional()
   @IsString()
   image?: string;
-
-  @IsNotEmpty()
-  @IsBoolean()
-  isActive: boolean;
 }

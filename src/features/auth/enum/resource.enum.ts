@@ -6,4 +6,7 @@ export enum Resource {
   AREA = 'AREA',
   BUILDING = 'BUILDING',
   ZONE = 'ZONE',
+  ASSET_CATEGORY = 'ASSET_CATEGORY',
+  ASSET_TYPE = 'ASSET_TYPE',
+  ASSET = 'ASSET',
 }
