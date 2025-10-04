@@ -21,6 +21,7 @@ import { UpdateAssetTypeDto } from './dto/asset-type/update-asset-type.dto';
 import { CreateAssetDto } from './dto/asset/create-asset.dto';
 import { QueryAssetDto } from './dto/asset/query-asset.dto';
 import { UpdateAssetDto } from './dto/asset/update-asset.dto';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
 export class AssetsService {
@@ -31,13 +32,26 @@ export class AssetsService {
     private readonly assetTypeModel: Model<AssetTypeDocument>,
     @InjectModel(Asset.name)
     private readonly assetModel: Model<AssetDocument>,
+    private readonly uploadService: UploadService,
   ) {}
 
   // ========== CATEGORY ==========
-  async createCategory(dto: CreateAssetCategoryDto): Promise<{
+  async createCategory(
+    dto: CreateAssetCategoryDto,
+    files?: Express.Multer.File[],
+  ): Promise<{
     message: string;
     data: any;
   }> {
+    // Xử lý upload file nếu có
+    if (files && files.length > 0) {
+      const imageFile = files.find((file) => file.fieldname === 'image');
+      if (imageFile) {
+        const imageUrl = await this.uploadService.uploadFile(imageFile);
+        dto.image = imageUrl;
+      }
+    }
+
     const dup = await this.assetCategoryModel.findOne({ name: dto.name });
     if (dup) throw new ConflictException('Tên loại tài sản đã tồn tại');
     const created = await this.assetCategoryModel.create(dto);
@@ -268,10 +282,21 @@ export class AssetsService {
   }
 
   // ========== ASSET ==========
-  async createAsset(dto: CreateAssetDto): Promise<{
+  async createAsset(
+    dto: CreateAssetDto,
+    files?: Express.Multer.File[],
+  ): Promise<{
     message: string;
     data: any;
   }> {
+    // Xử lý upload file nếu có
+    if (files && files.length > 0) {
+      const imageFile = files.find((file) => file.fieldname === 'image');
+      if (imageFile) {
+        const imageUrl = await this.uploadService.uploadFile(imageFile);
+        dto.image = imageUrl;
+      }
+    }
     const dup = await this.assetModel.findOne({
       code: dto.code,
     });

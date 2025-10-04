@@ -10,20 +10,32 @@ import { Report, type ReportDocument } from './schema/report.schema';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { QueryReportDto } from './dto/query-report.dto';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
 export class ReportService {
   constructor(
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
+    private readonly uploadService: UploadService,
   ) {}
 
   async createReport(
     createReportDto: CreateReportDto,
     createdBy: string,
+    files?: Express.Multer.File[],
   ): Promise<{
     message: string;
     data: any;
   }> {
+    // Xử lý upload files nếu có
+    if (files && files.length > 0) {
+      const imageFiles = files.filter((file) => file.fieldname === 'images');
+      if (imageFiles.length > 0) {
+        const imageUrls =
+          await this.uploadService.uploadMultipleFiles(imageFiles);
+        createReportDto.images = imageUrls;
+      }
+    }
     // Kiểm tra asset có tồn tại không
     const asset = await this.reportModel.db
       .collection('assets')

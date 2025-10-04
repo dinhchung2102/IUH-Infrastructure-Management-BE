@@ -14,6 +14,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { ReportModule } from './features/report/report.module';
 import { ZoneAreaModule } from './features/zone-area/zone-area.module';
+import { UploadModule } from './shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { ZoneAreaModule } from './features/zone-area/zone-area.module';
     HealthModule,
     ReportModule,
     ZoneAreaModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [

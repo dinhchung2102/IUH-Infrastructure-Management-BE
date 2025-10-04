@@ -10,20 +10,32 @@ import { AuditLog, type AuditLogDocument } from './schema/auditlog.schema';
 import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
 export class AuditService {
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
+    private readonly uploadService: UploadService,
   ) {}
 
   async createAuditLog(
     createAuditLogDto: CreateAuditLogDto,
     staffId: string,
+    files?: Express.Multer.File[],
   ): Promise<{
     message: string;
     data: any;
   }> {
+    // Xử lý upload files nếu có
+    if (files && files.length > 0) {
+      const imageFiles = files.filter((file) => file.fieldname === 'images');
+      if (imageFiles.length > 0) {
+        const imageUrls =
+          await this.uploadService.uploadMultipleFiles(imageFiles);
+        createAuditLogDto.images = imageUrls;
+      }
+    }
     // Kiểm tra asset có tồn tại không
     const asset = await this.auditLogModel.db
       .collection('assets')

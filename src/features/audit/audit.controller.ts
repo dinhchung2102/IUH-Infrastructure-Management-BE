@@ -10,7 +10,13 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import {
+  FilesInterceptor,
+  AnyFilesInterceptor,
+} from '@nestjs/platform-express';
 import { AuditService } from './audit.service';
 import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
@@ -20,20 +26,26 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Controller('audit')
 export class AuditController {
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('AUDIT:CREATE')
   @Post()
+  @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.CREATED)
   async createAuditLog(
     @Body() createAuditLogDto: CreateAuditLogDto,
     @CurrentUser() user: JwtPayload,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.auditService.createAuditLog(createAuditLogDto, user.sub);
+    return this.auditService.createAuditLog(createAuditLogDto, user.sub, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -67,5 +79,20 @@ export class AuditController {
   @HttpCode(HttpStatus.OK)
   async removeAuditLog(@Param('id') id: string) {
     return this.auditService.removeAuditLog(id);
+  }
+
+  // ====== Upload ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('AUDIT:CREATE')
+  @Post('upload/images')
+  @UseInterceptors(FilesInterceptor('images', 10)) // Tối đa 10 files
+  async uploadAuditImages(
+    @UploadedFiles() files: Express.Multer.File[],
+  ): Promise<{ message: string; data: { urls: string[] } }> {
+    const urls = await this.uploadService.uploadMultipleFiles(files);
+    return {
+      message: 'Upload ảnh audit thành công',
+      data: { urls },
+    };
   }
 }

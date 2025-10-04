@@ -4,6 +4,7 @@ import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
 import { AuditLog, AuditLogSchema } from './schema/auditlog.schema';
 import { AuthModule } from '../auth/auth.module';
+import { UploadModule } from '../../shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: AuditLog.name, schema: AuditLogSchema },
     ]),
     AuthModule,
+    UploadModule,
   ],
   controllers: [AuditController],
   providers: [AuditService],

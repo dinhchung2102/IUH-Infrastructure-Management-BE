@@ -9,6 +9,7 @@ import {
   AssetCategorySchema,
 } from './schema/asset_category.schema';
 import { AuthModule } from '../auth';
+import { UploadModule } from '../../shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthModule } from '../auth';
       { name: Asset.name, schema: AssetSchema },
     ]),
     AuthModule,
+    UploadModule,
   ],
   providers: [AssetsService],
   controllers: [AssetsController],

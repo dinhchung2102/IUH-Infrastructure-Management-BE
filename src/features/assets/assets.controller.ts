@@ -8,7 +8,15 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
+import {
+  FileInterceptor,
+  FilesInterceptor,
+  AnyFilesInterceptor,
+} from '@nestjs/platform-express';
 import { AssetsService } from './assets.service';
 import { CreateAssetCategoryDto } from './dto/asset-category/create-asset-category.dto';
 import { UpdateAssetCategoryDto } from './dto/asset-category/update-asset-category.dto';
@@ -22,17 +30,25 @@ import { QueryAssetDto } from './dto/asset/query-asset.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Controller('assets')
 export class AssetsController {
-  constructor(private readonly assetsService: AssetsService) {}
+  constructor(
+    private readonly assetsService: AssetsService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   // ====== Categories ======
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ASSET_CATEGORY:CREATE')
   @Post('categories')
-  async createCategory(@Body() dto: CreateAssetCategoryDto) {
-    return this.assetsService.createCategory(dto);
+  @UseInterceptors(AnyFilesInterceptor())
+  async createCategory(
+    @Body() dto: CreateAssetCategoryDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.assetsService.createCategory(dto, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -106,8 +122,12 @@ export class AssetsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ASSET:CREATE')
   @Post()
-  async createAsset(@Body() dto: CreateAssetDto) {
-    return this.assetsService.createAsset(dto);
+  @UseInterceptors(AnyFilesInterceptor())
+  async createAsset(
+    @Body() dto: CreateAssetDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.assetsService.createAsset(dto, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -136,5 +156,34 @@ export class AssetsController {
   @Delete(':id')
   async removeAsset(@Param('id') id: string) {
     return this.assetsService.removeAsset(id);
+  }
+
+  // ====== Upload ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ASSET:CREATE', 'ASSET:UPDATE')
+  @Post('upload/image')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadAssetImage(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ message: string; data: { url: string } }> {
+    const url = await this.uploadService.uploadFile(file);
+    return {
+      message: 'Upload ảnh tài sản thành công',
+      data: { url },
+    };
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ASSET_CATEGORY:CREATE', 'ASSET_CATEGORY:UPDATE')
+  @Post('categories/upload/image')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadCategoryImage(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ message: string; data: { url: string } }> {
+    const url = await this.uploadService.uploadFile(file);
+    return {
+      message: 'Upload ảnh loại tài sản thành công',
+      data: { url },
+    };
   }
 }
