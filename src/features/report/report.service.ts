@@ -221,4 +221,164 @@ export class ReportService {
       message: 'Xóa báo cáo thành công',
     };
   }
+
+  async getReportStatistics(): Promise<{
+    message: string;
+    data: {
+      totalReports: number;
+      reportsByStatus: {
+        OPEN: number;
+        IN_PROGRESS: number;
+        RESOLVED: number;
+        CLOSED: number;
+      };
+      reportsByType: {
+        ISSUE: number;
+        MAINTENANCE: number;
+        REQUEST: number;
+      };
+      reportsByPriority: {
+        LOW: number;
+        MEDIUM: number;
+        HIGH: number;
+        URGENT: number;
+      };
+      recentReports: any[];
+      reportsThisMonth: number;
+      reportsLastMonth: number;
+      averageResolutionTime: number; // in days
+    };
+  }> {
+    // Tổng số báo cáo
+    const totalReports = await this.reportModel.countDocuments();
+
+    // Thống kê theo status
+    const reportsByStatus = await this.reportModel.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statusStats = {
+      OPEN: 0,
+      IN_PROGRESS: 0,
+      RESOLVED: 0,
+      CLOSED: 0,
+    };
+
+    reportsByStatus.forEach((stat) => {
+      statusStats[stat._id as keyof typeof statusStats] = stat.count;
+    });
+
+    // Thống kê theo type
+    const reportsByType = await this.reportModel.aggregate([
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const typeStats = {
+      ISSUE: 0,
+      MAINTENANCE: 0,
+      REQUEST: 0,
+    };
+
+    reportsByType.forEach((stat) => {
+      typeStats[stat._id as keyof typeof typeStats] = stat.count;
+    });
+
+    // Thống kê theo priority
+    const reportsByPriority = await this.reportModel.aggregate([
+      {
+        $group: {
+          _id: '$priority',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const priorityStats = {
+      LOW: 0,
+      MEDIUM: 0,
+      HIGH: 0,
+      URGENT: 0,
+    };
+
+    reportsByPriority.forEach((stat) => {
+      priorityStats[stat._id as keyof typeof priorityStats] = stat.count;
+    });
+
+    // Báo cáo gần đây (5 báo cáo mới nhất)
+    const recentReports = await this.reportModel
+      .find()
+      .populate('asset', 'name code')
+      .populate('createdBy', 'fullName')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('title type status priority createdAt')
+      .lean();
+
+    // Thống kê tháng này và tháng trước
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const reportsThisMonth = await this.reportModel.countDocuments({
+      createdAt: { $gte: thisMonthStart },
+    });
+
+    const reportsLastMonth = await this.reportModel.countDocuments({
+      createdAt: {
+        $gte: lastMonthStart,
+        $lte: lastMonthEnd,
+      },
+    });
+
+    // Tính thời gian giải quyết trung bình
+    const resolvedReports = await this.reportModel
+      .find({
+        status: { $in: ['RESOLVED', 'CLOSED'] },
+        updatedAt: { $exists: true },
+      })
+      .select('createdAt updatedAt')
+      .lean();
+
+    let totalResolutionTime = 0;
+    let resolvedCount = 0;
+
+    resolvedReports.forEach((report: any) => {
+      if (report.updatedAt) {
+        const resolutionTime =
+          (new Date(report.updatedAt).getTime() -
+            new Date(report.createdAt).getTime()) /
+          (1000 * 60 * 60 * 24); // Convert to days
+        totalResolutionTime += resolutionTime;
+        resolvedCount++;
+      }
+    });
+
+    const averageResolutionTime =
+      resolvedCount > 0 ? Math.round(totalResolutionTime / resolvedCount) : 0;
+
+    return {
+      message: 'Lấy thống kê báo cáo thành công',
+      data: {
+        totalReports,
+        reportsByStatus: statusStats,
+        reportsByType: typeStats,
+        reportsByPriority: priorityStats,
+        recentReports,
+        reportsThisMonth,
+        reportsLastMonth,
+        averageResolutionTime,
+      },
+    };
+  }
 }

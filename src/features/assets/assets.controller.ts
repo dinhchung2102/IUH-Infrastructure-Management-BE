@@ -186,4 +186,11 @@ export class AssetsController {
       data: { url },
     };
   }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ASSET:READ')
+  @Get('statistics/dashboard')
+  async getAssetStatistics() {
+    return this.assetsService.getAssetStatistics();
+  }
 }

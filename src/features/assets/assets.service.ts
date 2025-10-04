@@ -631,4 +631,258 @@ export class AssetsService {
     await this.assetModel.findByIdAndDelete(id);
     return { message: 'Xóa tài sản thành công' };
   }
+
+  async getAssetStatistics(): Promise<{
+    message: string;
+    data: {
+      totalAssets: number;
+      assetsByStatus: {
+        ACTIVE: number;
+        INACTIVE: number;
+        MAINTENANCE: number;
+        BROKEN: number;
+      };
+      assetsByCategory: any[];
+      assetsByType: any[];
+      assetsByLocation: {
+        zones: number;
+        areas: number;
+      };
+      assetsByCampus: any[];
+      recentAssets: any[];
+      assetsThisMonth: number;
+      assetsLastMonth: number;
+      warrantyExpiringSoon: number; // assets with warranty ending in next 30 days
+      maintenanceOverdue: number; // assets needing maintenance
+    };
+  }> {
+    // Tổng số tài sản
+    const totalAssets = await this.assetModel.countDocuments();
+
+    // Thống kê theo status
+    const assetsByStatus = await this.assetModel.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statusStats = {
+      ACTIVE: 0,
+      INACTIVE: 0,
+      MAINTENANCE: 0,
+      BROKEN: 0,
+    };
+
+    assetsByStatus.forEach((stat) => {
+      statusStats[stat._id as keyof typeof statusStats] = stat.count;
+    });
+
+    // Thống kê theo category
+    const assetsByCategory = await this.assetModel.aggregate([
+      {
+        $lookup: {
+          from: 'assetcategories',
+          localField: 'assetCategory',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      {
+        $unwind: '$category',
+      },
+      {
+        $group: {
+          _id: '$category.name',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+    ]);
+
+    // Thống kê theo type
+    const assetsByType = await this.assetModel.aggregate([
+      {
+        $lookup: {
+          from: 'assettypes',
+          localField: 'assetType',
+          foreignField: '_id',
+          as: 'type',
+        },
+      },
+      {
+        $unwind: '$type',
+      },
+      {
+        $group: {
+          _id: '$type.name',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+      {
+        $limit: 10, // Top 10 asset types
+      },
+    ]);
+
+    // Thống kê theo location
+    const assetsInZones = await this.assetModel.countDocuments({
+      zone: { $exists: true, $ne: null },
+    });
+
+    const assetsInAreas = await this.assetModel.countDocuments({
+      area: { $exists: true, $ne: null },
+    });
+
+    // Thống kê theo campus
+    const assetsByCampus = await this.assetModel.aggregate([
+      {
+        $lookup: {
+          from: 'zones',
+          localField: 'zone',
+          foreignField: '_id',
+          as: 'zoneData',
+        },
+      },
+      {
+        $lookup: {
+          from: 'buildings',
+          localField: 'zoneData.building',
+          foreignField: '_id',
+          as: 'buildingData',
+        },
+      },
+      {
+        $lookup: {
+          from: 'campus',
+          localField: 'buildingData.campus',
+          foreignField: '_id',
+          as: 'campusData',
+        },
+      },
+      {
+        $lookup: {
+          from: 'areas',
+          localField: 'area',
+          foreignField: '_id',
+          as: 'areaData',
+        },
+      },
+      {
+        $lookup: {
+          from: 'campus',
+          localField: 'areaData.campus',
+          foreignField: '_id',
+          as: 'areaCampusData',
+        },
+      },
+      {
+        $project: {
+          campus: {
+            $cond: {
+              if: { $gt: [{ $size: '$campusData' }, 0] },
+              then: { $arrayElemAt: ['$campusData.name', 0] },
+              else: { $arrayElemAt: ['$areaCampusData.name', 0] },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$campus',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { count: -1 },
+      },
+    ]);
+
+    // Tài sản gần đây (5 tài sản mới nhất)
+    const recentAssets = await this.assetModel
+      .find()
+      .populate('assetType', 'name')
+      .populate('assetCategory', 'name')
+      .populate({
+        path: 'zone',
+        select: 'name',
+        populate: {
+          path: 'building',
+          select: 'name',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        },
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name code status createdAt')
+      .lean();
+
+    // Thống kê tháng này và tháng trước
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const assetsThisMonth = await this.assetModel.countDocuments({
+      createdAt: { $gte: thisMonthStart },
+    });
+
+    const assetsLastMonth = await this.assetModel.countDocuments({
+      createdAt: {
+        $gte: lastMonthStart,
+        $lte: lastMonthEnd,
+      },
+    });
+
+    // Tài sản hết bảo hành sớm (trong 30 ngày tới)
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    const warrantyExpiringSoon = await this.assetModel.countDocuments({
+      warrantyEndDate: {
+        $gte: new Date(),
+        $lte: thirtyDaysFromNow,
+      },
+    });
+
+    // Tài sản cần bảo trì (không được bảo trì trong 6 tháng qua)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const maintenanceOverdue = await this.assetModel.countDocuments({
+      $or: [
+        { lastMaintenanceDate: { $lt: sixMonthsAgo } },
+        { lastMaintenanceDate: { $exists: false } },
+      ],
+    });
+
+    return {
+      message: 'Lấy thống kê tài sản thành công',
+      data: {
+        totalAssets,
+        assetsByStatus: statusStats,
+        assetsByCategory,
+        assetsByType,
+        assetsByLocation: {
+          zones: assetsInZones,
+          areas: assetsInAreas,
+        },
+        assetsByCampus,
+        recentAssets,
+        assetsThisMonth,
+        assetsLastMonth,
+        warrantyExpiringSoon,
+        maintenanceOverdue,
+      },
+    };
+  }
 }

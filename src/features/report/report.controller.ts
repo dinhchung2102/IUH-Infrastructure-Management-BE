@@ -81,6 +81,13 @@ export class ReportController {
     return this.reportService.removeReport(id);
   }
 
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('REPORT:READ')
+  @Get('statistics/dashboard')
+  async getReportStatistics() {
+    return this.reportService.getReportStatistics();
+  }
+
   // ====== Upload ======
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('REPORT:CREATE')
