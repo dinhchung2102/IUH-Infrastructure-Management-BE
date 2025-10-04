@@ -640,9 +640,10 @@ export class ZoneAreaMainService {
     // Kiểm tra floorLocation không vượt quá số tầng của building
     if (updateZoneDto.floorLocation && buildingToCheck) {
       const buildingData = buildingToCheck as any;
-      if (updateZoneDto.floorLocation > buildingData.floor) {
+      const buildingFloor = buildingData.floor as number;
+      if (updateZoneDto.floorLocation > buildingFloor) {
         throw new BadRequestException(
-          `Vị trí tầng không được vượt quá số tầng của tòa nhà (${buildingData.floor} tầng)`,
+          `Vị trí tầng không được vượt quá số tầng của tòa nhà (${buildingFloor} tầng)`,
         );
       }
     }
@@ -684,6 +685,39 @@ export class ZoneAreaMainService {
 
     return {
       message: 'Xóa khu vực thành công',
+    };
+  }
+
+  async findAllZonesByBuilding(buildingId: string): Promise<{
+    message: string;
+    zones: any[];
+  }> {
+    if (!Types.ObjectId.isValid(buildingId)) {
+      throw new BadRequestException('ID tòa nhà không hợp lệ');
+    }
+
+    // Kiểm tra building có tồn tại không
+    const building = await this.buildingModel.findById(buildingId);
+    if (!building) {
+      throw new NotFoundException('Tòa nhà không tồn tại');
+    }
+
+    const zones = await this.zoneModel
+      .find({ building: new Types.ObjectId(buildingId) })
+      .populate({
+        path: 'building',
+        select: 'name floor',
+        populate: {
+          path: 'campus',
+          select: 'name address',
+        },
+      })
+      .sort({ floorLocation: 1, name: 1 })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách khu vực theo tòa nhà thành công',
+      zones,
     };
   }
 }

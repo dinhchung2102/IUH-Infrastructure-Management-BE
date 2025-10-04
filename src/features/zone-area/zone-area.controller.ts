@@ -153,4 +153,11 @@ export class ZoneAreaController {
   async removeZone(@Param('id') id: string) {
     return this.zoneAreaService.removeZone(id);
   }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ZONE:READ')
+  @Get('buildings/:buildingId/zones')
+  async findAllZonesByBuilding(@Param('buildingId') buildingId: string) {
+    return this.zoneAreaService.findAllZonesByBuilding(buildingId);
+  }
 }

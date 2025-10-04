@@ -81,4 +81,8 @@ export class ZoneAreaService {
   async removeZone(id: string) {
     return this.mainService.removeZone(id);
   }
+
+  async findAllZonesByBuilding(buildingId: string) {
+    return this.mainService.findAllZonesByBuilding(buildingId);
+  }
 }
