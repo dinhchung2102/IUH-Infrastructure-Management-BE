@@ -321,15 +321,18 @@ export class AssetsService {
     }
 
     // Xử lý các trường cơ bản (trừ properties)
+    const dtoAny = dto as Record<string, any>;
     for (const field of basicFields) {
-      if (field !== 'properties' && dto[field] !== undefined) {
-        createData[field] = dto[field];
+      if (field !== 'properties' && dtoAny[field] !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        createData[field] = dtoAny[field];
       }
     }
 
     // Xử lý các thuộc tính động (không phải trường cơ bản và không phải properties)
-    for (const [key, value] of Object.entries(dto)) {
+    for (const [key, value] of Object.entries(dtoAny)) {
       if (!basicFields.includes(key) && value !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         properties[key] = value;
       }
     }
@@ -346,16 +349,34 @@ export class AssetsService {
       createData.area = new Types.ObjectId(dto.area);
     }
     const created = await this.assetModel.create(createData);
-    const populatePaths = [
+    const populatePaths: any[] = [
       { path: 'assetType', select: 'name' },
       { path: 'assetCategory', select: 'name' },
     ];
 
     if (dto.zone) {
-      populatePaths.push({ path: 'zone', select: 'name floorLocation' });
+      populatePaths.push({
+        path: 'zone',
+        select: 'name floorLocation zoneType',
+        populate: {
+          path: 'building',
+          select: 'name floor campus',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        },
+      });
     }
     if (dto.area) {
-      populatePaths.push({ path: 'area', select: 'name zoneType' });
+      populatePaths.push({
+        path: 'area',
+        select: 'name zoneType',
+        populate: {
+          path: 'campus',
+          select: 'name',
+        },
+      });
     }
 
     await created.populate(populatePaths);
@@ -408,8 +429,26 @@ export class AssetsService {
         .find(filter)
         .populate('assetType', 'name')
         .populate('assetCategory', 'name')
-        .populate('zone', 'name floorLocation')
-        .populate('area', 'name zoneType')
+        .populate({
+          path: 'zone',
+          select: 'name floorLocation zoneType',
+          populate: {
+            path: 'building',
+            select: 'name floor campus',
+            populate: {
+              path: 'campus',
+              select: 'name',
+            },
+          },
+        })
+        .populate({
+          path: 'area',
+          select: 'name zoneType',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        })
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -438,8 +477,26 @@ export class AssetsService {
       .findById(id)
       .populate('assetType', 'name')
       .populate('assetCategory', 'name')
-      .populate('zone', 'name floorLocation')
-      .populate('area', 'name zoneType');
+      .populate({
+        path: 'zone',
+        select: 'name floorLocation zoneType',
+        populate: {
+          path: 'building',
+          select: 'name floor campus',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        },
+      })
+      .populate({
+        path: 'area',
+        select: 'name zoneType',
+        populate: {
+          path: 'campus',
+          select: 'name',
+        },
+      });
     if (!item) throw new NotFoundException('Tài sản không tồn tại');
     return { message: 'Lấy tài sản thành công', data: item };
   }
@@ -487,15 +544,18 @@ export class AssetsService {
     }
 
     // Xử lý các trường cơ bản (trừ properties)
+    const dtoAny = dto as Record<string, any>;
     for (const field of basicFields) {
-      if (field !== 'properties' && dto[field] !== undefined) {
-        updateData[field] = dto[field];
+      if (field !== 'properties' && dtoAny[field] !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        updateData[field] = dtoAny[field];
       }
     }
 
     // Xử lý các thuộc tính động (không phải trường cơ bản và không phải properties)
-    for (const [key, value] of Object.entries(dto)) {
+    for (const [key, value] of Object.entries(dtoAny)) {
       if (!basicFields.includes(key) && value !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         properties[key] = value;
       }
     }
@@ -514,8 +574,26 @@ export class AssetsService {
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('assetType', 'name')
       .populate('assetCategory', 'name')
-      .populate('zone', 'name floorLocation')
-      .populate('area', 'name zoneType');
+      .populate({
+        path: 'zone',
+        select: 'name floorLocation zoneType',
+        populate: {
+          path: 'building',
+          select: 'name floor campus',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        },
+      })
+      .populate({
+        path: 'area',
+        select: 'name zoneType',
+        populate: {
+          path: 'campus',
+          select: 'name',
+        },
+      });
     if (!updated) throw new NotFoundException('Tài sản không tồn tại');
     return { message: 'Cập nhật tài sản thành công', data: updated };
   }
