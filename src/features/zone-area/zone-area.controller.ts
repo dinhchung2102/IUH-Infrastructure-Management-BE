@@ -160,4 +160,18 @@ export class ZoneAreaController {
   async findAllZonesByBuilding(@Param('buildingId') buildingId: string) {
     return this.zoneAreaService.findAllZonesByBuilding(buildingId);
   }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('BUILDING:READ')
+  @Get('campus/:campusId/buildings')
+  async findAllBuildingsByCampus(@Param('campusId') campusId: string) {
+    return this.zoneAreaService.findAllBuildingsByCampus(campusId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('AREA:READ')
+  @Get('campus/:campusId/areas')
+  async findAllAreasByCampus(@Param('campusId') campusId: string) {
+    return this.zoneAreaService.findAllAreasByCampus(campusId);
+  }
 }

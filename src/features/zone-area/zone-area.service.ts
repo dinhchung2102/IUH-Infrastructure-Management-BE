@@ -85,4 +85,12 @@ export class ZoneAreaService {
   async findAllZonesByBuilding(buildingId: string) {
     return this.mainService.findAllZonesByBuilding(buildingId);
   }
+
+  async findAllBuildingsByCampus(campusId: string) {
+    return this.mainService.findAllBuildingsByCampus(campusId);
+  }
+
+  async findAllAreasByCampus(campusId: string) {
+    return this.mainService.findAllAreasByCampus(campusId);
+  }
 }

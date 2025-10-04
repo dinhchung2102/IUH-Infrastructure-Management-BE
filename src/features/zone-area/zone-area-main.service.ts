@@ -720,4 +720,56 @@ export class ZoneAreaMainService {
       zones,
     };
   }
+
+  async findAllBuildingsByCampus(campusId: string): Promise<{
+    message: string;
+    buildings: any[];
+  }> {
+    if (!Types.ObjectId.isValid(campusId)) {
+      throw new BadRequestException('ID campus không hợp lệ');
+    }
+
+    // Kiểm tra campus có tồn tại không
+    const campus = await this.campusModel.findById(campusId);
+    if (!campus) {
+      throw new NotFoundException('Campus không tồn tại');
+    }
+
+    const buildings = await this.buildingModel
+      .find({ campus: new Types.ObjectId(campusId) })
+      .populate('campus', 'name address')
+      .sort({ name: 1 })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách tòa nhà theo campus thành công',
+      buildings,
+    };
+  }
+
+  async findAllAreasByCampus(campusId: string): Promise<{
+    message: string;
+    areas: any[];
+  }> {
+    if (!Types.ObjectId.isValid(campusId)) {
+      throw new BadRequestException('ID campus không hợp lệ');
+    }
+
+    // Kiểm tra campus có tồn tại không
+    const campus = await this.campusModel.findById(campusId);
+    if (!campus) {
+      throw new NotFoundException('Campus không tồn tại');
+    }
+
+    const areas = await this.areaModel
+      .find({ campus: new Types.ObjectId(campusId) })
+      .populate('campus', 'name address')
+      .sort({ name: 1 })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách khu vực theo campus thành công',
+      areas,
+    };
+  }
 }
