@@ -26,6 +26,8 @@ import { ResetPasswordDto } from './dto/password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { QueryAccountsDto } from './dto/query-accounts.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
 
 @Injectable()
 export class AuthService {
@@ -545,6 +547,171 @@ export class AuthService {
         role: roleName,
         permissions: permissions,
       },
+    };
+  }
+
+  async findAllAccounts(queryDto: QueryAccountsDto): Promise<{
+    message: string;
+    accounts: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+  }> {
+    const {
+      search,
+      role,
+      page = '1',
+      limit = '10',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter: Record<string, any> = {};
+
+    // Tìm kiếm theo tên, email, username
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Filter theo role
+    if (role) {
+      const roleDoc = await this.roleModel.findOne({ name: role });
+      if (roleDoc) {
+        filter.role = roleDoc._id;
+      }
+    }
+
+    const sort: Record<string, any> = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const [accounts, total] = await Promise.all([
+      this.accountModel
+        .find(filter)
+        .populate('role', 'name')
+        .select('-password')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      this.accountModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      message: 'Lấy danh sách tài khoản thành công',
+      accounts,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+      },
+    };
+  }
+
+  async updateAccount(
+    id: string,
+    updateAccountDto: UpdateAccountDto,
+  ): Promise<{
+    message: string;
+    data: any;
+  }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    const existingAccount = await this.accountModel.findById(id);
+    if (!existingAccount) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    // Kiểm tra email đã tồn tại chưa (nếu có thay đổi)
+    if (
+      updateAccountDto.email &&
+      updateAccountDto.email !== existingAccount.email
+    ) {
+      const duplicateEmail = await this.accountModel.findOne({
+        email: updateAccountDto.email,
+        _id: { $ne: id },
+      });
+
+      if (duplicateEmail) {
+        throw new ConflictException('Email đã tồn tại');
+      }
+    }
+
+    // Kiểm tra username đã tồn tại chưa (nếu có thay đổi)
+    if (
+      updateAccountDto.username &&
+      updateAccountDto.username !== existingAccount.username
+    ) {
+      const duplicateUsername = await this.accountModel.findOne({
+        username: updateAccountDto.username,
+        _id: { $ne: id },
+      });
+
+      if (duplicateUsername) {
+        throw new ConflictException('Username đã tồn tại');
+      }
+    }
+
+    // Kiểm tra role có tồn tại không (nếu có thay đổi)
+    if (updateAccountDto.role) {
+      const role = await this.roleModel.findById(updateAccountDto.role);
+      if (!role) {
+        throw new NotFoundException('Role không tồn tại');
+      }
+    }
+
+    const updateData: Record<string, any> = { ...updateAccountDto };
+    if (updateAccountDto.role) {
+      updateData.role = new Types.ObjectId(updateAccountDto.role);
+    }
+
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(id, updateData, { new: true })
+      .populate('role', 'name')
+      .select('-password');
+
+    return {
+      message: 'Cập nhật tài khoản thành công',
+      data: updatedAccount,
+    };
+  }
+
+  async getAccountById(id: string): Promise<{
+    message: string;
+    data: any;
+  }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    const account = await this.accountModel
+      .findById(id)
+      .populate('role', 'name')
+      .select('-password')
+      .lean();
+
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    return {
+      message: 'Lấy thông tin tài khoản thành công',
+      data: account,
     };
   }
 }

@@ -9,6 +9,9 @@ import {
   Put,
   Res,
   Req,
+  Query,
+  Param,
+  Patch,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -25,6 +28,8 @@ import { RequirePermissions } from './decorators';
 import { SendOtpDto, VerifyOTPDto } from './dto/otp.dto';
 import { ChangePasswordDto, ResetPasswordDto } from './dto/password.dto';
 import { UnauthorizedException } from '@nestjs/common';
+import { QueryAccountsDto } from './dto/query-accounts.dto';
+import { UpdateAccountDto } from './dto/update-account.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -184,5 +189,30 @@ export class AuthController {
     });
 
     return this.authService.logout(user.sub);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts')
+  async findAllAccounts(@Query() queryDto: QueryAccountsDto) {
+    return this.authService.findAllAccounts(queryDto);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/:id')
+  async getAccountById(@Param('id') id: string) {
+    return this.authService.getAccountById(id);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Patch('accounts/:id')
+  @HttpCode(HttpStatus.OK)
+  async updateAccount(
+    @Param('id') id: string,
+    @Body() updateAccountDto: UpdateAccountDto,
+  ) {
+    return this.authService.updateAccount(id, updateAccountDto);
   }
 }
