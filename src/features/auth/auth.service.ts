@@ -586,7 +586,7 @@ export class AuthService {
 
     // Filter theo role
     if (role) {
-      const roleDoc = await this.roleModel.findOne({ name: role });
+      const roleDoc = await this.roleModel.findOne({ roleName: role });
       if (roleDoc) {
         filter.role = roleDoc._id;
       }
@@ -598,7 +598,7 @@ export class AuthService {
     const [accounts, total] = await Promise.all([
       this.accountModel
         .find(filter)
-        .populate('role', 'name')
+        .populate('role', 'roleName')
         .select('-password')
         .sort(sort)
         .skip(skip)
@@ -682,7 +682,7 @@ export class AuthService {
 
     const updatedAccount = await this.accountModel
       .findByIdAndUpdate(id, updateData, { new: true })
-      .populate('role', 'name')
+      .populate('role', 'roleName')
       .select('-password');
 
     return {
@@ -701,7 +701,7 @@ export class AuthService {
 
     const account = await this.accountModel
       .findById(id)
-      .populate('role', 'name')
+      .populate('role', 'roleName')
       .select('-password')
       .lean();
 
