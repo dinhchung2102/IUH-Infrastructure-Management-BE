@@ -7,6 +7,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  IsObject,
 } from 'class-validator';
 import { AssetStatus } from '../../enum/AssetStatus.enum';
 
@@ -68,4 +69,11 @@ export class CreateAssetDto {
   @IsOptional()
   @IsMongoId()
   area?: string;
+
+  @IsOptional()
+  @IsObject()
+  properties?: Record<string, any>;
+
+  // Các thuộc tính động theo AssetType
+  [key: string]: any;
 }

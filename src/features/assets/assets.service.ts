@@ -273,9 +273,9 @@ export class AssetsService {
     data: any;
   }> {
     const dup = await this.assetModel.findOne({
-      $or: [{ name: dto.name }, { code: dto.code }],
+      code: dto.code,
     });
-    if (dup) throw new ConflictException('Tên hoặc mã tài sản đã tồn tại');
+    if (dup) throw new ConflictException('Mã tài sản đã tồn tại');
     const assetType = await this.assetTypeModel.findById(dto.assetType);
     if (!assetType) throw new NotFoundException('AssetType không tồn tại');
     const assetCategory = await this.assetCategoryModel.findById(
@@ -291,11 +291,53 @@ export class AssetsService {
       );
     }
 
+    // Tách các thuộc tính động (properties) ra khỏi các trường cơ bản
+    const basicFields = [
+      'name',
+      'code',
+      'status',
+      'description',
+      'serialNumber',
+      'brand',
+      'assetType',
+      'assetCategory',
+      'image',
+      'warrantyEndDate',
+      'lastMaintenanceDate',
+      'zone',
+      'area',
+      'properties', // Thêm properties vào basicFields để xử lý riêng
+    ];
+
+    const properties: Record<string, any> = {};
     const createData: Record<string, any> = {
-      ...dto,
       assetType: new Types.ObjectId(dto.assetType),
       assetCategory: new Types.ObjectId(dto.assetCategory),
     };
+
+    // Xử lý trường properties nếu có
+    if (dto.properties && typeof dto.properties === 'object') {
+      Object.assign(properties, dto.properties);
+    }
+
+    // Xử lý các trường cơ bản (trừ properties)
+    for (const field of basicFields) {
+      if (field !== 'properties' && dto[field] !== undefined) {
+        createData[field] = dto[field];
+      }
+    }
+
+    // Xử lý các thuộc tính động (không phải trường cơ bản và không phải properties)
+    for (const [key, value] of Object.entries(dto)) {
+      if (!basicFields.includes(key) && value !== undefined) {
+        properties[key] = value;
+      }
+    }
+
+    // Thêm properties nếu có
+    if (Object.keys(properties).length > 0) {
+      createData.properties = properties;
+    }
 
     if (dto.zone) {
       createData.zone = new Types.ObjectId(dto.zone);
@@ -411,17 +453,58 @@ export class AssetsService {
   }> {
     if (!Types.ObjectId.isValid(id))
       throw new BadRequestException('ID không hợp lệ');
-    if (dto.name || dto.code) {
+    if (dto.code) {
       const dup = await this.assetModel.findOne({
         _id: { $ne: id },
-        $or: [
-          ...(dto.name ? [{ name: dto.name }] : []),
-          ...(dto.code ? [{ code: dto.code }] : []),
-        ],
+        code: dto.code,
       });
-      if (dup) throw new ConflictException('Tên hoặc mã tài sản đã tồn tại');
+      if (dup) throw new ConflictException('Mã tài sản đã tồn tại');
     }
-    const updateData: Record<string, any> = { ...dto };
+    // Tách các thuộc tính động (properties) ra khỏi các trường cơ bản
+    const basicFields = [
+      'name',
+      'code',
+      'status',
+      'description',
+      'serialNumber',
+      'brand',
+      'assetType',
+      'assetCategory',
+      'image',
+      'warrantyEndDate',
+      'lastMaintenanceDate',
+      'zone',
+      'area',
+      'properties', // Thêm properties vào basicFields để xử lý riêng
+    ];
+
+    const properties: Record<string, any> = {};
+    const updateData: Record<string, any> = {};
+
+    // Xử lý trường properties nếu có
+    if (dto.properties && typeof dto.properties === 'object') {
+      Object.assign(properties, dto.properties);
+    }
+
+    // Xử lý các trường cơ bản (trừ properties)
+    for (const field of basicFields) {
+      if (field !== 'properties' && dto[field] !== undefined) {
+        updateData[field] = dto[field];
+      }
+    }
+
+    // Xử lý các thuộc tính động (không phải trường cơ bản và không phải properties)
+    for (const [key, value] of Object.entries(dto)) {
+      if (!basicFields.includes(key) && value !== undefined) {
+        properties[key] = value;
+      }
+    }
+
+    // Thêm properties nếu có
+    if (Object.keys(properties).length > 0) {
+      updateData.properties = properties;
+    }
+
     if (dto.assetType) updateData.assetType = new Types.ObjectId(dto.assetType);
     if (dto.assetCategory)
       updateData.assetCategory = new Types.ObjectId(dto.assetCategory);

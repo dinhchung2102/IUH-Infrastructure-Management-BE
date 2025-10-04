@@ -9,7 +9,7 @@ import {
   Min,
   Max,
 } from 'class-validator';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../../common/enum/CommonStatus.enum';
 
 export class CreateBuildingDto {
   @IsNotEmpty({ message: 'Tên tòa nhà không được để trống' })

@@ -9,16 +9,16 @@ import { AssetStatus } from '../enum/AssetStatus.enum';
 import {
   Zone,
   type ZoneDocument,
-} from 'src/features/zone-area/schema/zone.schema';
+} from '../../../features/zone-area/schema/zone.schema';
 import {
   Area,
   type AreaDocument,
-} from 'src/features/zone-area/schema/area.schema';
+} from '../../../features/zone-area/schema/area.schema';
 export type AssetDocument = Asset & Document;
 
 @Schema({ timestamps: true })
 export class Asset {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   name: string;
 
   @Prop({ required: true, unique: true })
@@ -56,6 +56,9 @@ export class Asset {
 
   @Prop({ type: Types.ObjectId, ref: Area.name })
   area?: AreaDocument;
+
+  @Prop({ type: Object })
+  properties?: Record<string, any>;
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);

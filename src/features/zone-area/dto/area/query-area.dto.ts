@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsNumberString } from 'class-validator';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../../common/enum/CommonStatus.enum';
 import { ZoneType } from '../../enum/ZoneType.enum';
 import { Transform } from 'class-transformer';
 

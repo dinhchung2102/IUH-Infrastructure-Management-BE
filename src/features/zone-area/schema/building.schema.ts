@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
-import { Campus, type CampusDocument } from 'src/features/campus';
+import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
+import { Campus, type CampusDocument } from '../../../features/campus';
 
 export type BuildingDocument = Building & Document;
 

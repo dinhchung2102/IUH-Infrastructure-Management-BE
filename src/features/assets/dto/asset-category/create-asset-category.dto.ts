@@ -6,7 +6,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../../common/enum/CommonStatus.enum';
 
 export class CreateAssetCategoryDto {
   @IsNotEmpty()

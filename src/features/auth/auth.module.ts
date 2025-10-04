@@ -9,7 +9,7 @@ import { Role, RoleSchema } from './schema/role.schema';
 import { Permission, PermissionSchema } from './schema/permission.schema';
 import { AuthGuard } from './guards/auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
-import { RedisModule } from 'src/shared/redis/redis.module';
+import { RedisModule } from '../../shared/redis/redis.module';
 
 @Module({
   imports: [

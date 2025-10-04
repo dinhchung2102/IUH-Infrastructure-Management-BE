@@ -2,9 +2,9 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import {
   Account,
   type AccountDocument,
-} from 'src/features/auth/schema/account.schema';
+} from '../../../features/auth/schema/account.schema';
 import { Types } from 'mongoose';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 
 export type CampusDocument = Campus & Document;
 

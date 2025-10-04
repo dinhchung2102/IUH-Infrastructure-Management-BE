@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 export type AssetCategoryDocument = AssetCategory & Document;
 
 @Schema({ timestamps: true })

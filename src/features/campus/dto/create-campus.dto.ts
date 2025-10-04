@@ -8,7 +8,7 @@ import {
   MinLength,
   Matches,
 } from 'class-validator';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 
 export class CreateCampusDto {
   @IsNotEmpty({ message: 'Tên campus không được để trống' })

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { CommonStatus } from 'src/common/enum/CommonStatus.enum';
+import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 import { Building, type BuildingDocument } from './building.schema';
 import { ZoneType } from '../enum/ZoneType.enum';
 
