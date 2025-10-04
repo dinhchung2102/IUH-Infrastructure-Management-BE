@@ -8,6 +8,7 @@ import {
   AssetCategory,
   AssetCategorySchema,
 } from './schema/asset_category.schema';
+import { AuthModule } from '../auth';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import {
       { name: AssetType.name, schema: AssetTypeSchema },
       { name: Asset.name, schema: AssetSchema },
     ]),
+    AuthModule,
   ],
   providers: [AssetsService],
   controllers: [AssetsController],

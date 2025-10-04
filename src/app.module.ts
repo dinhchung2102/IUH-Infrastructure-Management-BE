@@ -14,10 +14,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { ReportModule } from './features/report/report.module';
 import { ReportController } from './features/report/report.controller';
-import { AssetsController } from './features/assets/assets.controller';
 // import { AuthController, AuthService } from './features/auth';
 import { AuditController } from './features/audit/audit.controller';
-import { AssetsService } from './features/assets/assets.service';
 import { AuditService } from './features/audit/audit.service';
 import { ReportService } from './features/report/report.service';
 import { ZoneAreaModule } from './features/zone-area/zone-area.module';
@@ -66,16 +64,10 @@ import { ZoneAreaModule } from './features/zone-area/zone-area.module';
     ReportModule,
     ZoneAreaModule,
   ],
-  controllers: [
-    AppController,
-    ReportController,
-    AssetsController,
-    AuditController,
-  ],
+  controllers: [AppController, ReportController, AuditController],
   providers: [
     AppService,
     ReportService,
-    AssetsService,
     AuditService,
     {
       provide: APP_GUARD,

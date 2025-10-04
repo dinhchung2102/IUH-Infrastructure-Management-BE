@@ -3,7 +3,7 @@ import {
   AssetCategory,
   type AssetCategoryDocument,
 } from './asset_category.schema';
-import { Types } from 'mongoose';
+import { Schema as MongooseSchema, Types } from 'mongoose';
 export type AssetTypeDocument = AssetType & Document;
 
 @Schema({ timestamps: true })
@@ -14,8 +14,12 @@ export class AssetType {
   @Prop({ required: true, type: Types.ObjectId, ref: AssetCategory.name })
   assetCategory: AssetCategoryDocument;
 
-  @Prop({ required: true })
-  properties: Record<string, any>;
+  @Prop({
+    required: true,
+    type: MongooseSchema.Types.Map,
+    of: MongooseSchema.Types.Mixed,
+  })
+  properties: Map<string, any>;
 }
 
 export const AssetTypeSchema = SchemaFactory.createForClass(AssetType);
