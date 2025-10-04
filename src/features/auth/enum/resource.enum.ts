@@ -9,4 +9,6 @@ export enum Resource {
   ASSET_CATEGORY = 'ASSET_CATEGORY',
   ASSET_TYPE = 'ASSET_TYPE',
   ASSET = 'ASSET',
+  AUDIT = 'AUDIT',
+  REPORT = 'REPORT',
 }

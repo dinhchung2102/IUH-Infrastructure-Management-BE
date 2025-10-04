@@ -13,11 +13,6 @@ import { AuthGuard } from './features/auth/guards/auth.guard';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { ReportModule } from './features/report/report.module';
-import { ReportController } from './features/report/report.controller';
-// import { AuthController, AuthService } from './features/auth';
-import { AuditController } from './features/audit/audit.controller';
-import { AuditService } from './features/audit/audit.service';
-import { ReportService } from './features/report/report.service';
 import { ZoneAreaModule } from './features/zone-area/zone-area.module';
 
 @Module({
@@ -64,11 +59,9 @@ import { ZoneAreaModule } from './features/zone-area/zone-area.module';
     ReportModule,
     ZoneAreaModule,
   ],
-  controllers: [AppController, ReportController, AuditController],
+  controllers: [AppController],
   providers: [
     AppService,
-    ReportService,
-    AuditService,
     {
       provide: APP_GUARD,
       useClass: AuthGuard,

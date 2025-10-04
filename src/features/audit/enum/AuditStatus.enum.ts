@@ -1,0 +1,6 @@
+export enum AuditStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
