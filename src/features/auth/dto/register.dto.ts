@@ -14,13 +14,9 @@ import { AUTH_CONFIG } from '../config/auth.config';
 
 export class RegisterDto {
   @IsNotEmpty()
-  @IsString()
-  @MinLength(AUTH_CONFIG.USERNAME_MIN_LENGTH)
-  @MaxLength(AUTH_CONFIG.USERNAME_MAX_LENGTH)
-  // @Matches(/^[a-zA-Z0-9_]+$/, {
-  //   message: 'Username chỉ được chứa chữ cái, số và dấu gạch dưới',
-  // })
-  username: string;
+  @IsEmail()
+  @MaxLength(AUTH_CONFIG.EMAIL_MAX_LENGTH)
+  email: string;
 
   @IsNotEmpty()
   @IsString()
@@ -31,11 +27,6 @@ export class RegisterDto {
   //     'Password phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt',
   // })
   password: string;
-
-  @IsNotEmpty()
-  @IsEmail()
-  @MaxLength(AUTH_CONFIG.EMAIL_MAX_LENGTH)
-  email: string;
 
   @IsNotEmpty()
   @IsString()

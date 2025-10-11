@@ -10,7 +10,7 @@ export type AccountDocument = Account & Document;
 @Schema({ timestamps: true })
 export class Account {
   @Prop({ required: true, unique: true })
-  username: string;
+  email: string;
 
   @Prop({ required: true })
   @Exclude()
@@ -18,9 +18,6 @@ export class Account {
 
   @Prop({ required: true, type: Types.ObjectId, ref: Role.name })
   role: RoleDocument;
-
-  @Prop({ required: true, unique: true })
-  email: string;
 
   @Prop({ required: true, default: true })
   isActive: boolean;

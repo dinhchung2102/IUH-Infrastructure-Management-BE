@@ -67,7 +67,7 @@ export class AuditService {
     await savedAuditLog.populate([
       { path: 'asset', select: 'name code status' },
       { path: 'report', select: 'type status description' },
-      { path: 'staff', select: 'fullName email username' },
+      { path: 'staff', select: 'fullName email' },
     ]);
 
     return {
@@ -133,7 +133,7 @@ export class AuditService {
         .find(filter)
         .populate('asset', 'name code status')
         .populate('report', 'type status description')
-        .populate('staff', 'fullName email username')
+        .populate('staff', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -167,7 +167,7 @@ export class AuditService {
       .findById(id)
       .populate('asset', 'name code status')
       .populate('report', 'type status description')
-      .populate('staff', 'fullName email username')
+      .populate('staff', 'fullName email')
       .lean();
 
     if (!auditLog) {
@@ -228,7 +228,7 @@ export class AuditService {
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('asset', 'name code status')
       .populate('report', 'type status description')
-      .populate('staff', 'fullName email username');
+      .populate('staff', 'fullName email');
 
     return {
       message: 'Cập nhật bản ghi kiểm tra thành công',

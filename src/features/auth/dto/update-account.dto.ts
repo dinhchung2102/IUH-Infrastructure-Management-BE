@@ -22,12 +22,6 @@ export class UpdateAccountDto {
   email?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(30)
-  username?: string;
-
-  @IsOptional()
   @IsMongoId({ message: 'ID role không hợp lệ' })
   role?: string;
 

@@ -53,7 +53,7 @@ export class ReportService {
     const savedReport = await newReport.save();
     await savedReport.populate([
       { path: 'asset', select: 'name code status' },
-      { path: 'createdBy', select: 'fullName email username' },
+      { path: 'createdBy', select: 'fullName email' },
     ]);
 
     return {
@@ -115,7 +115,7 @@ export class ReportService {
       this.reportModel
         .find(filter)
         .populate('asset', 'name code status')
-        .populate('createdBy', 'fullName email username')
+        .populate('createdBy', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -148,7 +148,7 @@ export class ReportService {
     const report = await this.reportModel
       .findById(id)
       .populate('asset', 'name code status')
-      .populate('createdBy', 'fullName email username')
+      .populate('createdBy', 'fullName email')
       .lean();
 
     if (!report) {
@@ -195,7 +195,7 @@ export class ReportService {
     const updatedReport = await this.reportModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('asset', 'name code status')
-      .populate('createdBy', 'fullName email username');
+      .populate('createdBy', 'fullName email');
 
     return {
       message: 'Cập nhật báo cáo thành công',

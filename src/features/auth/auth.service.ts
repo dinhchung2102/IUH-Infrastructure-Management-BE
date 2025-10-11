@@ -78,14 +78,6 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
-    const existingUsername = await this.accountModel.findOne({
-      username: registerDto.username,
-    });
-
-    if (existingUsername) {
-      throw new ConflictException('Username đã tồn tại');
-    }
-
     const existingEmail = await this.accountModel.findOne({
       email: registerDto.email,
     });
@@ -154,7 +146,6 @@ export class AuthService {
     return {
       message: 'Tạo tài khoản thành công',
       newAccount: {
-        username: savedAccount.username,
         email: savedAccount.email,
         fullName: savedAccount.fullName,
         phoneNumber: savedAccount.phoneNumber,
@@ -169,19 +160,15 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const { username, password, rememberMe } = loginDto;
+    const { email, password, rememberMe } = loginDto;
 
-    const account = await this.accountModel
-      .findOne({
-        $or: [{ username: username }, { email: username }],
-      })
-      .populate({
-        path: 'role',
-        populate: {
-          path: 'permissions',
-          select: 'resource action',
-        },
-      });
+    const account = await this.accountModel.findOne({ email }).populate({
+      path: 'role',
+      populate: {
+        path: 'permissions',
+        select: 'resource action',
+      },
+    });
 
     if (!account) {
       throw new NotFoundException('Tài khoản không tồn tại');
@@ -242,7 +229,6 @@ export class AuthService {
       refresh_token,
       account: {
         _id: account._id,
-        username: account.username,
         email: account.email,
         fullName: account.fullName,
         phoneNumber: account.phoneNumber,
@@ -498,7 +484,6 @@ export class AuthService {
       refreshTokenExpiry,
       account: {
         _id: account._id,
-        username: account.username,
         email: account.email,
         fullName: account.fullName,
         phoneNumber: account.phoneNumber,
@@ -553,7 +538,6 @@ export class AuthService {
       message: 'Thông tin profile',
       account: {
         _id: account._id,
-        username: account.username,
         email: account.email,
         fullName: account.fullName,
         phoneNumber: account.phoneNumber,
@@ -593,12 +577,11 @@ export class AuthService {
 
     const filter: Record<string, any> = {};
 
-    // Tìm kiếm theo tên, email, username
+    // Tìm kiếm theo tên và email
     if (search) {
       filter.$or = [
         { fullName: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
-        { username: { $regex: search, $options: 'i' } },
       ];
     }
 
@@ -667,21 +650,6 @@ export class AuthService {
 
       if (duplicateEmail) {
         throw new ConflictException('Email đã tồn tại');
-      }
-    }
-
-    // Kiểm tra username đã tồn tại chưa (nếu có thay đổi)
-    if (
-      updateAccountDto.username &&
-      updateAccountDto.username !== existingAccount.username
-    ) {
-      const duplicateUsername = await this.accountModel.findOne({
-        username: updateAccountDto.username,
-        _id: { $ne: id },
-      });
-
-      if (duplicateUsername) {
-        throw new ConflictException('Username đã tồn tại');
       }
     }
 

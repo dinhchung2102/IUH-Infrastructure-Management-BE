@@ -49,7 +49,7 @@ export class CampusService {
     });
 
     const savedCampus = await newCampus.save();
-    await savedCampus.populate('manager', 'username fullName email');
+    await savedCampus.populate('manager', 'fullName email');
 
     return {
       message: 'Tạo campus thành công',
@@ -104,7 +104,7 @@ export class CampusService {
     const [campuses, total] = await Promise.all([
       this.campusModel
         .find(filter)
-        .populate('manager', 'username fullName email')
+        .populate('manager', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -136,7 +136,7 @@ export class CampusService {
 
     const campus = await this.campusModel
       .findById(id)
-      .populate('manager', 'username fullName email phoneNumber')
+      .populate('manager', 'fullName email phoneNumber')
       .lean();
 
     if (!campus) {
@@ -208,7 +208,7 @@ export class CampusService {
 
     const updatedCampus = await this.campusModel
       .findByIdAndUpdate(id, finalUpdateData, { new: true })
-      .populate('manager', 'username fullName email');
+      .populate('manager', 'fullName email');
 
     return {
       message: 'Cập nhật campus thành công',
