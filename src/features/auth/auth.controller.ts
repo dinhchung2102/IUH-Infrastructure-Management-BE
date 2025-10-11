@@ -96,10 +96,11 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
 
-    // Get refresh token expiry time from config
+    // Get refresh token expiry time from config based on rememberMe
+    const defaultExpiry = loginDto.rememberMe ? '30d' : '1d';
     const refreshTokenExpiry = this.configService.get<string>(
       'JWT_REFRESH_TOKEN_EXPIRES_IN',
-      '7d',
+      defaultExpiry,
     );
     const maxAge = this.parseTimeToMs(refreshTokenExpiry);
 
