@@ -96,12 +96,11 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
 
-    // Get refresh token expiry time from config based on rememberMe
-    const defaultExpiry = loginDto.rememberMe ? '30d' : '1d';
-    const refreshTokenExpiry = this.configService.get<string>(
-      'JWT_REFRESH_TOKEN_EXPIRES_IN',
-      defaultExpiry,
-    );
+    // Set cookie expiry based on rememberMe
+    // Get expiry time from environment variables
+    const refreshTokenExpiry = loginDto.rememberMe
+      ? this.configService.get<string>('JWT_REMEMBER', '30d')
+      : this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES_IN', '1d');
     const maxAge = this.parseTimeToMs(refreshTokenExpiry);
 
     response.cookie('refresh_token', result.refresh_token, {
@@ -196,12 +195,8 @@ export class AuthController {
 
     const result = await this.authService.refreshToken({ refreshToken });
 
-    // Get refresh token expiry time from config
-    const refreshTokenExpiry = this.configService.get<string>(
-      'JWT_REFRESH_TOKEN_EXPIRES_IN',
-      '7d',
-    );
-    const maxAge = this.parseTimeToMs(refreshTokenExpiry);
+    // Use the same expiry time determined by the service (1d or 30d)
+    const maxAge = this.parseTimeToMs(result.refreshTokenExpiry as string);
 
     response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
@@ -210,8 +205,11 @@ export class AuthController {
       maxAge,
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { refresh_token, ...responseWithoutRefreshToken } = result;
+    const {
+      refresh_token: _,
+      refreshTokenExpiry: __,
+      ...responseWithoutRefreshToken
+    } = result;
     return responseWithoutRefreshToken;
   }
 

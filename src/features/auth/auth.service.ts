@@ -219,10 +219,12 @@ export class AuthService {
     const refresh_token = await this.jwtService.signAsync(
       { sub: account._id },
       {
-        expiresIn: this.configService.get<string>(
-          'JWT_REFRESH_TOKEN_EXPIRES_IN',
-          rememberMe ? '30d' : '1d',
-        ),
+        expiresIn: rememberMe
+          ? this.configService.get<string>('JWT_REMEMBER', '30d')
+          : this.configService.get<string>(
+              'JWT_REFRESH_TOKEN_EXPIRES_IN',
+              '1d',
+            ),
       },
     );
 
@@ -456,13 +458,28 @@ export class AuthService {
       ),
     });
 
+    const defaultShortExpiry = this.configService.get<string>(
+      'JWT_REFRESH_TOKEN_EXPIRES_IN',
+      '1d',
+    );
+    const defaultLongExpiry = this.configService.get<string>(
+      'JWT_REMEMBER',
+      '30d',
+    );
+
+    let refreshTokenExpiry = defaultShortExpiry;
+    if (payload.exp && payload.iat) {
+      const tokenLifetime = payload.exp - payload.iat;
+      const isLongSession = tokenLifetime > 7 * 24 * 60 * 60;
+      refreshTokenExpiry = isLongSession
+        ? defaultLongExpiry
+        : defaultShortExpiry;
+    }
+
     const new_refresh_token = await this.jwtService.signAsync(
       { sub: account._id },
       {
-        expiresIn: this.configService.get<string>(
-          'JWT_REFRESH_TOKEN_EXPIRES_IN',
-          '7d',
-        ),
+        expiresIn: refreshTokenExpiry,
       },
     );
 
@@ -478,6 +495,7 @@ export class AuthService {
       message: 'Token đã được làm mới thành công',
       access_token,
       refresh_token: new_refresh_token,
+      refreshTokenExpiry,
       account: {
         _id: account._id,
         username: account.username,
