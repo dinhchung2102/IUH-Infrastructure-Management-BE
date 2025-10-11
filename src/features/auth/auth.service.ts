@@ -169,7 +169,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const { username, password } = loginDto;
+    const { username, password, rememberMe } = loginDto;
 
     const account = await this.accountModel
       .findOne({

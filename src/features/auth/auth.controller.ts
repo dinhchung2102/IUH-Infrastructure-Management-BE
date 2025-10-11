@@ -70,7 +70,7 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
 
-    response.cookie('refreshToken', result.refresh_token, {
+    response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -153,7 +153,7 @@ export class AuthController {
     const cookieHeader = request.headers.cookie;
     const refreshToken = cookieHeader
       ?.split(';')
-      .find((cookie) => cookie.trim().startsWith('refreshToken='))
+      .find((cookie) => cookie.trim().startsWith('refresh_token='))
       ?.split('=')[1];
 
     if (!refreshToken) {
@@ -162,7 +162,7 @@ export class AuthController {
 
     const result = await this.authService.refreshToken({ refreshToken });
 
-    response.cookie('refreshToken', result.refresh_token, {
+    response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -182,7 +182,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     // Clear refresh token cookie
-    response.clearCookie('refreshToken', {
+    response.clearCookie('refresh_token', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
