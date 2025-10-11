@@ -221,7 +221,7 @@ export class AuthService {
       {
         expiresIn: this.configService.get<string>(
           'JWT_REFRESH_TOKEN_EXPIRES_IN',
-          '7d',
+          rememberMe ? '30d' : '1d',
         ),
       },
     );

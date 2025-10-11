@@ -30,10 +30,36 @@ import { ChangePasswordDto, ResetPasswordDto } from './dto/password.dto';
 import { UnauthorizedException } from '@nestjs/common';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  /**
+   * Parse time string (e.g., '7d', '30d', '1h') to milliseconds
+   */
+  private parseTimeToMs(timeString: string): number {
+    const match = timeString.match(/^(\d+)([smhd])$/);
+    if (!match) {
+      return 7 * 24 * 60 * 60 * 1000; // default 7 days
+    }
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    const multipliers = {
+      s: 1000, // seconds
+      m: 60 * 1000, // minutes
+      h: 60 * 60 * 1000, // hours
+      d: 24 * 60 * 60 * 1000, // days
+    };
+
+    return value * multipliers[unit];
+  }
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('PERMISSION:CREATE')
@@ -70,11 +96,18 @@ export class AuthController {
   ) {
     const result = await this.authService.login(loginDto);
 
+    // Get refresh token expiry time from config
+    const refreshTokenExpiry = this.configService.get<string>(
+      'JWT_REFRESH_TOKEN_EXPIRES_IN',
+      '7d',
+    );
+    const maxAge = this.parseTimeToMs(refreshTokenExpiry);
+
     response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -162,11 +195,18 @@ export class AuthController {
 
     const result = await this.authService.refreshToken({ refreshToken });
 
+    // Get refresh token expiry time from config
+    const refreshTokenExpiry = this.configService.get<string>(
+      'JWT_REFRESH_TOKEN_EXPIRES_IN',
+      '7d',
+    );
+    const maxAge = this.parseTimeToMs(refreshTokenExpiry);
+
     response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
