@@ -30,6 +30,7 @@ import { ChangePasswordDto, ResetPasswordDto } from './dto/password.dto';
 import { UnauthorizedException } from '@nestjs/common';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { AccountStatsDto } from './dto/account-stats.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
@@ -237,6 +238,13 @@ export class AuthController {
    * 
    Account Management APIs => Only Admin can access--------------------------------
    */
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/stats')
+  async getAccountStats(@Query() statsDto: AccountStatsDto) {
+    return this.authService.getAccountStats(statsDto);
+  }
+
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ACCOUNT:ADMINACTION')
   @Get('accounts')

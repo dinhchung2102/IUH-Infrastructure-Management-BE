@@ -28,6 +28,33 @@ import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
+import { AccountStatsDto } from './dto/account-stats.dto';
+
+export interface RoleStats {
+  role: string;
+  count: number;
+}
+
+export interface TimeSeriesData {
+  period: string;
+  totalAccounts: number;
+  activeAccounts: number;
+  inactiveAccounts: number;
+}
+
+interface DateGroup {
+  year: number;
+  month?: number;
+  day?: number;
+  quarter?: number;
+}
+
+interface AggregateResult {
+  _id: DateGroup;
+  count: number;
+  activeCount: number;
+  inactiveCount: number;
+}
 
 @Injectable()
 export class AuthService {
@@ -711,5 +738,240 @@ export class AuthService {
       message: 'Lấy thông tin tài khoản thành công',
       data: account,
     };
+  }
+
+  async getAccountStats(statsDto: AccountStatsDto): Promise<{
+    message: string;
+    totalAccounts: number;
+    activeAccounts: number;
+    inactiveAccounts: number;
+    newAccountsThisMonth: number;
+    timeSeries?: TimeSeriesData[];
+    accountsByRole: RoleStats[];
+  }> {
+    const { type, startDate, endDate } = statsDto;
+
+    // 1. Tổng số tài khoản
+    const totalAccounts = await this.accountModel.countDocuments();
+
+    // 2. Số tài khoản đang hoạt động
+    const activeAccounts = await this.accountModel.countDocuments({
+      isActive: true,
+    });
+
+    // 3. Số tài khoản không hoạt động
+    const inactiveAccounts = await this.accountModel.countDocuments({
+      isActive: false,
+    });
+
+    // 4. Số tài khoản mới trong tháng này
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newAccountsThisMonth = await this.accountModel.countDocuments({
+      createdAt: { $gte: startOfMonth },
+    });
+
+    // 5. Thống kê theo vai trò
+    const roleStats = await this.accountModel.aggregate<RoleStats>([
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'role',
+          foreignField: '_id',
+          as: 'roleData',
+        },
+      },
+      { $unwind: '$roleData' },
+      {
+        $group: {
+          _id: '$roleData.roleName',
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          role: '$_id',
+          count: 1,
+          _id: 0,
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
+    // 6. Time series statistics (nếu có)
+    let timeSeries: TimeSeriesData[] | undefined = undefined;
+
+    if (type) {
+      timeSeries = await this.getTimeSeriesStats(
+        type,
+        startDate ?? undefined,
+        endDate ?? undefined,
+      );
+    }
+
+    return {
+      message: 'Lấy thống kê tài khoản thành công',
+      totalAccounts,
+      activeAccounts,
+      inactiveAccounts,
+      newAccountsThisMonth,
+      ...(timeSeries && { timeSeries }),
+      accountsByRole: roleStats,
+    };
+  }
+
+  private async getTimeSeriesStats(
+    type: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<TimeSeriesData[]> {
+    let groupBy: Record<string, any>;
+    let dateFilter: Record<string, any> = {};
+
+    // Xác định khoảng thời gian
+    if (type === 'custom' && startDate && endDate) {
+      dateFilter = {
+        createdAt: {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate),
+        },
+      };
+    } else {
+      const now = new Date();
+      switch (type) {
+        case 'date': {
+          // Last 12 days
+          const last12Days = new Date(now);
+          last12Days.setDate(now.getDate() - 11);
+          last12Days.setHours(0, 0, 0, 0);
+          dateFilter = {
+            createdAt: {
+              $gte: last12Days,
+            },
+          };
+          break;
+        }
+        case 'month': {
+          // 12 months of current year
+          const startOfYear = new Date(now.getFullYear(), 0, 1);
+          dateFilter = {
+            createdAt: {
+              $gte: startOfYear,
+              $lte: now,
+            },
+          };
+          break;
+        }
+        case 'quarter': {
+          // 4 quarters of current year
+          const yearStart = new Date(now.getFullYear(), 0, 1);
+          dateFilter = {
+            createdAt: {
+              $gte: yearStart,
+              $lte: now,
+            },
+          };
+          break;
+        }
+        case 'year': {
+          // Last 3 years
+          const last3Years = new Date(now);
+          last3Years.setFullYear(now.getFullYear() - 2);
+          last3Years.setMonth(0, 1);
+          last3Years.setHours(0, 0, 0, 0);
+          dateFilter = {
+            createdAt: {
+              $gte: last3Years,
+            },
+          };
+          break;
+        }
+      }
+    }
+
+    // Xác định cách group dữ liệu
+    switch (type) {
+      case 'date':
+        groupBy = {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+          day: { $dayOfMonth: '$createdAt' },
+        };
+        break;
+      case 'month':
+        groupBy = {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        };
+        break;
+      case 'quarter':
+        groupBy = {
+          year: { $year: '$createdAt' },
+          quarter: {
+            $ceil: { $divide: [{ $month: '$createdAt' }, 3] },
+          },
+        };
+        break;
+      case 'year':
+        groupBy = {
+          year: { $year: '$createdAt' },
+        };
+        break;
+      case 'custom':
+        groupBy = {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+          day: { $dayOfMonth: '$createdAt' },
+        };
+        break;
+      default:
+        groupBy = {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        };
+    }
+
+    const results = await this.accountModel.aggregate<AggregateResult>([
+      { $match: dateFilter },
+      {
+        $group: {
+          _id: groupBy,
+          count: { $sum: 1 },
+          activeCount: {
+            $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] },
+          },
+          inactiveCount: {
+            $sum: { $cond: [{ $eq: ['$isActive', false] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+    ]);
+
+    // Format kết quả
+    return results.map((item): TimeSeriesData => {
+      return {
+        period: this.formatPeriod(type, item._id),
+        totalAccounts: item.count,
+        activeAccounts: item.activeCount,
+        inactiveAccounts: item.inactiveCount,
+      };
+    });
+  }
+
+  private formatPeriod(type: string, dateObj: DateGroup): string {
+    switch (type) {
+      case 'date':
+      case 'custom':
+        return `${dateObj.year}-${String(dateObj.month ?? 1).padStart(2, '0')}-${String(dateObj.day ?? 1).padStart(2, '0')}`;
+      case 'month':
+        return `${dateObj.year}-${String(dateObj.month ?? 1).padStart(2, '0')}`;
+      case 'quarter':
+        return `${dateObj.year}-Q${dateObj.quarter ?? 1}`;
+      case 'year':
+        return `${dateObj.year}`;
+      default:
+        return '';
+    }
   }
 }
