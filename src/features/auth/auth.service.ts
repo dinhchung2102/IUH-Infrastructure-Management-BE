@@ -565,6 +565,8 @@ export class AuthService {
     const {
       search,
       role,
+      isActive,
+      gender,
       page = '1',
       limit = '10',
       sortBy = 'createdAt',
@@ -593,6 +595,16 @@ export class AuthService {
       }
     }
 
+    // Filter theo trạng thái hoạt động
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
+
+    // Filter theo giới tính
+    if (gender) {
+      filter.gender = gender;
+    }
+
     const sort: Record<string, any> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
@@ -600,7 +612,7 @@ export class AuthService {
       this.accountModel
         .find(filter)
         .populate('role', 'roleName')
-        .select('-password')
+        .select('-password -refreshToken')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -669,7 +681,7 @@ export class AuthService {
     const updatedAccount = await this.accountModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('role', 'roleName')
-      .select('-password');
+      .select('-password -refreshToken');
 
     return {
       message: 'Cập nhật tài khoản thành công',
@@ -688,7 +700,7 @@ export class AuthService {
     const account = await this.accountModel
       .findById(id)
       .populate('role', 'roleName')
-      .select('-password')
+      .select('-password -refreshToken')
       .lean();
 
     if (!account) {

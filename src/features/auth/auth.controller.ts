@@ -196,7 +196,7 @@ export class AuthController {
     const result = await this.authService.refreshToken({ refreshToken });
 
     // Use the same expiry time determined by the service (1d or 30d)
-    const maxAge = this.parseTimeToMs(result.refreshTokenExpiry as string);
+    const maxAge = this.parseTimeToMs(result.refreshTokenExpiry);
 
     response.cookie('refresh_token', result.refresh_token, {
       httpOnly: true,
@@ -206,7 +206,9 @@ export class AuthController {
     });
 
     const {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       refresh_token: _,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       refreshTokenExpiry: __,
       ...responseWithoutRefreshToken
     } = result;
@@ -230,6 +232,11 @@ export class AuthController {
     return this.authService.logout(user.sub);
   }
 
+  //================= Account Management =================//=======================
+  /**
+   * 
+   Account Management APIs => Only Admin can access--------------------------------
+   */
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ACCOUNT:ADMINACTION')
   @Get('accounts')
