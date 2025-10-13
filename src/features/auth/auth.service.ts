@@ -207,6 +207,10 @@ export class AuthService {
       throw new UnauthorizedException('Mật khẩu không chính xác');
     }
 
+    if (!account.isActive) {
+      throw new UnauthorizedException('Tài khoản đã bị khóa');
+    }
+
     const role = account.role as Role;
     const roleName = role.roleName;
 
@@ -666,7 +670,7 @@ export class AuthService {
     updateAccountDto: UpdateAccountDto,
   ): Promise<{
     message: string;
-    data: any;
+    updatedAccount: any;
   }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('ID tài khoản không hợp lệ');
@@ -712,13 +716,13 @@ export class AuthService {
 
     return {
       message: 'Cập nhật tài khoản thành công',
-      data: updatedAccount,
+      updatedAccount: updatedAccount,
     };
   }
 
   async getAccountById(id: string): Promise<{
     message: string;
-    data: any;
+    account: any;
   }> {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('ID tài khoản không hợp lệ');
@@ -736,7 +740,7 @@ export class AuthService {
 
     return {
       message: 'Lấy thông tin tài khoản thành công',
-      data: account,
+      account: account,
     };
   }
 
@@ -973,5 +977,65 @@ export class AuthService {
       default:
         return '';
     }
+  }
+
+  async lockAccount(id: string): Promise<{
+    message: string;
+    data: any;
+  }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(id);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    if (!account.isActive) {
+      throw new ConflictException('Tài khoản đã bị khóa');
+    }
+
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(
+        id,
+        { isActive: false, refreshToken: null },
+        { new: true },
+      )
+      .populate('role', 'roleName')
+      .select('-password -refreshToken');
+
+    return {
+      message: 'Khóa tài khoản thành công',
+      data: updatedAccount,
+    };
+  }
+
+  async unlockAccount(id: string): Promise<{
+    message: string;
+    data: any;
+  }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(id);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    if (account.isActive) {
+      throw new ConflictException('Tài khoản đang hoạt động');
+    }
+
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(id, { isActive: true }, { new: true })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken');
+
+    return {
+      message: 'Mở khóa tài khoản thành công',
+      data: updatedAccount,
+    };
   }
 }

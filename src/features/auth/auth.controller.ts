@@ -269,4 +269,20 @@ export class AuthController {
   ) {
     return this.authService.updateAccount(id, updateAccountDto);
   }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Patch('accounts/:id/lock')
+  @HttpCode(HttpStatus.OK)
+  async lockAccount(@Param('id') id: string) {
+    return await this.authService.lockAccount(id);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Patch('accounts/:id/unlock')
+  @HttpCode(HttpStatus.OK)
+  async unlockAccount(@Param('id') id: string) {
+    return await this.authService.unlockAccount(id);
+  }
 }
