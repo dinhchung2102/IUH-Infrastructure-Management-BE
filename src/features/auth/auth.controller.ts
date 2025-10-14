@@ -62,6 +62,37 @@ export class AuthController {
     return value * multipliers[unit];
   }
 
+  /**
+   * Get cookie options based on environment
+   */
+  private getCookieOptions(maxAge?: number): {
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'strict' | 'lax' | 'none';
+    maxAge?: number;
+  } {
+    const isProduction = process.env.NODE_ENV === 'production';
+    // Allow override via COOKIE_SECURE env variable for testing
+    const forceSecure = process.env.COOKIE_SECURE === 'true';
+    const forceInsecure = process.env.COOKIE_SECURE === 'false';
+
+    let secure: boolean;
+    if (forceSecure) {
+      secure = true;
+    } else if (forceInsecure) {
+      secure = false;
+    } else {
+      secure = isProduction;
+    }
+
+    return {
+      httpOnly: true,
+      secure,
+      sameSite: isProduction ? 'none' : 'lax',
+      ...(maxAge && { maxAge }),
+    };
+  }
+
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('PERMISSION:CREATE')
   @Post('create-permission')
@@ -104,12 +135,11 @@ export class AuthController {
       : this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES_IN', '1d');
     const maxAge = this.parseTimeToMs(refreshTokenExpiry);
 
-    response.cookie('refresh_token', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge,
-    });
+    response.cookie(
+      'refresh_token',
+      result.refresh_token,
+      this.getCookieOptions(maxAge),
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { refresh_token, ...responseWithoutRefreshToken } = result;
@@ -199,12 +229,11 @@ export class AuthController {
     // Use the same expiry time determined by the service (1d or 30d)
     const maxAge = this.parseTimeToMs(result.refreshTokenExpiry);
 
-    response.cookie('refresh_token', result.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge,
-    });
+    response.cookie(
+      'refresh_token',
+      result.refresh_token,
+      this.getCookieOptions(maxAge),
+    );
 
     const {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -224,11 +253,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     // Clear refresh token cookie
-    response.clearCookie('refresh_token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    });
+    response.clearCookie('refresh_token', this.getCookieOptions());
 
     return this.authService.logout(user.sub);
   }
