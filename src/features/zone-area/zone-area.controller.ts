@@ -26,6 +26,7 @@ import {
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('zone-area')
 export class ZoneAreaController {
@@ -40,15 +41,13 @@ export class ZoneAreaController {
     return this.zoneAreaService.createArea(createAreaDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:READ')
+  @Public()
   @Get('areas')
   async findAllAreas(@Query() queryDto: QueryAreaDto) {
     return this.zoneAreaService.findAllAreas(queryDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:READ')
+  @Public()
   @Get('areas/:id')
   async findOneArea(@Param('id') id: string) {
     return this.zoneAreaService.findOneArea(id);
@@ -81,15 +80,13 @@ export class ZoneAreaController {
     return this.zoneAreaService.createBuilding(createBuildingDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:READ')
+  @Public()
   @Get('buildings')
   async findAllBuildings(@Query() queryDto: QueryBuildingDto) {
     return this.zoneAreaService.findAllBuildings(queryDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:READ')
+  @Public()
   @Get('buildings/:id')
   async findOneBuilding(@Param('id') id: string) {
     return this.zoneAreaService.findOneBuilding(id);
@@ -122,15 +119,13 @@ export class ZoneAreaController {
     return this.zoneAreaService.createZone(createZoneDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:READ')
+  @Public()
   @Get('zones')
   async findAllZones(@Query() queryDto: QueryZoneDto) {
     return this.zoneAreaService.findAllZones(queryDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:READ')
+  @Public()
   @Get('zones/:id')
   async findOneZone(@Param('id') id: string) {
     return this.zoneAreaService.findOneZone(id);
@@ -154,22 +149,19 @@ export class ZoneAreaController {
     return this.zoneAreaService.removeZone(id);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:READ')
+  @Public()
   @Get('buildings/:buildingId/zones')
   async findAllZonesByBuilding(@Param('buildingId') buildingId: string) {
     return this.zoneAreaService.findAllZonesByBuilding(buildingId);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:READ')
+  @Public()
   @Get('campus/:campusId/buildings')
   async findAllBuildingsByCampus(@Param('campusId') campusId: string) {
     return this.zoneAreaService.findAllBuildingsByCampus(campusId);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:READ')
+  @Public()
   @Get('campus/:campusId/areas')
   async findAllAreasByCampus(@Param('campusId') campusId: string) {
     return this.zoneAreaService.findAllAreasByCampus(campusId);

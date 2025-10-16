@@ -16,6 +16,7 @@ import { CreateCampusDto, UpdateCampusDto, QueryCampusDto } from './dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('campus')
 export class CampusController {
@@ -28,8 +29,7 @@ export class CampusController {
     return this.campusService.create(createCampusDto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:READ')
+  @Public()
   @Get()
   async findAll(@Query() queryDto: QueryCampusDto) {
     return this.campusService.findAll(queryDto);
@@ -42,9 +42,7 @@ export class CampusController {
     return this.campusService.getCampusStats();
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:READ')
-  @Get(':id')
+  @Public()
   async findOne(@Param('id') id: string) {
     return this.campusService.findOne(id);
   }
