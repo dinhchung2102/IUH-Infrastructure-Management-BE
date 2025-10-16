@@ -15,6 +15,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { ReportModule } from './features/report/report.module';
 import { ZoneAreaModule } from './features/zone-area/zone-area.module';
 import { UploadModule } from './shared/upload/upload.module';
+import { QrCodeModule } from './shared/qrcode/qrcode.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { UploadModule } from './shared/upload/upload.module';
     ReportModule,
     ZoneAreaModule,
     UploadModule,
+    QrCodeModule,
   ],
   controllers: [AppController],
   providers: [
