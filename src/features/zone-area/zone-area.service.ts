@@ -70,6 +70,10 @@ export class ZoneAreaService {
     return this.mainService.findAllZones(queryDto);
   }
 
+  async findAllZonesByBuildingFloor(buildingId: string, floor: number) {
+    return this.mainService.findAllZonesByBuildingAndFloor(buildingId, floor);
+  }
+
   async findOneZone(id: string) {
     return this.mainService.findOneZone(id);
   }

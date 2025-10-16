@@ -569,6 +569,27 @@ export class ZoneAreaMainService {
     };
   }
 
+  async findAllZonesByBuildingAndFloor(
+    buildingId: string,
+    floor: number,
+  ): Promise<{
+    message: string;
+    zones: any[];
+  }> {
+    if (!Types.ObjectId.isValid(buildingId)) {
+      throw new BadRequestException('ID tòa nhà không hợp lệ');
+    }
+
+    const zones = await this.zoneModel
+      .find({ building: new Types.ObjectId(buildingId), floorLocation: floor })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách khu vực theo tòa nhà và tầng thành công',
+      zones,
+    };
+  }
+
   async findOneZone(id: string): Promise<{
     message: string;
     data: any;
