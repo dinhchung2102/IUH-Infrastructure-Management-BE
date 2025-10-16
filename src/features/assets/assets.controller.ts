@@ -137,8 +137,13 @@ export class AssetsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ASSET:UPDATE')
   @Patch(':id')
-  async updateAsset(@Param('id') id: string, @Body() dto: UpdateAssetDto) {
-    return this.assetsService.updateAsset(id, dto);
+  @UseInterceptors(AnyFilesInterceptor())
+  async updateAsset(
+    @Param('id') id: string,
+    @Body() dto: UpdateAssetDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.assetsService.updateAsset(id, dto, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
