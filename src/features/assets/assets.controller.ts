@@ -12,11 +12,7 @@ import {
   UploadedFile,
   UploadedFiles,
 } from '@nestjs/common';
-import {
-  FileInterceptor,
-  FilesInterceptor,
-  AnyFilesInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor, AnyFilesInterceptor } from '@nestjs/platform-express';
 import { AssetsService } from './assets.service';
 import { CreateAssetCategoryDto } from './dto/asset-category/create-asset-category.dto';
 import { UpdateAssetCategoryDto } from './dto/asset-category/update-asset-category.dto';
@@ -29,7 +25,7 @@ import { UpdateAssetDto } from './dto/asset/update-asset.dto';
 import { QueryAssetDto } from './dto/asset/query-asset.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators';
+import { Public, RequirePermissions } from '../auth/decorators';
 import { UploadService } from '../../shared/upload/upload.service';
 
 @Controller('assets')
@@ -51,15 +47,13 @@ export class AssetsController {
     return this.assetsService.createCategory(dto, files);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:READ')
+  @Public()
   @Get('categories')
   async findAllCategories(@Query() query: QueryAssetCategoryDto) {
     return this.assetsService.findAllCategories(query);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:READ')
+  @Public()
   @Get('categories/:id')
   async findOneCategory(@Param('id') id: string) {
     return this.assetsService.findOneCategory(id);
@@ -90,15 +84,13 @@ export class AssetsController {
     return this.assetsService.createType(dto);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_TYPE:READ')
+  @Public()
   @Get('types')
   async findAllTypes(@Query() query: QueryAssetTypeDto) {
     return this.assetsService.findAllTypes(query);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_TYPE:READ')
+  @Public()
   @Get('types/:id')
   async findOneType(@Param('id') id: string) {
     return this.assetsService.findOneType(id);
@@ -130,15 +122,13 @@ export class AssetsController {
     return this.assetsService.createAsset(dto, files);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:READ')
+  @Public()
   @Get()
   async findAllAssets(@Query() query: QueryAssetDto) {
     return this.assetsService.findAllAssets(query);
   }
 
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:READ')
+  @Public()
   @Get(':id')
   async findOneAsset(@Param('id') id: string) {
     return this.assetsService.findOneAsset(id);
@@ -192,5 +182,17 @@ export class AssetsController {
   @Get('statistics/dashboard')
   async getAssetStatistics() {
     return this.assetsService.getAssetStatistics();
+  }
+
+  @Public()
+  @Get('zones/:zoneId/assets')
+  async getAssetByZone(@Param('zoneId') zoneId: string) {
+    return this.assetsService.getAssetByZone(zoneId);
+  }
+
+  @Public()
+  @Get('areas/:areaId/assets')
+  async getAssetByArea(@Param('areaId') areaId: string) {
+    return this.assetsService.getAssetByArea(areaId);
   }
 }

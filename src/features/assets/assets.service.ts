@@ -885,4 +885,32 @@ export class AssetsService {
       },
     };
   }
+
+  async getAssetByZone(zoneId: string): Promise<{
+    message: string;
+    assets: any[];
+  }> {
+    if (!Types.ObjectId.isValid(zoneId))
+      throw new BadRequestException('ID không hợp lệ');
+    const assets = await this.assetModel
+      .find({ zone: new Types.ObjectId(zoneId) })
+      .populate('assetType', 'name')
+      .populate('assetCategory', 'name')
+      .lean();
+    return { message: 'Lấy tài sản theo khu vực thành công', assets };
+  }
+
+  async getAssetByArea(areaId: string): Promise<{
+    message: string;
+    assets: any[];
+  }> {
+    if (!Types.ObjectId.isValid(areaId))
+      throw new BadRequestException('ID không hợp lệ');
+    const assets = await this.assetModel
+      .find({ area: new Types.ObjectId(areaId) })
+      .populate('assetType', 'name')
+      .populate('assetCategory', 'name')
+      .lean();
+    return { message: 'Lấy tài sản theo khu vực thành công', assets };
+  }
 }
