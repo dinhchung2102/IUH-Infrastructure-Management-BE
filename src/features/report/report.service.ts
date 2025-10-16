@@ -10,6 +10,7 @@ import {
   REPORT_TYPE_LABELS,
   type ReportTypeLabel,
 } from './config/report-type-labels.config';
+import { ReportStatus } from './enum/ReportStatus.enum';
 
 @Injectable()
 export class ReportService {
@@ -47,6 +48,7 @@ export class ReportService {
       ...createReportDto,
       asset: new Types.ObjectId(createReportDto.asset),
       createdBy: new Types.ObjectId(createdBy),
+      status: ReportStatus.PENDING,
     });
 
     const savedReport = await newReport.save();

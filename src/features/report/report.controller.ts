@@ -36,7 +36,7 @@ export class ReportController {
     private readonly uploadService: UploadService,
   ) {}
 
-  @UseGuards(AuthGuard, PermissionsGuard)
+  @Public()
   // @RequirePermissions('REPORT:CREATE')
   @Post()
   @UseInterceptors(AnyFilesInterceptor())

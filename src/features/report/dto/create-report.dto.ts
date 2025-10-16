@@ -8,7 +8,6 @@ import {
   MinLength,
 } from 'class-validator';
 import { ReportType } from '../enum/ReportType.enum';
-import { ReportStatus } from '../enum/ReportStatus.enum';
 
 export class CreateReportDto {
   @IsNotEmpty({ message: 'Asset không được để trống' })
@@ -18,10 +17,6 @@ export class CreateReportDto {
   @IsNotEmpty({ message: 'Loại báo cáo không được để trống' })
   @IsEnum(ReportType, { message: 'Loại báo cáo không hợp lệ' })
   type: ReportType;
-
-  @IsNotEmpty({ message: 'Trạng thái báo cáo không được để trống' })
-  @IsEnum(ReportStatus, { message: 'Trạng thái báo cáo không hợp lệ' })
-  status: ReportStatus;
 
   @IsNotEmpty({ message: 'Mô tả không được để trống' })
   @IsString({ message: 'Mô tả phải là chuỗi' })
