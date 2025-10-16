@@ -494,7 +494,7 @@ export class AssetsService {
 
   async findOneAsset(id: string): Promise<{
     message: string;
-    data: any;
+    asset: any;
   }> {
     if (!Types.ObjectId.isValid(id))
       throw new BadRequestException('ID không hợp lệ');
@@ -523,7 +523,7 @@ export class AssetsService {
         },
       });
     if (!item) throw new NotFoundException('Tài sản không tồn tại');
-    return { message: 'Lấy tài sản thành công', data: item };
+    return { message: 'Lấy tài sản thành công', asset: item };
   }
 
   async updateAsset(
