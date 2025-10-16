@@ -3,6 +3,7 @@ import {
   IsEnum,
   IsMongoId,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
@@ -24,8 +25,8 @@ export class CreateReportDto {
   @MaxLength(1000, { message: 'Mô tả không được quá 1000 ký tự' })
   description: string;
 
-  @IsNotEmpty({ message: 'Hình ảnh không được để trống' })
+  @IsOptional()
   @IsArray({ message: 'Hình ảnh phải là mảng' })
   @IsString({ each: true, message: 'Mỗi URL hình ảnh phải là chuỗi' })
-  images: string[];
+  images?: string[];
 }

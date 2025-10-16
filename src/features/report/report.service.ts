@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Report, type ReportDocument } from './schema/report.schema';
@@ -36,6 +40,14 @@ export class ReportService {
         createReportDto.images = imageUrls;
       }
     }
+
+    // Validate: Phải có ít nhất 1 ảnh (từ files hoặc URLs)
+    if (!createReportDto.images || createReportDto.images.length === 0) {
+      throw new BadRequestException(
+        'Vui lòng upload ít nhất 1 hình ảnh hoặc cung cấp URL hình ảnh',
+      );
+    }
+
     // Kiểm tra asset có tồn tại không
     const asset = await this.reportModel.db
       .collection('assets')
