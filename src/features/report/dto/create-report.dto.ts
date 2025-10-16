@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsEmail,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -24,6 +25,14 @@ export class CreateReportDto {
   @MinLength(10, { message: 'Mô tả phải có ít nhất 10 ký tự' })
   @MaxLength(1000, { message: 'Mô tả không được quá 1000 ký tự' })
   description: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'Email không hợp lệ' })
+  email?: string;
+
+  @IsOptional()
+  @IsString({ message: 'OTP phải là chuỗi' })
+  authOTP?: string;
 
   @IsOptional()
   @IsArray({ message: 'Hình ảnh phải là mảng' })

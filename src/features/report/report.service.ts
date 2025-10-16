@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -15,17 +16,66 @@ import {
   type ReportTypeLabel,
 } from './config/report-type-labels.config';
 import { ReportStatus } from './enum/ReportStatus.enum';
+import { RedisService } from '../../shared/redis/redis.service';
+import { MailerService } from '@nestjs-modules/mailer';
+import { RoleName } from '../auth/enum/role.enum';
 
 @Injectable()
 export class ReportService {
   constructor(
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     private readonly uploadService: UploadService,
+    private readonly redisService: RedisService,
+    private readonly mailerService: MailerService,
   ) {}
+
+  async sendReportOTP(email: string): Promise<{ message: string }> {
+    if (!email) {
+      throw new BadRequestException('Email không được để trống');
+    }
+
+    // Tạo OTP 6 chữ số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Lưu OTP vào Redis (TTL 5 phút)
+    await this.redisService.setOtp(email, otp);
+
+    // Kiểm tra email đã có trong hệ thống chưa
+    const existingAccount = await this.reportModel.db
+      .collection('accounts')
+      .findOne({ email });
+
+    if (existingAccount) {
+      // Đã có tài khoản => gửi OTP báo cáo
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `${otp} là mã xác thực báo cáo của bạn`,
+        template: 'otp',
+        context: { otp },
+      });
+
+      return {
+        message: 'Mã OTP đã được gửi tới email của bạn để xác thực báo cáo',
+      };
+    } else {
+      // Chưa có tài khoản => gửi OTP đăng ký
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `${otp} là mã xác thực đăng ký tài khoản và tạo báo cáo`,
+        template: 'otp',
+        context: { otp },
+      });
+
+      return {
+        message:
+          'Mã OTP đã được gửi tới email của bạn để đăng ký tài khoản và tạo báo cáo',
+      };
+    }
+  }
 
   async createReport(
     createReportDto: CreateReportDto,
-    createdBy: string,
+    user?: { sub: string },
     files?: Express.Multer.File[],
   ): Promise<{
     message: string;
@@ -56,10 +106,75 @@ export class ReportService {
       throw new NotFoundException('Asset không tồn tại');
     }
 
+    let createdById: Types.ObjectId;
+
+    // Logic phân nhánh: Có token vs Không có token
+    if (user?.sub) {
+      // ✅ CÓ TOKEN (đã login) - không cần OTP
+      createdById = new Types.ObjectId(user.sub);
+    } else {
+      // ⚠️ KHÔNG CÓ TOKEN (guest) - bắt buộc email + OTP
+      if (!createReportDto.email || !createReportDto.authOTP) {
+        throw new BadRequestException(
+          'Vui lòng cung cấp email và OTP để tạo báo cáo',
+        );
+      }
+
+      // Validate OTP
+      const otpData = await this.redisService.getOtp(createReportDto.email);
+      if (!otpData) {
+        throw new UnauthorizedException('OTP không tồn tại hoặc đã hết hạn');
+      }
+
+      if (otpData.otp !== createReportDto.authOTP) {
+        throw new UnauthorizedException('OTP không hợp lệ');
+      }
+
+      // Xóa OTP sau khi verify thành công
+      await this.redisService.delete(`otp:${createReportDto.email}`);
+
+      // Tìm hoặc tạo user
+      let account = await this.reportModel.db
+        .collection('accounts')
+        .findOne({ email: createReportDto.email });
+
+      if (!account) {
+        // Tạo tài khoản mới với role GUEST
+        let roleName = RoleName.GUEST;
+        if (createReportDto.email.includes('@student.iuh.edu.vn')) {
+          roleName = RoleName.STUDENT;
+        }
+        const role = await this.reportModel.db
+          .collection('roles')
+          .findOne({ roleName: roleName });
+
+        if (!role) {
+          throw new NotFoundException('Role GUEST không tồn tại');
+        }
+
+        const result = await this.reportModel.db
+          .collection('accounts')
+          .insertOne({
+            email: createReportDto.email,
+            fullName: createReportDto.email.split('@')[0],
+            role: role._id,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+        createdById = result.insertedId as Types.ObjectId;
+      } else {
+        createdById = account._id as Types.ObjectId;
+      }
+    }
+
     const newReport = new this.reportModel({
-      ...createReportDto,
       asset: new Types.ObjectId(createReportDto.asset),
-      createdBy: new Types.ObjectId(createdBy),
+      type: createReportDto.type,
+      description: createReportDto.description,
+      images: createReportDto.images,
+      createdBy: createdById,
       status: ReportStatus.PENDING,
     });
 

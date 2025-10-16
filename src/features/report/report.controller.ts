@@ -36,17 +36,23 @@ export class ReportController {
     private readonly uploadService: UploadService,
   ) {}
 
-  @UseGuards(AuthGuard)
-  // @RequirePermissions('REPORT:CREATE')
+  @Public()
+  @Post('send-report-otp')
+  @HttpCode(HttpStatus.OK)
+  async sendReportOTP(@Body('email') email: string) {
+    return this.reportService.sendReportOTP(email);
+  }
+
+  @Public()
   @Post()
   @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.CREATED)
   async createReport(
     @Body() createReportDto: CreateReportDto,
-    @CurrentUser() user: JwtPayload,
+    @CurrentUser() user: JwtPayload | undefined,
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.reportService.createReport(createReportDto, user.sub, files);
+    return this.reportService.createReport(createReportDto, user, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

@@ -5,12 +5,14 @@ import { ReportController } from './report.controller';
 import { Report, ReportSchema } from './schema/report.schema';
 import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../../shared/upload/upload.module';
+import { RedisModule } from '../../shared/redis/redis.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Report.name, schema: ReportSchema }]),
     AuthModule,
     UploadModule,
+    RedisModule,
   ],
   providers: [ReportService],
   controllers: [ReportController],
