@@ -27,6 +27,7 @@ import { RequirePermissions } from '../auth/decorators';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UploadService } from '../../shared/upload/upload.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('report')
 export class ReportController {
@@ -86,6 +87,13 @@ export class ReportController {
   @Get('statistics/dashboard')
   async getReportStatistics() {
     return this.reportService.getReportStatistics();
+  }
+
+  @Public()
+  @Get('types/list')
+  @HttpCode(HttpStatus.OK)
+  async getReportTypes() {
+    return this.reportService.getReportTypes();
   }
 
   // ====== Upload ======

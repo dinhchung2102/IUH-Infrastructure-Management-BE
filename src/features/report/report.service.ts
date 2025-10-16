@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Report, type ReportDocument } from './schema/report.schema';
@@ -11,6 +6,10 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { QueryReportDto } from './dto/query-report.dto';
 import { UploadService } from '../../shared/upload/upload.service';
+import {
+  REPORT_TYPE_LABELS,
+  type ReportTypeLabel,
+} from './config/report-type-labels.config';
 
 @Injectable()
 export class ReportService {
@@ -379,6 +378,19 @@ export class ReportService {
         reportsLastMonth,
         averageResolutionTime,
       },
+    };
+  }
+
+  /**
+   * Get all report types with labels
+   */
+  async getReportTypes(): Promise<{
+    message: string;
+    reportTypes: ReportTypeLabel[];
+  }> {
+    return {
+      message: 'Lấy danh sách loại báo cáo thành công',
+      reportTypes: REPORT_TYPE_LABELS,
     };
   }
 }
