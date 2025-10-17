@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -10,6 +10,7 @@ import { Permission, PermissionSchema } from './schema/permission.schema';
 import { AuthGuard } from './guards/auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RedisModule } from '../../shared/redis/redis.module';
+import { UploadModule } from '../../shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RedisModule } from '../../shared/redis/redis.module';
       inject: [ConfigService],
     }),
     RedisModule,
+    forwardRef(() => UploadModule),
   ],
   providers: [AuthService, AuthGuard, PermissionsGuard],
   controllers: [AuthController],

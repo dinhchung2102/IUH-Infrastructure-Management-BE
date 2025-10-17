@@ -3,6 +3,10 @@ import { Types } from 'mongoose';
 import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 import { Building, type BuildingDocument } from './building.schema';
 import { ZoneType } from '../enum/ZoneType.enum';
+import {
+  Account,
+  type AccountDocument,
+} from 'src/features/auth/schema/account.schema';
 
 export type ZoneDocument = Zone & Document;
 
@@ -25,6 +29,9 @@ export class Zone {
 
   @Prop({ required: true, min: 1, max: 100 })
   floorLocation: number;
+
+  @Prop({ required: true, type: Types.ObjectId, ref: Account.name })
+  account: AccountDocument;
 }
 
 export const ZoneSchema = SchemaFactory.createForClass(Zone);

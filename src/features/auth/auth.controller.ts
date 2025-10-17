@@ -12,7 +12,10 @@ import {
   Query,
   Param,
   Patch,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
@@ -31,6 +34,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountStatsDto } from './dto/account-stats.dto';
+import { CreateStaffAccountDto } from './dto/create-staff-account.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
@@ -268,6 +272,21 @@ export class AuthController {
   @Get('accounts/stats')
   async getAccountStats(@Query() statsDto: AccountStatsDto) {
     return this.authService.getAccountStats(statsDto);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Post('accounts/staff-only')
+  @UseInterceptors(AnyFilesInterceptor())
+  @HttpCode(HttpStatus.CREATED)
+  async createStaffAccount(
+    @Body() createStaffAccountDto: CreateStaffAccountDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return await this.authService.createStaffAccount(
+      createStaffAccountDto,
+      files,
+    );
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

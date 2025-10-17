@@ -29,6 +29,8 @@ import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountStatsDto } from './dto/account-stats.dto';
+import { CreateStaffAccountDto } from './dto/create-staff-account.dto';
+import { UploadService } from '../../shared/upload/upload.service';
 
 export interface RoleStats {
   role: string;
@@ -68,6 +70,7 @@ export class AuthService {
     private configService: ConfigService,
     private readonly mailerService: MailerService,
     private readonly redisService: RedisService,
+    private readonly uploadService: UploadService,
   ) {}
 
   async createPermission(permissionDto: PermissionDto) {
@@ -718,8 +721,13 @@ export class AuthService {
     // Filter theo role cụ thể (nếu muốn filter thêm trong staff)
     if (role) {
       const roleDoc = await this.roleModel.findOne({ roleName: role });
-      if (roleDoc && !excludedRoleIds.includes(roleDoc._id)) {
-        filter.role = roleDoc._id;
+      if (roleDoc) {
+        const isExcluded = excludedRoleIds.some(
+          (id) => id.toString() === roleDoc._id.toString(),
+        );
+        if (!isExcluded) {
+          filter.role = roleDoc._id;
+        }
       }
     }
 
@@ -759,6 +767,89 @@ export class AuthService {
         totalItems: total,
         itemsPerPage: limitNum,
       },
+    };
+  }
+
+  async createStaffAccount(
+    createStaffAccountDto: CreateStaffAccountDto,
+    files?: Express.Multer.File[],
+  ): Promise<{
+    message: string;
+    account: any;
+  }> {
+    // Xử lý upload avatar nếu có
+    if (files && files.length > 0) {
+      const avatarFile = files.find((file) => file.fieldname === 'avatar');
+      if (avatarFile) {
+        const avatarUrl = await this.uploadService.uploadFile(avatarFile);
+        createStaffAccountDto.avatar = avatarUrl;
+      }
+    }
+
+    // Kiểm tra email đã tồn tại chưa
+    const existingEmail = await this.accountModel.findOne({
+      email: createStaffAccountDto.email,
+    });
+
+    if (existingEmail) {
+      throw new ConflictException('Email đã tồn tại');
+    }
+
+    // Validate role - chỉ cho phép tạo ADMIN, STAFF, CAMPUS_ADMIN
+    const allowedRoles = [
+      RoleName.ADMIN,
+      RoleName.STAFF,
+      RoleName.CAMPUS_ADMIN,
+    ];
+
+    if (!allowedRoles.includes(createStaffAccountDto.role)) {
+      throw new ConflictException(
+        'Chỉ được tạo tài khoản với role: ADMIN, STAFF, CAMPUS_ADMIN',
+      );
+    }
+
+    // Tìm role document
+    const roleDoc = await this.roleModel.findOne({
+      roleName: createStaffAccountDto.role,
+    });
+
+    if (!roleDoc) {
+      throw new NotFoundException(
+        `Role ${createStaffAccountDto.role} không tồn tại`,
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(
+      createStaffAccountDto.password,
+      this.SALT_ROUNDS,
+    );
+
+    // Tạo account mới
+    const newAccount = new this.accountModel({
+      email: createStaffAccountDto.email,
+      password: hashedPassword,
+      fullName: createStaffAccountDto.fullName,
+      role: roleDoc._id,
+      phoneNumber: createStaffAccountDto.phoneNumber,
+      address: createStaffAccountDto.address,
+      gender: createStaffAccountDto.gender,
+      avatar: createStaffAccountDto.avatar,
+      isActive: true,
+    });
+
+    const savedAccount = await newAccount.save();
+
+    // Populate role và loại bỏ sensitive data
+    const account = await this.accountModel
+      .findById(savedAccount._id)
+      .populate('role', 'roleName')
+      .select('-password -refreshToken')
+      .lean();
+
+    return {
+      message: 'Tạo tài khoản nhân viên thành công',
+      account,
     };
   }
 
