@@ -24,8 +24,6 @@ import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UploadService } from '../../shared/upload/upload.service';
 
 @Controller('audit')
@@ -42,10 +40,9 @@ export class AuditController {
   @HttpCode(HttpStatus.CREATED)
   async createAuditLog(
     @Body() createAuditLogDto: CreateAuditLogDto,
-    @CurrentUser() user: JwtPayload,
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.auditService.createAuditLog(createAuditLogDto, user.sub, files);
+    return this.auditService.createAuditLog(createAuditLogDto, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

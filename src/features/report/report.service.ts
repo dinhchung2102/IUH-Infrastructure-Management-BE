@@ -10,6 +10,7 @@ import { Report, type ReportDocument } from './schema/report.schema';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { QueryReportDto } from './dto/query-report.dto';
+import { ApproveReportDto } from './dto/approve-report.dto';
 import { UploadService } from '../../shared/upload/upload.service';
 import {
   REPORT_TYPE_LABELS,
@@ -19,11 +20,17 @@ import { ReportStatus } from './enum/ReportStatus.enum';
 import { RedisService } from '../../shared/redis/redis.service';
 import { MailerService } from '@nestjs-modules/mailer';
 import { RoleName } from '../auth/enum/role.enum';
+import {
+  AuditLog,
+  type AuditLogDocument,
+} from '../audit/schema/auditlog.schema';
+import { AuditStatus } from '../audit/enum/AuditStatus.enum';
 
 @Injectable()
 export class ReportService {
   constructor(
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
+    @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     private readonly uploadService: UploadService,
     private readonly redisService: RedisService,
     private readonly mailerService: MailerService,
@@ -244,7 +251,7 @@ export class ReportService {
         .find(filter)
         .populate({
           path: 'asset',
-          select: 'name code status zone area',
+          select: 'name code status zone area image',
           populate: [
             {
               path: 'zone',
@@ -579,5 +586,155 @@ export class ReportService {
       message: 'Lấy danh sách loại báo cáo thành công',
       reportTypes: REPORT_TYPE_LABELS,
     };
+  }
+
+  /**
+   * Approve report and create audit log
+   */
+  async approveReport(
+    approveReportDto: ApproveReportDto,
+    files?: Express.Multer.File[],
+  ): Promise<{
+    message: string;
+    data: {
+      report: any;
+      auditLog: any;
+    };
+  }> {
+    const { reportId, staffIds, subject, description, images } =
+      approveReportDto;
+
+    // Validate report ID
+    if (!Types.ObjectId.isValid(reportId)) {
+      throw new NotFoundException('ID báo cáo không hợp lệ');
+    }
+
+    // Validate staff IDs
+    for (const staffId of staffIds) {
+      if (!Types.ObjectId.isValid(staffId)) {
+        throw new BadRequestException(`ID nhân viên ${staffId} không hợp lệ`);
+      }
+    }
+
+    // Start transaction
+    const session = await this.reportModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Kiểm tra report tồn tại
+      const report = await this.reportModel.findById(reportId).session(session);
+      if (!report) {
+        throw new NotFoundException('Báo cáo không tồn tại');
+      }
+
+      // 2. Kiểm tra trạng thái report
+      if (report.status !== ReportStatus.PENDING) {
+        throw new BadRequestException(
+          `Chỉ có thể phê duyệt báo cáo ở trạng thái PENDING. Trạng thái hiện tại: ${report.status}`,
+        );
+      }
+
+      // 3. Kiểm tra staffs tồn tại
+      const staffObjectIds = staffIds.map((id) => new Types.ObjectId(id));
+      const staffs = await this.reportModel.db
+        .collection('accounts')
+        .find({ _id: { $in: staffObjectIds } })
+        .toArray();
+
+      if (staffs.length !== staffIds.length) {
+        throw new NotFoundException('Một hoặc nhiều nhân viên không tồn tại');
+      }
+
+      // 4. Xử lý upload images nếu có
+      let auditImages = images || [];
+      if (files && files.length > 0) {
+        const imageFiles = files.filter((file) => file.fieldname === 'images');
+        if (imageFiles.length > 0) {
+          const imageUrls =
+            await this.uploadService.uploadMultipleFiles(imageFiles);
+          auditImages = [...auditImages, ...imageUrls];
+        }
+      }
+
+      // 5. Cập nhật trạng thái report từ PENDING → APPROVED
+      const updatedReport = await this.reportModel
+        .findByIdAndUpdate(
+          reportId,
+          { status: ReportStatus.APPROVED },
+          { new: true, session },
+        )
+        .populate({
+          path: 'asset',
+          select: 'name code status zone area image',
+          populate: [
+            {
+              path: 'zone',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+            {
+              path: 'area',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+          ],
+        })
+        .populate('createdBy', 'fullName email');
+
+      // 6. Tạo audit log mới
+      const newAuditLog = new this.auditLogModel({
+        report: new Types.ObjectId(reportId),
+        status: AuditStatus.PENDING,
+        subject,
+        description,
+        staffs: staffObjectIds,
+        images: auditImages,
+      });
+
+      const savedAuditLog = await newAuditLog.save({ session });
+      await savedAuditLog.populate([
+        {
+          path: 'report',
+          select: 'type status description images asset',
+          populate: {
+            path: 'asset',
+            select: 'name code status',
+          },
+        },
+        { path: 'staffs', select: 'fullName email' },
+      ]);
+
+      // 7. Commit transaction
+      await session.commitTransaction();
+
+      return {
+        message: 'Phê duyệt báo cáo và tạo bản ghi kiểm tra thành công',
+        data: {
+          report: updatedReport,
+          auditLog: savedAuditLog,
+        },
+      };
+    } catch (error) {
+      // Rollback transaction nếu có lỗi
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      // End session
+      await session.endSession();
+    }
   }
 }

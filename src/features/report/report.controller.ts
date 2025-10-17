@@ -21,6 +21,7 @@ import { ReportService } from './report.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
 import { QueryReportDto } from './dto/query-report.dto';
+import { ApproveReportDto } from './dto/approve-report.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
@@ -100,6 +101,19 @@ export class ReportController {
   @HttpCode(HttpStatus.OK)
   async getReportTypes() {
     return this.reportService.getReportTypes();
+  }
+
+  // ====== Approve Report ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('REPORT:UPDATE')
+  @Post('approve')
+  @UseInterceptors(AnyFilesInterceptor())
+  @HttpCode(HttpStatus.OK)
+  async approveReport(
+    @Body() approveReportDto: ApproveReportDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.reportService.approveReport(approveReportDto, files);
   }
 
   // ====== Upload ======

@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, type AuditLogDocument } from './schema/auditlog.schema';
@@ -21,58 +16,68 @@ export class AuditService {
 
   async createAuditLog(
     createAuditLogDto: CreateAuditLogDto,
-    staffId: string,
     files?: Express.Multer.File[],
   ): Promise<{
     message: string;
-    data: any;
+    auditLog: any;
   }> {
     // Xử lý upload files nếu có
+    let auditImages = createAuditLogDto.images || [];
     if (files && files.length > 0) {
       const imageFiles = files.filter((file) => file.fieldname === 'images');
       if (imageFiles.length > 0) {
         const imageUrls =
           await this.uploadService.uploadMultipleFiles(imageFiles);
-        createAuditLogDto.images = imageUrls;
+        auditImages = [...auditImages, ...imageUrls];
       }
-    }
-    // Kiểm tra asset có tồn tại không
-    const asset = await this.auditLogModel.db
-      .collection('assets')
-      .findOne({ _id: new Types.ObjectId(createAuditLogDto.asset) });
-    if (!asset) {
-      throw new NotFoundException('Asset không tồn tại');
     }
 
-    // Kiểm tra report có tồn tại không (nếu có)
-    if (createAuditLogDto.report) {
-      const report = await this.auditLogModel.db
-        .collection('reports')
-        .findOne({ _id: new Types.ObjectId(createAuditLogDto.report) });
-      if (!report) {
-        throw new NotFoundException('Report không tồn tại');
-      }
+    // Kiểm tra report có tồn tại không
+    const report = await this.auditLogModel.db
+      .collection('reports')
+      .findOne({ _id: new Types.ObjectId(createAuditLogDto.report) });
+    if (!report) {
+      throw new NotFoundException('Báo cáo không tồn tại');
+    }
+
+    // Kiểm tra staffs tồn tại
+    const staffObjectIds = createAuditLogDto.staffs.map(
+      (id) => new Types.ObjectId(id),
+    );
+    const staffs = await this.auditLogModel.db
+      .collection('accounts')
+      .find({ _id: { $in: staffObjectIds } })
+      .toArray();
+
+    if (staffs.length !== createAuditLogDto.staffs.length) {
+      throw new NotFoundException('Một hoặc nhiều nhân viên không tồn tại');
     }
 
     const newAuditLog = new this.auditLogModel({
-      ...createAuditLogDto,
-      asset: new Types.ObjectId(createAuditLogDto.asset),
-      report: createAuditLogDto.report
-        ? new Types.ObjectId(createAuditLogDto.report)
-        : undefined,
-      staff: new Types.ObjectId(staffId),
+      report: new Types.ObjectId(createAuditLogDto.report),
+      status: createAuditLogDto.status,
+      subject: createAuditLogDto.subject,
+      description: createAuditLogDto.description,
+      staffs: staffObjectIds,
+      images: auditImages,
     });
 
     const savedAuditLog = await newAuditLog.save();
     await savedAuditLog.populate([
-      { path: 'asset', select: 'name code status' },
-      { path: 'report', select: 'type status description' },
-      { path: 'staff', select: 'fullName email' },
+      {
+        path: 'report',
+        select: 'type status description asset',
+        populate: {
+          path: 'asset',
+          select: 'name code status',
+        },
+      },
+      { path: 'staffs', select: 'fullName email' },
     ]);
 
     return {
       message: 'Tạo bản ghi kiểm tra thành công',
-      data: savedAuditLog,
+      auditLog: savedAuditLog,
     };
   }
 
@@ -88,10 +93,15 @@ export class AuditService {
   }> {
     const {
       search,
-      asset,
       status,
       report,
       staff,
+      zone,
+      area,
+      building,
+      campus,
+      startDate,
+      endDate,
       page = '1',
       limit = '10',
       sortBy = 'createdAt',
@@ -99,22 +109,12 @@ export class AuditService {
     } = queryDto;
 
     const pageNum = parseInt(page, 10);
-    const limitNum = parseInt(limit, 10);
+    const limitNum = Math.min(parseInt(limit, 10), 100); // Max 100
     const skip = (pageNum - 1) * limitNum;
 
     const filter: Record<string, any> = {};
 
-    // Tìm kiếm theo tiêu đề, mô tả
-    if (search) {
-      filter.$or = [
-        { subject: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
-    }
-
-    if (asset) {
-      filter.asset = new Types.ObjectId(asset);
-    }
+    // ===== Basic Filters =====
     if (status) {
       filter.status = status;
     }
@@ -122,7 +122,144 @@ export class AuditService {
       filter.report = new Types.ObjectId(report);
     }
     if (staff) {
-      filter.staff = new Types.ObjectId(staff);
+      filter.staffs = new Types.ObjectId(staff);
+    }
+
+    // ===== Date Range Filter =====
+    if (startDate || endDate) {
+      const dateFilter: any = {};
+      if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const endDateTime = new Date(endDate);
+        endDateTime.setHours(23, 59, 59, 999); // End of day
+        dateFilter.$lte = endDateTime;
+      }
+      filter.createdAt = dateFilter;
+    }
+
+    // ===== Location Filters (via report → asset) =====
+    if (zone || area || building || campus) {
+      // Tìm reports có asset thuộc location
+      const assetFilter: Record<string, any> = {};
+      if (zone) assetFilter.zone = new Types.ObjectId(zone);
+      if (area) assetFilter.area = new Types.ObjectId(area);
+
+      const matchingAssets = await this.auditLogModel.db
+        .collection('assets')
+        .find(assetFilter)
+        .project({ _id: 1 })
+        .toArray();
+
+      const assetIds = matchingAssets.map((a) => a._id);
+
+      // Tìm reports có asset trong list
+      const matchingReports = await this.auditLogModel.db
+        .collection('reports')
+        .find({ asset: { $in: assetIds } })
+        .project({ _id: 1 })
+        .toArray();
+
+      const reportIds = matchingReports.map((r) => r._id);
+      filter.report = { $in: reportIds };
+
+      // Filter by building hoặc campus (via zone/area → building → campus)
+      if (building || campus) {
+        const buildingFilter: Record<string, any> = {};
+        if (building) buildingFilter._id = new Types.ObjectId(building);
+        if (campus) buildingFilter.campus = new Types.ObjectId(campus);
+
+        const matchingBuildings = await this.auditLogModel.db
+          .collection('buildings')
+          .find(buildingFilter)
+          .project({ _id: 1 })
+          .toArray();
+
+        const buildingIds = matchingBuildings.map((b) => b._id);
+
+        // Tìm zones/areas thuộc buildings
+        const matchingZones = await this.auditLogModel.db
+          .collection('zones')
+          .find({ building: { $in: buildingIds } })
+          .project({ _id: 1 })
+          .toArray();
+
+        const matchingAreas = await this.auditLogModel.db
+          .collection('areas')
+          .find({ building: { $in: buildingIds } })
+          .project({ _id: 1 })
+          .toArray();
+
+        const zoneIds = matchingZones.map((z) => z._id);
+        const areaIds = matchingAreas.map((a) => a._id);
+
+        // Tìm assets thuộc zones/areas
+        const finalAssets = await this.auditLogModel.db
+          .collection('assets')
+          .find({
+            $or: [{ zone: { $in: zoneIds } }, { area: { $in: areaIds } }],
+          })
+          .project({ _id: 1 })
+          .toArray();
+
+        const finalAssetIds = finalAssets.map((a) => a._id);
+
+        // Tìm reports cuối cùng
+        const finalReports = await this.auditLogModel.db
+          .collection('reports')
+          .find({ asset: { $in: finalAssetIds } })
+          .project({ _id: 1 })
+          .toArray();
+
+        const finalReportIds = finalReports.map((r) => r._id);
+        filter.report = { $in: finalReportIds };
+      }
+    }
+
+    // ===== Advanced Search =====
+    if (search) {
+      // Search trong audit log (subject, description)
+      // + trong report (type)
+      // + trong asset (name, code)
+      const searchLower = search.toLowerCase();
+      const auditLogs = await this.auditLogModel
+        .find()
+        .populate({
+          path: 'report',
+          populate: {
+            path: 'asset',
+          },
+        })
+        .lean();
+
+      const matchingIds = auditLogs
+        .filter((log: any) => {
+          const subjectMatch = log.subject?.toLowerCase().includes(searchLower);
+          const descMatch = log.description
+            ?.toLowerCase()
+            .includes(searchLower);
+          const reportTypeMatch = log.report?.type
+            ?.toLowerCase()
+            .includes(searchLower);
+          const assetNameMatch = log.report?.asset?.name
+            ?.toLowerCase()
+            .includes(searchLower);
+          const assetCodeMatch = log.report?.asset?.code
+            ?.toLowerCase()
+            .includes(searchLower);
+
+          return (
+            subjectMatch ||
+            descMatch ||
+            reportTypeMatch ||
+            assetNameMatch ||
+            assetCodeMatch
+          );
+        })
+        .map((log: any) => log._id);
+
+      filter._id = { $in: matchingIds };
     }
 
     const sort: Record<string, any> = {};
@@ -131,9 +268,47 @@ export class AuditService {
     const [auditLogs, total] = await Promise.all([
       this.auditLogModel
         .find(filter)
-        .populate('asset', 'name code status')
-        .populate('report', 'type status description')
-        .populate('staff', 'fullName email')
+        .populate({
+          path: 'report',
+          select: 'type status description asset images createdBy',
+          populate: [
+            {
+              path: 'asset',
+              select: 'name code status image zone area',
+              populate: [
+                {
+                  path: 'zone',
+                  select: '_id name building',
+                  populate: {
+                    path: 'building',
+                    select: '_id name campus',
+                    populate: {
+                      path: 'campus',
+                      select: '_id name',
+                    },
+                  },
+                },
+                {
+                  path: 'area',
+                  select: '_id name building',
+                  populate: {
+                    path: 'building',
+                    select: '_id name campus',
+                    populate: {
+                      path: 'campus',
+                      select: '_id name',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              path: 'createdBy',
+              select: 'fullName email',
+            },
+          ],
+        })
+        .populate('staffs', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -165,9 +340,47 @@ export class AuditService {
 
     const auditLog = await this.auditLogModel
       .findById(id)
-      .populate('asset', 'name code status')
-      .populate('report', 'type status description')
-      .populate('staff', 'fullName email')
+      .populate({
+        path: 'report',
+        select: 'type status description asset images createdBy',
+        populate: [
+          {
+            path: 'asset',
+            select: 'name code status image zone area',
+            populate: [
+              {
+                path: 'zone',
+                select: '_id name building',
+                populate: {
+                  path: 'building',
+                  select: '_id name campus',
+                  populate: {
+                    path: 'campus',
+                    select: '_id name',
+                  },
+                },
+              },
+              {
+                path: 'area',
+                select: '_id name building',
+                populate: {
+                  path: 'building',
+                  select: '_id name campus',
+                  populate: {
+                    path: 'campus',
+                    select: '_id name',
+                  },
+                },
+              },
+            ],
+          },
+          {
+            path: 'createdBy',
+            select: 'fullName email',
+          },
+        ],
+      })
+      .populate('staffs', 'fullName email')
       .lean();
 
     if (!auditLog) {
@@ -196,39 +409,52 @@ export class AuditService {
       throw new NotFoundException('Bản ghi kiểm tra không tồn tại');
     }
 
-    // Kiểm tra asset có tồn tại không (nếu có thay đổi)
-    if (updateAuditLogDto.asset) {
-      const asset = await this.auditLogModel.db
-        .collection('assets')
-        .findOne({ _id: new Types.ObjectId(updateAuditLogDto.asset) });
-      if (!asset) {
-        throw new NotFoundException('Asset không tồn tại');
-      }
-    }
-
     // Kiểm tra report có tồn tại không (nếu có thay đổi)
     if (updateAuditLogDto.report) {
       const report = await this.auditLogModel.db
         .collection('reports')
         .findOne({ _id: new Types.ObjectId(updateAuditLogDto.report) });
       if (!report) {
-        throw new NotFoundException('Report không tồn tại');
+        throw new NotFoundException('Báo cáo không tồn tại');
+      }
+    }
+
+    // Kiểm tra staffs tồn tại (nếu có thay đổi)
+    if (updateAuditLogDto.staffs && updateAuditLogDto.staffs.length > 0) {
+      const staffObjectIds = updateAuditLogDto.staffs.map(
+        (id) => new Types.ObjectId(id),
+      );
+      const staffs = await this.auditLogModel.db
+        .collection('accounts')
+        .find({ _id: { $in: staffObjectIds } })
+        .toArray();
+
+      if (staffs.length !== updateAuditLogDto.staffs.length) {
+        throw new NotFoundException('Một hoặc nhiều nhân viên không tồn tại');
       }
     }
 
     const updateData: Record<string, any> = { ...updateAuditLogDto };
-    if (updateAuditLogDto.asset) {
-      updateData.asset = new Types.ObjectId(updateAuditLogDto.asset);
-    }
     if (updateAuditLogDto.report) {
       updateData.report = new Types.ObjectId(updateAuditLogDto.report);
+    }
+    if (updateAuditLogDto.staffs) {
+      updateData.staffs = updateAuditLogDto.staffs.map(
+        (id) => new Types.ObjectId(id),
+      );
     }
 
     const updatedAuditLog = await this.auditLogModel
       .findByIdAndUpdate(id, updateData, { new: true })
-      .populate('asset', 'name code status')
-      .populate('report', 'type status description')
-      .populate('staff', 'fullName email');
+      .populate({
+        path: 'report',
+        select: 'type status description asset images',
+        populate: {
+          path: 'asset',
+          select: 'name code status',
+        },
+      })
+      .populate('staffs', 'fullName email');
 
     return {
       message: 'Cập nhật bản ghi kiểm tra thành công',

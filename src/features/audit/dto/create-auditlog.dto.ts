@@ -11,17 +11,13 @@ import {
 import { AuditStatus } from '../enum/AuditStatus.enum';
 
 export class CreateAuditLogDto {
-  @IsNotEmpty({ message: 'Asset không được để trống' })
-  @IsMongoId({ message: 'ID asset không hợp lệ' })
-  asset: string;
+  @IsNotEmpty({ message: 'Báo cáo không được để trống' })
+  @IsMongoId({ message: 'ID báo cáo không hợp lệ' })
+  report: string;
 
   @IsNotEmpty({ message: 'Trạng thái kiểm tra không được để trống' })
   @IsEnum(AuditStatus, { message: 'Trạng thái kiểm tra không hợp lệ' })
   status: AuditStatus;
-
-  @IsOptional()
-  @IsMongoId({ message: 'ID báo cáo không hợp lệ' })
-  report?: string;
 
   @IsNotEmpty({ message: 'Tiêu đề không được để trống' })
   @IsString({ message: 'Tiêu đề phải là chuỗi' })
@@ -29,18 +25,19 @@ export class CreateAuditLogDto {
   @MaxLength(200, { message: 'Tiêu đề không được quá 200 ký tự' })
   subject: string;
 
-  @IsNotEmpty({ message: 'Mô tả không được để trống' })
+  @IsOptional()
   @IsString({ message: 'Mô tả phải là chuỗi' })
   @MinLength(10, { message: 'Mô tả phải có ít nhất 10 ký tự' })
   @MaxLength(1000, { message: 'Mô tả không được quá 1000 ký tự' })
-  description: string;
+  description?: string;
 
-  @IsNotEmpty({ message: 'Hình ảnh không được để trống' })
+  @IsNotEmpty({ message: 'Danh sách nhân viên không được để trống' })
+  @IsArray({ message: 'Danh sách nhân viên phải là mảng' })
+  @IsMongoId({ each: true, message: 'ID nhân viên không hợp lệ' })
+  staffs: string[];
+
+  @IsOptional()
   @IsArray({ message: 'Hình ảnh phải là mảng' })
   @IsString({ each: true, message: 'Mỗi URL hình ảnh phải là chuỗi' })
-  images: string[];
-
-  @IsNotEmpty({ message: 'Nhân viên thực hiện không được để trống' })
-  @IsMongoId({ message: 'ID nhân viên không hợp lệ' })
-  staff: string;
+  images?: string[];
 }
