@@ -242,7 +242,36 @@ export class ReportService {
     const [reports, total] = await Promise.all([
       this.reportModel
         .find(filter)
-        .populate('asset', 'name code status')
+        .populate({
+          path: 'asset',
+          select: 'name code status zone area',
+          populate: [
+            {
+              path: 'zone',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+            {
+              path: 'area',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+          ],
+        })
         .populate('createdBy', 'fullName email')
         .sort(sort)
         .skip(skip)
@@ -275,7 +304,36 @@ export class ReportService {
 
     const report = await this.reportModel
       .findById(id)
-      .populate('asset', 'name code status')
+      .populate({
+        path: 'asset',
+        select: 'name code status zone area',
+        populate: [
+          {
+            path: 'zone',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+          {
+            path: 'area',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+        ],
+      })
       .populate('createdBy', 'fullName email')
       .lean();
 
