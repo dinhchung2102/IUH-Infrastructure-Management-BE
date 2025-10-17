@@ -12,6 +12,7 @@ import {
   Query,
   Param,
   Patch,
+  Delete,
   UseInterceptors,
   UploadedFiles,
 } from '@nestjs/common';
@@ -35,6 +36,11 @@ import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountStatsDto } from './dto/account-stats.dto';
 import { CreateStaffAccountDto } from './dto/create-staff-account.dto';
+import {
+  AssignLocationDto,
+  AssignCampusDto,
+  RemoveLocationDto,
+} from './dto/assign-location.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
@@ -335,5 +341,117 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async unlockAccount(@Param('id') id: string) {
     return await this.authService.unlockAccount(id);
+  }
+
+  //================= Location Assignment =================//
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Post('accounts/assign-zones')
+  @HttpCode(HttpStatus.OK)
+  async assignZonesToAccount(@Body() dto: AssignLocationDto) {
+    return this.authService.assignZonesToAccount(
+      dto.accountId,
+      dto.locationIds,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Post('accounts/assign-buildings')
+  @HttpCode(HttpStatus.OK)
+  async assignBuildingsToAccount(@Body() dto: AssignLocationDto) {
+    return this.authService.assignBuildingsToAccount(
+      dto.accountId,
+      dto.locationIds,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Post('accounts/assign-areas')
+  @HttpCode(HttpStatus.OK)
+  async assignAreasToAccount(@Body() dto: AssignLocationDto) {
+    return this.authService.assignAreasToAccount(
+      dto.accountId,
+      dto.locationIds,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Post('accounts/assign-campus')
+  @HttpCode(HttpStatus.OK)
+  async assignCampusToAccount(@Body() dto: AssignCampusDto) {
+    return this.authService.assignCampusToAccount(dto.accountId, dto.campusId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Delete('accounts/remove-zone')
+  @HttpCode(HttpStatus.OK)
+  async removeZoneFromAccount(@Body() dto: RemoveLocationDto) {
+    return this.authService.removeZoneFromAccount(
+      dto.accountId,
+      dto.locationId,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Delete('accounts/remove-building')
+  @HttpCode(HttpStatus.OK)
+  async removeBuildingFromAccount(@Body() dto: RemoveLocationDto) {
+    return this.authService.removeBuildingFromAccount(
+      dto.accountId,
+      dto.locationId,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Delete('accounts/remove-area')
+  @HttpCode(HttpStatus.OK)
+  async removeAreaFromAccount(@Body() dto: RemoveLocationDto) {
+    return this.authService.removeAreaFromAccount(
+      dto.accountId,
+      dto.locationId,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Delete('accounts/:accountId/remove-campus')
+  @HttpCode(HttpStatus.OK)
+  async removeCampusFromAccount(@Param('accountId') accountId: string) {
+    return this.authService.removeCampusFromAccount(accountId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/by-zone/:zoneId')
+  async getAccountsByZone(@Param('zoneId') zoneId: string) {
+    return this.authService.getAccountsByZone(zoneId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/by-building/:buildingId')
+  async getAccountsByBuilding(@Param('buildingId') buildingId: string) {
+    return this.authService.getAccountsByBuilding(buildingId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/by-area/:areaId')
+  async getAccountsByArea(@Param('areaId') areaId: string) {
+    return this.authService.getAccountsByArea(areaId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/by-campus/:campusId')
+  async getAccountsByCampus(@Param('campusId') campusId: string) {
+    return this.authService.getAccountsByCampus(campusId);
   }
 }

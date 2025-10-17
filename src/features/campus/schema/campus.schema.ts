@@ -1,8 +1,4 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import {
-  Account,
-  type AccountDocument,
-} from '../../../features/auth/schema/account.schema';
 import { Types } from 'mongoose';
 import { CommonStatus } from '../../../common/enum/CommonStatus.enum';
 
@@ -25,8 +21,8 @@ export class Campus {
   @Prop({ required: true, enum: CommonStatus })
   status: CommonStatus;
 
-  @Prop({ required: true, type: Types.ObjectId, ref: Account.name })
-  manager: AccountDocument;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'Account' })
+  manager: Types.ObjectId;
 }
 
 export const CampusSchema = SchemaFactory.createForClass(Campus);

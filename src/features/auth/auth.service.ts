@@ -748,6 +748,10 @@ export class AuthService {
       this.accountModel
         .find(filter)
         .populate('role', 'roleName')
+        .populate('areasManaged', '_id name')
+        .populate('zonesManaged', '_id name')
+        .populate('buildingsManaged', '_id name')
+        .populate('campusManaged', '_id name')
         .select('-password -refreshToken')
         .sort(sort)
         .skip(skip)
@@ -919,6 +923,10 @@ export class AuthService {
     const account = await this.accountModel
       .findById(id)
       .populate('role', 'roleName')
+      .populate('areasManaged', '_id name')
+      .populate('zonesManaged', '_id name')
+      .populate('buildingsManaged', '_id name')
+      .populate('campusManaged', '_id name')
       .select('-password -refreshToken')
       .lean();
 
@@ -1224,6 +1232,543 @@ export class AuthService {
     return {
       message: 'Mở khóa tài khoản thành công',
       data: updatedAccount,
+    };
+  }
+
+  // =================== Location Assignment ===================
+
+  /**
+   * Gán zones cho account (2 chiều)
+   */
+  async assignZonesToAccount(
+    accountId: string,
+    zoneIds: string[],
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('Account ID không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    // Convert string IDs to ObjectIds
+    const zoneObjectIds = zoneIds.map((id) => new Types.ObjectId(id));
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    // Start session for transaction
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 0. Đảm bảo zonesManaged là array (nếu null/undefined)
+      await this.accountModel.updateOne(
+        { _id: accountId, zonesManaged: null },
+        { $set: { zonesManaged: [] } },
+        { session },
+      );
+
+      // 1. Update account với zones mới
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $addToSet: { zonesManaged: { $each: zoneObjectIds } } },
+        { session },
+      );
+
+      // 2. Update zones với account mới (2 chiều)
+      await this.accountModel.db
+        .collection('zones')
+        .updateMany(
+          { _id: { $in: zoneObjectIds } },
+          { $addToSet: { accounts: accountObjectId } },
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      // Lấy account đã update với populate
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('zonesManaged', '_id name')
+        .select('-password -refreshToken');
+
+      return {
+        message: 'Gán khu vực cho tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Gán buildings cho account (2 chiều)
+   */
+  async assignBuildingsToAccount(
+    accountId: string,
+    buildingIds: string[],
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('Account ID không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    const buildingObjectIds = buildingIds.map((id) => new Types.ObjectId(id));
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 0. Đảm bảo buildingsManaged là array
+      await this.accountModel.updateOne(
+        { _id: accountId, buildingsManaged: null },
+        { $set: { buildingsManaged: [] } },
+        { session },
+      );
+
+      // 1. Update account
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $addToSet: { buildingsManaged: { $each: buildingObjectIds } } },
+        { session },
+      );
+
+      // 2. Update buildings (2 chiều)
+      await this.accountModel.db
+        .collection('buildings')
+        .updateMany(
+          { _id: { $in: buildingObjectIds } },
+          { $addToSet: { accounts: accountObjectId } },
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('buildingsManaged', '_id name')
+        .select('-password -refreshToken');
+
+      return {
+        message: 'Gán tòa nhà cho tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Gán areas cho account (2 chiều)
+   */
+  async assignAreasToAccount(
+    accountId: string,
+    areaIds: string[],
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('Account ID không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    const areaObjectIds = areaIds.map((id) => new Types.ObjectId(id));
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 0. Đảm bảo areasManaged là array
+      await this.accountModel.updateOne(
+        { _id: accountId, areasManaged: null },
+        { $set: { areasManaged: [] } },
+        { session },
+      );
+
+      // 1. Update account
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $addToSet: { areasManaged: { $each: areaObjectIds } } },
+        { session },
+      );
+
+      // 2. Update areas (2 chiều)
+      await this.accountModel.db
+        .collection('areas')
+        .updateMany(
+          { _id: { $in: areaObjectIds } },
+          { $addToSet: { accounts: accountObjectId } },
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('areasManaged', '_id name')
+        .select('-password -refreshToken');
+
+      return {
+        message: 'Gán khu vực cho tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Gán campus cho account - chỉ 1 campus (2 chiều)
+   * Note: Campus không có field accounts vì Campus.manager là single reference
+   */
+  async assignCampusToAccount(
+    accountId: string,
+    campusId: string,
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('Account ID không hợp lệ');
+    }
+
+    if (!Types.ObjectId.isValid(campusId)) {
+      throw new NotFoundException('Campus ID không hợp lệ');
+    }
+
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    // Chỉ cập nhật account.campusManaged
+    // Campus.manager là quan hệ khác (1-1), không phải 1-many
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(
+        accountId,
+        { campusManaged: new Types.ObjectId(campusId) },
+        { new: true },
+      )
+      .populate('role', 'roleName')
+      .populate('campusManaged', '_id name')
+      .select('-password -refreshToken');
+
+    return {
+      message: 'Gán cơ sở cho tài khoản thành công',
+      account: updatedAccount,
+    };
+  }
+
+  /**
+   * Xóa zone khỏi account (2 chiều)
+   */
+  async removeZoneFromAccount(
+    accountId: string,
+    zoneId: string,
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId) || !Types.ObjectId.isValid(zoneId)) {
+      throw new NotFoundException('ID không hợp lệ');
+    }
+
+    const zoneObjectId = new Types.ObjectId(zoneId);
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Xóa zone khỏi account
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $pull: { zonesManaged: zoneObjectId } },
+        { session },
+      );
+
+      // 2. Xóa account khỏi zone (2 chiều)
+      await this.accountModel.db
+        .collection('zones')
+        .updateOne(
+          { _id: zoneObjectId },
+          { $pull: { accounts: { $in: [accountObjectId] } } } as any,
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('zonesManaged', '_id name')
+        .select('-password -refreshToken');
+
+      if (!updatedAccount) {
+        throw new NotFoundException('Tài khoản không tồn tại');
+      }
+
+      return {
+        message: 'Xóa khu vực khỏi tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Xóa building khỏi account (2 chiều)
+   */
+  async removeBuildingFromAccount(
+    accountId: string,
+    buildingId: string,
+  ): Promise<{ message: string; account: any }> {
+    if (
+      !Types.ObjectId.isValid(accountId) ||
+      !Types.ObjectId.isValid(buildingId)
+    ) {
+      throw new NotFoundException('ID không hợp lệ');
+    }
+
+    const buildingObjectId = new Types.ObjectId(buildingId);
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Xóa building khỏi account
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $pull: { buildingsManaged: buildingObjectId } },
+        { session },
+      );
+
+      // 2. Xóa account khỏi building (2 chiều)
+      await this.accountModel.db
+        .collection('buildings')
+        .updateOne(
+          { _id: buildingObjectId },
+          { $pull: { accounts: { $in: [accountObjectId] } } } as any,
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('buildingsManaged', '_id name')
+        .select('-password -refreshToken');
+
+      if (!updatedAccount) {
+        throw new NotFoundException('Tài khoản không tồn tại');
+      }
+
+      return {
+        message: 'Xóa tòa nhà khỏi tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Xóa area khỏi account (2 chiều)
+   */
+  async removeAreaFromAccount(
+    accountId: string,
+    areaId: string,
+  ): Promise<{ message: string; account: any }> {
+    if (!Types.ObjectId.isValid(accountId) || !Types.ObjectId.isValid(areaId)) {
+      throw new NotFoundException('ID không hợp lệ');
+    }
+
+    const areaObjectId = new Types.ObjectId(areaId);
+    const accountObjectId = new Types.ObjectId(accountId);
+
+    const session = await this.accountModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // 1. Xóa area khỏi account
+      await this.accountModel.findByIdAndUpdate(
+        accountId,
+        { $pull: { areasManaged: areaObjectId } },
+        { session },
+      );
+
+      // 2. Xóa account khỏi area (2 chiều)
+      await this.accountModel.db
+        .collection('areas')
+        .updateOne(
+          { _id: areaObjectId },
+          { $pull: { accounts: { $in: [accountObjectId] } } } as any,
+          { session },
+        );
+
+      await session.commitTransaction();
+
+      const updatedAccount = await this.accountModel
+        .findById(accountId)
+        .populate('role', 'roleName')
+        .populate('areasManaged', '_id name')
+        .select('-password -refreshToken');
+
+      if (!updatedAccount) {
+        throw new NotFoundException('Tài khoản không tồn tại');
+      }
+
+      return {
+        message: 'Xóa khu vực khỏi tài khoản thành công',
+        account: updatedAccount,
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /**
+   * Xóa campus khỏi account (set về null)
+   */
+  async removeCampusFromAccount(accountId: string): Promise<{
+    message: string;
+    account: any;
+  }> {
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('Account ID không hợp lệ');
+    }
+
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(accountId, { campusManaged: null }, { new: true })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken');
+
+    if (!updatedAccount) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    return {
+      message: 'Xóa cơ sở khỏi tài khoản thành công',
+      account: updatedAccount,
+    };
+  }
+
+  /**
+   * Lấy danh sách accounts theo zone
+   */
+  async getAccountsByZone(zoneId: string): Promise<{
+    message: string;
+    accounts: any[];
+  }> {
+    if (!Types.ObjectId.isValid(zoneId)) {
+      throw new NotFoundException('Zone ID không hợp lệ');
+    }
+
+    const accounts = await this.accountModel
+      .find({ zonesManaged: new Types.ObjectId(zoneId) })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken')
+      .lean();
+
+    return {
+      message: 'Lấy danh sách tài khoản theo zone thành công',
+      accounts,
+    };
+  }
+
+  /**
+   * Lấy danh sách accounts theo building
+   */
+  async getAccountsByBuilding(buildingId: string): Promise<{
+    message: string;
+    accounts: any[];
+  }> {
+    if (!Types.ObjectId.isValid(buildingId)) {
+      throw new NotFoundException('Building ID không hợp lệ');
+    }
+
+    const accounts = await this.accountModel
+      .find({ buildingsManaged: new Types.ObjectId(buildingId) })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken')
+      .lean();
+
+    return {
+      message: 'Lấy danh sách tài khoản theo building thành công',
+      accounts,
+    };
+  }
+
+  /**
+   * Lấy danh sách accounts theo area
+   */
+  async getAccountsByArea(areaId: string): Promise<{
+    message: string;
+    accounts: any[];
+  }> {
+    if (!Types.ObjectId.isValid(areaId)) {
+      throw new NotFoundException('Area ID không hợp lệ');
+    }
+
+    const accounts = await this.accountModel
+      .find({ areasManaged: new Types.ObjectId(areaId) })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken')
+      .lean();
+
+    return {
+      message: 'Lấy danh sách tài khoản theo area thành công',
+      accounts,
+    };
+  }
+
+  /**
+   * Lấy danh sách accounts theo campus
+   */
+  async getAccountsByCampus(campusId: string): Promise<{
+    message: string;
+    accounts: any[];
+  }> {
+    if (!Types.ObjectId.isValid(campusId)) {
+      throw new NotFoundException('Campus ID không hợp lệ');
+    }
+
+    const accounts = await this.accountModel
+      .find({ campusManaged: new Types.ObjectId(campusId) })
+      .populate('role', 'roleName')
+      .select('-password -refreshToken')
+      .lean();
+
+    return {
+      message: 'Lấy danh sách tài khoản theo cơ sở thành công',
+      accounts,
     };
   }
 }

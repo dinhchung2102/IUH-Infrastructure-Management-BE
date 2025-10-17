@@ -3,7 +3,6 @@ import type { RoleDocument } from './role.schema';
 import { Role } from './role.schema';
 import { Gender } from '../enum/gender.enum';
 import { Types } from 'mongoose';
-import { Exclude } from 'class-transformer';
 
 export type AccountDocument = Account & Document;
 
@@ -13,7 +12,6 @@ export class Account {
   email: string;
 
   @Prop({ required: true })
-  @Exclude()
   password: string;
 
   @Prop({ required: true, type: Types.ObjectId, ref: Role.name })
@@ -41,8 +39,19 @@ export class Account {
   dateOfBirth: Date;
 
   @Prop({ required: false })
-  @Exclude()
   refreshToken: string;
+
+  @Prop({ type: [Types.ObjectId], ref: 'Area', default: [] })
+  areasManaged: Types.ObjectId[];
+
+  @Prop({ type: [Types.ObjectId], ref: 'Building', default: [] })
+  buildingsManaged: Types.ObjectId[];
+
+  @Prop({ type: [Types.ObjectId], ref: 'Zone', default: [] })
+  zonesManaged: Types.ObjectId[];
+
+  @Prop({ type: Types.ObjectId, ref: 'Campus', default: null })
+  campusManaged: Types.ObjectId | null;
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);

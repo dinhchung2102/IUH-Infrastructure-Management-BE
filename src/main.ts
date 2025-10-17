@@ -48,7 +48,9 @@ async function bootstrap() {
     }),
   );
 
-  app.useGlobalFilters(new AllExceptionsFilter());
+  if (process.env.NODE_ENV === 'production') {
+    app.useGlobalFilters(new AllExceptionsFilter());
+  }
 
   app.useGlobalInterceptors(new SuccessResponseInterceptor());
 
