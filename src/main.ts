@@ -18,17 +18,25 @@ async function bootstrap() {
 
   // Enable CORS
   const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://localhost:5173'];
+    ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
+    : [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://iuh.nagentech.com',
+      ];
+
+  console.log('🌐 Allowed CORS Origins:', allowedOrigins);
 
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`❌ CORS blocked origin: ${origin}`);
+        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
