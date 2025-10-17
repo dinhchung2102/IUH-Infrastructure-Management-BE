@@ -134,7 +134,7 @@ export class ReportService {
       await this.redisService.delete(`otp:${createReportDto.email}`);
 
       // Tìm hoặc tạo user
-      let account = await this.reportModel.db
+      const account = await this.reportModel.db
         .collection('accounts')
         .findOne({ email: createReportDto.email });
 

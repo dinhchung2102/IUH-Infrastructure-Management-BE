@@ -279,6 +279,13 @@ export class AuthController {
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions('ACCOUNT:ADMINACTION')
+  @Get('accounts/staff-only')
+  async findStaffAccounts(@Query() queryDto: QueryAccountsDto) {
+    return this.authService.findStaffAccounts(queryDto);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions('ACCOUNT:ADMINACTION')
   @Get('accounts/:id')
   async getAccountById(@Param('id') id: string) {
     return this.authService.getAccountById(id);

@@ -665,6 +665,103 @@ export class AuthService {
     };
   }
 
+  async findStaffAccounts(queryDto: QueryAccountsDto): Promise<{
+    message: string;
+    accounts: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+  }> {
+    const {
+      search,
+      role,
+      isActive,
+      gender,
+      page = '1',
+      limit = '10',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Lấy IDs của roles cần loại trừ
+    const excludedRoles = await this.roleModel
+      .find({
+        roleName: {
+          $in: [RoleName.GUEST, RoleName.STUDENT, RoleName.LECTURER],
+        },
+      })
+      .select('_id')
+      .lean();
+
+    const excludedRoleIds = excludedRoles.map((r) => r._id);
+
+    const filter: Record<string, any> = {
+      // Loại trừ GUEST, STUDENT, LECTURER
+      role: { $nin: excludedRoleIds },
+    };
+
+    // Tìm kiếm theo tên và email
+    if (search) {
+      filter.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Filter theo role cụ thể (nếu muốn filter thêm trong staff)
+    if (role) {
+      const roleDoc = await this.roleModel.findOne({ roleName: role });
+      if (roleDoc && !excludedRoleIds.includes(roleDoc._id)) {
+        filter.role = roleDoc._id;
+      }
+    }
+
+    // Filter theo trạng thái hoạt động
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
+
+    // Filter theo giới tính
+    if (gender) {
+      filter.gender = gender;
+    }
+
+    const sort: Record<string, any> = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const [accounts, total] = await Promise.all([
+      this.accountModel
+        .find(filter)
+        .populate('role', 'roleName')
+        .select('-password -refreshToken')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      this.accountModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      message: 'Lấy danh sách nhân viên thành công',
+      accounts,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+      },
+    };
+  }
+
   async updateAccount(
     id: string,
     updateAccountDto: UpdateAccountDto,
