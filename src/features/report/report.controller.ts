@@ -57,21 +57,21 @@ export class ReportController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:READ')
+  @RequirePermissions(['REPORT:READ'])
   @Get()
   async findAllReports(@Query() queryDto: QueryReportDto) {
     return this.reportService.findAllReports(queryDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:READ')
+  @RequirePermissions(['REPORT:READ'])
   @Get(':id')
   async findOneReport(@Param('id') id: string) {
     return this.reportService.findOneReport(id);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:UPDATE')
+  @RequirePermissions(['REPORT:UPDATE'])
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   async updateReport(
@@ -82,7 +82,7 @@ export class ReportController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:DELETE')
+  @RequirePermissions(['REPORT:DELETE'])
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async removeReport(@Param('id') id: string) {
@@ -90,7 +90,7 @@ export class ReportController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:READ')
+  @RequirePermissions(['REPORT:READ'])
   @Get('statistics/dashboard')
   async getReportStatistics() {
     return this.reportService.getReportStatistics();
@@ -105,7 +105,7 @@ export class ReportController {
 
   // ====== Approve Report ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:UPDATE')
+  @RequirePermissions(['REPORT:UPDATE'])
   @Post('approve')
   @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.OK)
@@ -118,7 +118,7 @@ export class ReportController {
 
   // ====== Upload ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('REPORT:CREATE')
+  @RequirePermissions(['REPORT:CREATE'])
   @Post('upload/images')
   @UseInterceptors(FilesInterceptor('images', 10)) // Tối đa 10 files
   async uploadReportImages(

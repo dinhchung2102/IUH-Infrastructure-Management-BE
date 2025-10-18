@@ -13,14 +13,16 @@ export class PermissionsGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const metadata = this.reflector.getAllAndOverride<{
+      permissions: string[];
+      mode: 'AND' | 'OR';
+    }>(PERMISSIONS_KEY, [context.getHandler(), context.getClass()]);
 
-    if (!requiredPermissions) {
+    if (!metadata) {
       return true; // No permissions required
     }
+
+    const { permissions: requiredPermissions, mode } = metadata;
 
     const request = context
       .switchToHttp()
@@ -31,7 +33,7 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Không có quyền truy cập');
     }
 
-    // Kiểm tra xem user có permission ADMINACTION không (toàn quyền)
+    // Kiểm tra xem user có permission ADMIN_ACTION không (toàn quyền)
     const hasAdminAction = user.permissions.some((permission) =>
       permission.endsWith(':ADMIN_ACTION'),
     );
@@ -40,12 +42,17 @@ export class PermissionsGuard implements CanActivate {
       return true; // Có toàn quyền, cho phép truy cập tất cả
     }
 
-    // Kiểm tra quyền thông thường
-    const hasAllPermissions = requiredPermissions.every((permission) =>
-      user.permissions.includes(permission),
-    );
+    // Kiểm tra quyền thông thường dựa trên mode
+    const isAllowed =
+      mode === 'AND'
+        ? requiredPermissions.every((permission) =>
+            user.permissions.includes(permission),
+          )
+        : requiredPermissions.some((permission) =>
+            user.permissions.includes(permission),
+          );
 
-    if (!hasAllPermissions) {
+    if (!isAllowed) {
       throw new ForbiddenException('Không có đủ quyền truy cập');
     }
 

@@ -20,7 +20,7 @@ export class UploadController {
 
   @Post('single')
   @UseInterceptors(FileInterceptor('file'))
-  @RequirePermissions('ASSET:CREATE', 'ASSET:UPDATE')
+  @RequirePermissions(['ASSET:CREATE', 'ASSET:UPDATE'], 'OR')
   async uploadSingleFile(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<{ message: string; data: { url: string } }> {
@@ -34,10 +34,8 @@ export class UploadController {
   @Post('multiple')
   @UseInterceptors(FilesInterceptor('files', 10)) // Tối đa 10 files
   @RequirePermissions(
-    'ASSET:CREATE',
-    'ASSET:UPDATE',
-    'AUDIT:CREATE',
-    'REPORT:CREATE',
+    ['ASSET:CREATE', 'ASSET:UPDATE', 'AUDIT:CREATE', 'REPORT:CREATE'],
+    'OR',
   )
   async uploadMultipleFiles(
     @UploadedFiles() files: Express.Multer.File[],

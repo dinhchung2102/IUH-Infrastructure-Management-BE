@@ -35,7 +35,7 @@ export class ZoneAreaController {
   // ==================== AREA ENDPOINTS ====================
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:CREATE')
+  @RequirePermissions(['AREA:CREATE'])
   @Post('areas')
   async createArea(@Body() createAreaDto: CreateAreaDto) {
     return this.zoneAreaService.createArea(createAreaDto);
@@ -54,7 +54,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:UPDATE')
+  @RequirePermissions(['AREA:UPDATE'])
   @Patch('areas/:id')
   async updateArea(
     @Param('id') id: string,
@@ -64,7 +64,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AREA:DELETE')
+  @RequirePermissions(['AREA:DELETE'])
   @Delete('areas/:id')
   @HttpCode(HttpStatus.OK)
   async removeArea(@Param('id') id: string) {
@@ -74,7 +74,7 @@ export class ZoneAreaController {
   // ==================== BUILDING ENDPOINTS ====================
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:CREATE')
+  @RequirePermissions(['BUILDING:CREATE'])
   @Post('buildings')
   async createBuilding(@Body() createBuildingDto: CreateBuildingDto) {
     return this.zoneAreaService.createBuilding(createBuildingDto);
@@ -93,7 +93,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:UPDATE')
+  @RequirePermissions(['BUILDING:UPDATE'])
   @Patch('buildings/:id')
   async updateBuilding(
     @Param('id') id: string,
@@ -103,7 +103,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('BUILDING:DELETE')
+  @RequirePermissions(['BUILDING:DELETE'])
   @Delete('buildings/:id')
   @HttpCode(HttpStatus.OK)
   async removeBuilding(@Param('id') id: string) {
@@ -113,7 +113,7 @@ export class ZoneAreaController {
   // ==================== ZONE ENDPOINTS ====================
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:CREATE')
+  @RequirePermissions(['ZONE:CREATE'])
   @Post('zones')
   async createZone(@Body() createZoneDto: CreateZoneDto) {
     return this.zoneAreaService.createZone(createZoneDto);
@@ -132,7 +132,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:UPDATE')
+  @RequirePermissions(['ZONE:UPDATE'])
   @Patch('zones/:id')
   async updateZone(
     @Param('id') id: string,
@@ -142,7 +142,7 @@ export class ZoneAreaController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ZONE:DELETE')
+  @RequirePermissions(['ZONE:DELETE'])
   @Delete('zones/:id')
   @HttpCode(HttpStatus.OK)
   async removeZone(@Param('id') id: string) {

@@ -104,14 +104,14 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('PERMISSION:CREATE')
+  @RequirePermissions(['PERMISSION:CREATE'])
   @Post('create-permission')
   async createPermission(@Body() permissionDto: PermissionDto) {
     return this.authService.createPermission(permissionDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('PERMISSION:READ')
+  @RequirePermissions(['PERMISSION:READ'])
   @Get('permissions')
   async getAllPermissions(): Promise<{
     message: string;
@@ -122,14 +122,14 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ROLE:CREATE')
+  @RequirePermissions(['ROLE:CREATE'])
   @Post('create-role')
   async createRole(@Body() createRoleDto: CreateRoleDto) {
     return this.authService.createRole(createRoleDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ROLE:READ')
+  @RequirePermissions(['ROLE:READ'])
   @Get('roles')
   async getAllRoles(): Promise<{
     message: string;
@@ -140,7 +140,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ROLE:UPDATE')
+  @RequirePermissions(['ROLE:UPDATE'])
   @Patch('roles/:id')
   @HttpCode(HttpStatus.OK)
   async updateRole(
@@ -154,7 +154,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ROLE:DELETE')
+  @RequirePermissions(['ROLE:DELETE'])
   @Delete('roles/:id')
   @HttpCode(HttpStatus.OK)
   async deleteRole(@Param('id') id: string): Promise<{
@@ -320,14 +320,14 @@ export class AuthController {
    Account Management APIs => Only Admin can access--------------------------------
    */
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION', 'ACCOUNT:ALL')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION', 'ACCOUNT:ALL'], 'OR')
   @Get('accounts/stats')
   async getAccountStats(@Query() statsDto: AccountStatsDto) {
     return this.authService.getAccountStats(statsDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION', 'ACCOUNT:ALL')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION', 'ACCOUNT:ALL'], 'OR')
   @Post('accounts/staff-only')
   @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.CREATED)
@@ -342,28 +342,28 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts')
   async findAllAccounts(@Query() queryDto: QueryAccountsDto) {
     return this.authService.findAllAccounts(queryDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/staff-only')
   async findStaffAccounts(@Query() queryDto: QueryAccountsDto) {
     return this.authService.findStaffAccounts(queryDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/:id')
   async getAccountById(@Param('id') id: string) {
     return this.authService.getAccountById(id);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Patch('accounts/:id')
   @HttpCode(HttpStatus.OK)
   async updateAccount(
@@ -374,7 +374,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Patch('accounts/:id/lock')
   @HttpCode(HttpStatus.OK)
   async lockAccount(@Param('id') id: string) {
@@ -382,7 +382,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Patch('accounts/:id/unlock')
   @HttpCode(HttpStatus.OK)
   async unlockAccount(@Param('id') id: string) {
@@ -392,7 +392,7 @@ export class AuthController {
   //================= Location Assignment =================//
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Post('accounts/assign-zones')
   @HttpCode(HttpStatus.OK)
   async assignZonesToAccount(@Body() dto: AssignLocationDto) {
@@ -403,7 +403,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Post('accounts/assign-buildings')
   @HttpCode(HttpStatus.OK)
   async assignBuildingsToAccount(@Body() dto: AssignLocationDto) {
@@ -414,7 +414,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Post('accounts/assign-areas')
   @HttpCode(HttpStatus.OK)
   async assignAreasToAccount(@Body() dto: AssignLocationDto) {
@@ -425,7 +425,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Post('accounts/assign-campus')
   @HttpCode(HttpStatus.OK)
   async assignCampusToAccount(@Body() dto: AssignCampusDto) {
@@ -433,7 +433,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Delete('accounts/remove-zone')
   @HttpCode(HttpStatus.OK)
   async removeZoneFromAccount(@Body() dto: RemoveLocationDto) {
@@ -444,7 +444,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Delete('accounts/remove-building')
   @HttpCode(HttpStatus.OK)
   async removeBuildingFromAccount(@Body() dto: RemoveLocationDto) {
@@ -455,7 +455,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Delete('accounts/remove-area')
   @HttpCode(HttpStatus.OK)
   async removeAreaFromAccount(@Body() dto: RemoveLocationDto) {
@@ -466,7 +466,7 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Delete('accounts/:accountId/remove-campus')
   @HttpCode(HttpStatus.OK)
   async removeCampusFromAccount(@Param('accountId') accountId: string) {
@@ -474,28 +474,28 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/by-zone/:zoneId')
   async getAccountsByZone(@Param('zoneId') zoneId: string) {
     return this.authService.getAccountsByZone(zoneId);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/by-building/:buildingId')
   async getAccountsByBuilding(@Param('buildingId') buildingId: string) {
     return this.authService.getAccountsByBuilding(buildingId);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/by-area/:areaId')
   async getAccountsByArea(@Param('areaId') areaId: string) {
     return this.authService.getAccountsByArea(areaId);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ACCOUNT:ADMIN_ACTION')
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/by-campus/:campusId')
   async getAccountsByCampus(@Param('campusId') campusId: string) {
     return this.authService.getAccountsByCampus(campusId);

@@ -37,7 +37,7 @@ export class AssetsController {
 
   // ====== Categories ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:CREATE')
+  @RequirePermissions(['ASSET_CATEGORY:CREATE'])
   @Post('categories')
   @UseInterceptors(AnyFilesInterceptor())
   async createCategory(
@@ -60,7 +60,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:UPDATE')
+  @RequirePermissions(['ASSET_CATEGORY:UPDATE'])
   @Patch('categories/:id')
   async updateCategory(
     @Param('id') id: string,
@@ -70,7 +70,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:DELETE')
+  @RequirePermissions(['ASSET_CATEGORY:DELETE'])
   @Delete('categories/:id')
   async removeCategory(@Param('id') id: string) {
     return this.assetsService.removeCategory(id);
@@ -78,7 +78,7 @@ export class AssetsController {
 
   // ====== Types ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_TYPE:CREATE')
+  @RequirePermissions(['ASSET_TYPE:CREATE'])
   @Post('types')
   async createType(@Body() dto: CreateAssetTypeDto) {
     return this.assetsService.createType(dto);
@@ -97,14 +97,14 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_TYPE:UPDATE')
+  @RequirePermissions(['ASSET_TYPE:UPDATE'])
   @Patch('types/:id')
   async updateType(@Param('id') id: string, @Body() dto: UpdateAssetTypeDto) {
     return this.assetsService.updateType(id, dto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_TYPE:DELETE')
+  @RequirePermissions(['ASSET_TYPE:DELETE'])
   @Delete('types/:id')
   async removeType(@Param('id') id: string) {
     return this.assetsService.removeType(id);
@@ -112,7 +112,7 @@ export class AssetsController {
 
   // ====== Assets ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:CREATE')
+  @RequirePermissions(['ASSET:CREATE'])
   @Post()
   @UseInterceptors(AnyFilesInterceptor())
   async createAsset(
@@ -135,7 +135,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:UPDATE')
+  @RequirePermissions(['ASSET:UPDATE'])
   @Patch(':id')
   @UseInterceptors(AnyFilesInterceptor())
   async updateAsset(
@@ -147,7 +147,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:DELETE')
+  @RequirePermissions(['ASSET:DELETE'])
   @Delete(':id')
   async removeAsset(@Param('id') id: string) {
     return this.assetsService.removeAsset(id);
@@ -155,7 +155,7 @@ export class AssetsController {
 
   // ====== Upload ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:CREATE', 'ASSET:UPDATE')
+  @RequirePermissions(['ASSET:CREATE', 'ASSET:UPDATE'], 'OR')
   @Post('upload/image')
   @UseInterceptors(FileInterceptor('image'))
   async uploadAssetImage(
@@ -169,7 +169,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET_CATEGORY:CREATE', 'ASSET_CATEGORY:UPDATE')
+  @RequirePermissions(['ASSET_CATEGORY:CREATE', 'ASSET_CATEGORY:UPDATE'], 'OR')
   @Post('categories/upload/image')
   @UseInterceptors(FileInterceptor('image'))
   async uploadCategoryImage(
@@ -183,7 +183,7 @@ export class AssetsController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('ASSET:READ')
+  @RequirePermissions(['ASSET:READ'])
   @Get('statistics/dashboard')
   async getAssetStatistics() {
     return this.assetsService.getAssetStatistics();

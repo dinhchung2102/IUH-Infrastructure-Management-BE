@@ -23,7 +23,7 @@ export class CampusController {
   constructor(private readonly campusService: CampusService) {}
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:CREATE')
+  @RequirePermissions(['CAMPUS:CREATE'])
   @Post()
   async create(@Body() createCampusDto: CreateCampusDto) {
     return this.campusService.create(createCampusDto);
@@ -36,7 +36,7 @@ export class CampusController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:READ')
+  @RequirePermissions(['CAMPUS:READ'])
   @Get('stats')
   async getCampusStats() {
     return this.campusService.getCampusStats();
@@ -48,7 +48,7 @@ export class CampusController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:UPDATE')
+  @RequirePermissions(['CAMPUS:UPDATE'])
   @Patch(':id')
   async update(
     @Param('id') id: string,
@@ -58,7 +58,7 @@ export class CampusController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('CAMPUS:DELETE')
+  @RequirePermissions(['CAMPUS:DELETE'])
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async remove(@Param('id') id: string) {

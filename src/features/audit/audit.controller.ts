@@ -34,7 +34,7 @@ export class AuditController {
   ) {}
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:CREATE')
+  @RequirePermissions(['AUDIT:CREATE'])
   @Post()
   @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.CREATED)
@@ -46,21 +46,21 @@ export class AuditController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:READ')
+  @RequirePermissions(['AUDIT:READ'])
   @Get()
   async findAllAuditLogs(@Query() queryDto: QueryAuditLogDto) {
     return this.auditService.findAllAuditLogs(queryDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:READ')
+  @RequirePermissions(['AUDIT:READ'])
   @Get(':id')
   async findOneAuditLog(@Param('id') id: string) {
     return this.auditService.findOneAuditLog(id);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:UPDATE')
+  @RequirePermissions(['AUDIT:UPDATE'])
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   async updateAuditLog(
@@ -71,7 +71,7 @@ export class AuditController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:DELETE')
+  @RequirePermissions(['AUDIT:DELETE'])
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   async removeAuditLog(@Param('id') id: string) {
@@ -80,7 +80,7 @@ export class AuditController {
 
   // ====== Upload ======
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions('AUDIT:CREATE')
+  @RequirePermissions(['AUDIT:CREATE'])
   @Post('upload/images')
   @UseInterceptors(FilesInterceptor('images', 10)) // Tối đa 10 files
   async uploadAuditImages(
