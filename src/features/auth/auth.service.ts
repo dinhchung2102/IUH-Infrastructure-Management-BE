@@ -88,6 +88,23 @@ export class AuthService {
     return newPermission.save();
   }
 
+  async getAllPermissions(): Promise<{
+    message: string;
+    permissions: any[];
+    total: number;
+  }> {
+    const permissions = await this.permissionModel
+      .find()
+      .sort({ resource: 1, action: 1 })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách quyền thành công',
+      permissions,
+      total: permissions.length,
+    };
+  }
+
   async createRole(createRoleDto: CreateRoleDto) {
     const existingRole = await this.roleModel.findOne({
       roleName: createRoleDto.roleName,
@@ -105,6 +122,134 @@ export class AuthService {
     });
 
     return newRole.save();
+  }
+
+  async getAllRoles(): Promise<{
+    message: string;
+    roles: any[];
+    total: number;
+  }> {
+    const roles = await this.roleModel.find().lean();
+
+    return {
+      message: 'Lấy danh sách vai trò thành công',
+      roles,
+      total: roles.length,
+    };
+  }
+
+  async updateRole(
+    roleId: string,
+    updateData: {
+      roleName?: string;
+      permissions?: string[];
+      isActive?: boolean;
+    },
+  ): Promise<{
+    message: string;
+    role: any;
+  }> {
+    if (!Types.ObjectId.isValid(roleId)) {
+      throw new NotFoundException('Role ID không hợp lệ');
+    }
+
+    const role = await this.roleModel.findById(roleId);
+
+    if (!role) {
+      throw new NotFoundException('Role không tồn tại');
+    }
+
+    // Kiểm tra nếu role thuộc các role hệ thống thì không cho đổi roleName
+    const systemRoles = Object.values(RoleName) as string[];
+    const currentRoleName = role.roleName;
+    if (
+      systemRoles.includes(currentRoleName) &&
+      updateData.roleName &&
+      updateData.roleName !== currentRoleName
+    ) {
+      throw new ConflictException(
+        `Không thể đổi tên role hệ thống: ${currentRoleName}`,
+      );
+    }
+
+    // Kiểm tra roleName mới có bị trùng không
+    if (updateData.roleName && updateData.roleName !== currentRoleName) {
+      const existingRole = await this.roleModel.findOne({
+        roleName: updateData.roleName,
+      });
+      if (existingRole) {
+        throw new ConflictException('Tên role đã tồn tại');
+      }
+    }
+
+    const updatePayload: {
+      roleName?: string;
+      permissions?: Types.ObjectId[];
+      isActive?: boolean;
+    } = {};
+
+    if (updateData.roleName) {
+      updatePayload.roleName = updateData.roleName;
+    }
+
+    if (updateData.permissions) {
+      updatePayload.permissions = updateData.permissions.map(
+        (permission) => new Types.ObjectId(permission),
+      );
+    }
+
+    if (updateData.isActive !== undefined) {
+      updatePayload.isActive = updateData.isActive;
+    }
+
+    const updatedRole = await this.roleModel
+      .findByIdAndUpdate(roleId, updatePayload, { new: true })
+      .populate('permissions', 'resource action')
+      .lean();
+
+    return {
+      message: 'Cập nhật role thành công',
+      role: updatedRole,
+    };
+  }
+
+  async deleteRole(roleId: string): Promise<{
+    message: string;
+  }> {
+    if (!Types.ObjectId.isValid(roleId)) {
+      throw new NotFoundException('Role ID không hợp lệ');
+    }
+
+    const role = await this.roleModel.findById(roleId);
+
+    if (!role) {
+      throw new NotFoundException('Role không tồn tại');
+    }
+
+    // Kiểm tra nếu role thuộc các role hệ thống (trong enum) thì không cho xóa
+    const systemRoles = Object.values(RoleName) as string[];
+    if (systemRoles.includes(role.roleName)) {
+      throw new ConflictException(
+        `Không thể xóa role hệ thống: ${role.roleName}`,
+      );
+    }
+
+    // Kiểm tra xem có account nào đang sử dụng role này không
+    const accountsUsingRole = await this.accountModel.countDocuments({
+      role: roleId,
+    });
+
+    if (accountsUsingRole > 0) {
+      throw new ConflictException(
+        `Không thể xóa role này vì có ${accountsUsingRole} tài khoản đang sử dụng`,
+      );
+    }
+
+    await this.roleModel.findByIdAndDelete(roleId);
+
+    return {
+      message: 'Xóa role thành công',
+    };
   }
 
   async register(registerDto: RegisterDto) {

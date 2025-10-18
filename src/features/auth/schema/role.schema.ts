@@ -1,5 +1,4 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { RoleName } from '../enum/role.enum';
 import { Types } from 'mongoose';
 import { Permission, PermissionDocument } from './permission.schema';
 
@@ -10,10 +9,9 @@ export class Role {
   @Prop({
     required: true,
     unique: true,
-    enum: RoleName,
-    default: RoleName.GUEST,
+    type: String,
   })
-  roleName: RoleName;
+  roleName: string;
 
   @Prop({ required: true, default: true })
   isActive: boolean;

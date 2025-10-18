@@ -3,4 +3,6 @@ export enum Action {
   READ = 'READ',
   UPDATE = 'UPDATE',
   DELETE = 'DELETE',
+  ALL = 'ALL',
+  ADMIN_ACTION = 'ADMIN_ACTION',
 }

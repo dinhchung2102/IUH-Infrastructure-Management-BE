@@ -31,6 +31,16 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Không có quyền truy cập');
     }
 
+    // Kiểm tra xem user có permission ADMINACTION không (toàn quyền)
+    const hasAdminAction = user.permissions.some((permission) =>
+      permission.endsWith(':ADMIN_ACTION'),
+    );
+
+    if (hasAdminAction) {
+      return true; // Có toàn quyền, cho phép truy cập tất cả
+    }
+
+    // Kiểm tra quyền thông thường
     const hasAllPermissions = requiredPermissions.every((permission) =>
       user.permissions.includes(permission),
     );

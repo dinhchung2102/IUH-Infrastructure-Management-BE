@@ -40,3 +40,17 @@ export class CreateRoleDto {
   @IsArray()
   permissions: Types.ObjectId[];
 }
+
+export class UpdateRoleDto {
+  @IsOptional()
+  @IsString()
+  roleName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  permissions?: string[];
+}
