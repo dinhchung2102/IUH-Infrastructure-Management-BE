@@ -36,7 +36,7 @@ export class CampusController {
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions(['CAMPUS:READ'])
+  @RequirePermissions(['CAMPUS:READ', 'CAMPUS:ADMIN_ACTION'])
   @Get('stats')
   async getCampusStats() {
     return this.campusService.getCampusStats();

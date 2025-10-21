@@ -234,22 +234,31 @@ export class CampusService {
   }
 
   async getCampusStats() {
-    const stats = await this.campusModel.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // Tính ngày đầu tiên của tháng hiện tại
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalCampuses = await this.campusModel.countDocuments();
+    const [totalCampuses, activeCampuses, inactiveCampuses, newThisMonth] =
+      await Promise.all([
+        // Tổng cơ sở
+        this.campusModel.countDocuments(),
+        // Đang hoạt động
+        this.campusModel.countDocuments({ status: 'ACTIVE' }),
+        // Ngừng hoạt động
+        this.campusModel.countDocuments({ status: 'INACTIVE' }),
+        // Mới được thêm tháng này
+        this.campusModel.countDocuments({
+          createdAt: { $gte: firstDayOfMonth },
+        }),
+      ]);
 
     return {
       message: 'Lấy thống kê campus thành công',
-      data: {
+      stats: {
         total: totalCampuses,
-        byStatus: stats,
+        active: activeCampuses,
+        inactive: inactiveCampuses,
+        newThisMonth: newThisMonth,
       },
     };
   }
