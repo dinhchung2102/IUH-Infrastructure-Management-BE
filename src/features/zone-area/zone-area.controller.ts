@@ -175,4 +175,24 @@ export class ZoneAreaController {
   async findAllAreasByCampus(@Param('campusId') campusId: string) {
     return this.zoneAreaService.findAllAreasByCampus(campusId);
   }
+
+  // ==================== STATISTICS ENDPOINTS ====================
+
+  @Public()
+  @Get('buildings-stats')
+  async getBuildingStats() {
+    return this.zoneAreaService.getBuildingStats();
+  }
+
+  @Public()
+  @Get('areas-stats')
+  async getAreaStats() {
+    return this.zoneAreaService.getAreaStats();
+  }
+
+  @Public()
+  @Get('zones-stats')
+  async getZoneStats() {
+    return this.zoneAreaService.getZoneStats();
+  }
 }

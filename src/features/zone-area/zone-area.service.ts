@@ -97,4 +97,18 @@ export class ZoneAreaService {
   async findAllAreasByCampus(campusId: string) {
     return this.mainService.findAllAreasByCampus(campusId);
   }
+
+  // ==================== STATISTICS METHODS ====================
+
+  async getBuildingStats() {
+    return this.mainService.getBuildingStats();
+  }
+
+  async getAreaStats() {
+    return this.mainService.getAreaStats();
+  }
+
+  async getZoneStats() {
+    return this.mainService.getZoneStats();
+  }
 }

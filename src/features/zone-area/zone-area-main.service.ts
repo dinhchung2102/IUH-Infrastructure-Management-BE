@@ -793,4 +793,96 @@ export class ZoneAreaMainService {
       areas,
     };
   }
+
+  // ==================== STATISTICS METHODS ====================
+
+  async getBuildingStats() {
+    // Tính ngày đầu tiên của tháng hiện tại
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalBuildings, activeBuildings, inactiveBuildings, newThisMonth] =
+      await Promise.all([
+        // Tổng tòa nhà
+        this.buildingModel.countDocuments(),
+        // Đang hoạt động
+        this.buildingModel.countDocuments({ status: 'ACTIVE' }),
+        // Ngừng hoạt động
+        this.buildingModel.countDocuments({ status: 'INACTIVE' }),
+        // Mới được thêm tháng này
+        this.buildingModel.countDocuments({
+          createdAt: { $gte: firstDayOfMonth },
+        }),
+      ]);
+
+    return {
+      message: 'Lấy thống kê tòa nhà thành công',
+      stats: {
+        total: totalBuildings,
+        active: activeBuildings,
+        inactive: inactiveBuildings,
+        newThisMonth: newThisMonth,
+      },
+    };
+  }
+
+  async getAreaStats() {
+    // Tính ngày đầu tiên của tháng hiện tại
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalAreas, activeAreas, inactiveAreas, newThisMonth] =
+      await Promise.all([
+        // Tổng khu vực
+        this.areaModel.countDocuments(),
+        // Đang hoạt động
+        this.areaModel.countDocuments({ status: 'ACTIVE' }),
+        // Ngừng hoạt động
+        this.areaModel.countDocuments({ status: 'INACTIVE' }),
+        // Mới được thêm tháng này
+        this.areaModel.countDocuments({
+          createdAt: { $gte: firstDayOfMonth },
+        }),
+      ]);
+
+    return {
+      message: 'Lấy thống kê khu vực thành công',
+      stats: {
+        total: totalAreas,
+        active: activeAreas,
+        inactive: inactiveAreas,
+        newThisMonth: newThisMonth,
+      },
+    };
+  }
+
+  async getZoneStats() {
+    // Tính ngày đầu tiên của tháng hiện tại
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [totalZones, activeZones, inactiveZones, newThisMonth] =
+      await Promise.all([
+        // Tổng zone
+        this.zoneModel.countDocuments(),
+        // Đang hoạt động
+        this.zoneModel.countDocuments({ status: 'ACTIVE' }),
+        // Ngừng hoạt động
+        this.zoneModel.countDocuments({ status: 'INACTIVE' }),
+        // Mới được thêm tháng này
+        this.zoneModel.countDocuments({
+          createdAt: { $gte: firstDayOfMonth },
+        }),
+      ]);
+
+    return {
+      message: 'Lấy thống kê zone thành công',
+      stats: {
+        total: totalZones,
+        active: activeZones,
+        inactive: inactiveZones,
+        newThisMonth: newThisMonth,
+      },
+    };
+  }
 }
