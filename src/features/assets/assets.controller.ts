@@ -110,6 +110,70 @@ export class AssetsController {
     return this.assetsService.removeType(id);
   }
 
+  // ====== Statistics (phải đặt trước các dynamic routes) ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:READ'])
+  @Get('statistics/dashboard')
+  async getAssetStatistics() {
+    return this.assetsService.getAssetStatistics();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:READ'])
+  @Get('statistics/categories')
+  async getCategoryStatistics() {
+    return this.assetsService.getCategoryStatistics();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:READ'])
+  @Get('statistics/types')
+  async getTypeStatistics(@Query('categoryId') categoryId?: string) {
+    return this.assetsService.getTypeStatistics(categoryId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:READ'])
+  @Get('statistics/locations')
+  async getLocationStatistics() {
+    return this.assetsService.getLocationStatistics();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:READ'])
+  @Get('statistics/maintenance-warranty')
+  async getMaintenanceWarrantyStatistics() {
+    return this.assetsService.getMaintenanceWarrantyStatistics();
+  }
+
+  // ====== Query by Location (phải đặt trước dynamic routes) ======
+  @Public()
+  @Get('zones/:zoneId/assets')
+  async getAssetByZone(@Param('zoneId') zoneId: string) {
+    return this.assetsService.getAssetByZone(zoneId);
+  }
+
+  @Public()
+  @Get('areas/:areaId/assets')
+  async getAssetByArea(@Param('areaId') areaId: string) {
+    return this.assetsService.getAssetByArea(areaId);
+  }
+
+  // ====== Upload ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ASSET:CREATE', 'ASSET:UPDATE'], 'OR')
+  @Post('upload/image')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadAssetImage(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ message: string; data: { url: string } }> {
+    const url = await this.uploadService.uploadFile(file);
+    return {
+      message: 'Upload ảnh tài sản thành công',
+      data: { url },
+    };
+  }
+
   // ====== Assets ======
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ASSET:CREATE'])
@@ -151,53 +215,5 @@ export class AssetsController {
   @Delete(':id')
   async removeAsset(@Param('id') id: string) {
     return this.assetsService.removeAsset(id);
-  }
-
-  // ====== Upload ======
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions(['ASSET:CREATE', 'ASSET:UPDATE'], 'OR')
-  @Post('upload/image')
-  @UseInterceptors(FileInterceptor('image'))
-  async uploadAssetImage(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ message: string; data: { url: string } }> {
-    const url = await this.uploadService.uploadFile(file);
-    return {
-      message: 'Upload ảnh tài sản thành công',
-      data: { url },
-    };
-  }
-
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions(['ASSET_CATEGORY:CREATE', 'ASSET_CATEGORY:UPDATE'], 'OR')
-  @Post('categories/upload/image')
-  @UseInterceptors(FileInterceptor('image'))
-  async uploadCategoryImage(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<{ message: string; data: { url: string } }> {
-    const url = await this.uploadService.uploadFile(file);
-    return {
-      message: 'Upload ảnh loại tài sản thành công',
-      data: { url },
-    };
-  }
-
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions(['ASSET:READ'])
-  @Get('statistics/dashboard')
-  async getAssetStatistics() {
-    return this.assetsService.getAssetStatistics();
-  }
-
-  @Public()
-  @Get('zones/:zoneId/assets')
-  async getAssetByZone(@Param('zoneId') zoneId: string) {
-    return this.assetsService.getAssetByZone(zoneId);
-  }
-
-  @Public()
-  @Get('areas/:areaId/assets')
-  async getAssetByArea(@Param('areaId') areaId: string) {
-    return this.assetsService.getAssetByArea(areaId);
   }
 }

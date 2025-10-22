@@ -648,10 +648,13 @@ export class AssetsService {
     data: {
       totalAssets: number;
       assetsByStatus: {
-        ACTIVE: number;
-        INACTIVE: number;
-        MAINTENANCE: number;
-        BROKEN: number;
+        NEW: number;
+        IN_USE: number;
+        UNDER_MAINTENANCE: number;
+        DAMAGED: number;
+        LOST: number;
+        DISPOSED: number;
+        TRANSFERRED: number;
       };
       assetsByCategory: any[];
       assetsByType: any[];
@@ -660,11 +663,13 @@ export class AssetsService {
         areas: number;
       };
       assetsByCampus: any[];
-      recentAssets: any[];
       assetsThisMonth: number;
       assetsLastMonth: number;
+      growthRate: number; // Tỷ lệ tăng trưởng so với tháng trước (%)
       warrantyExpiringSoon: number; // assets with warranty ending in next 30 days
+      warrantyExpired: number; // assets with expired warranty
       maintenanceOverdue: number; // assets needing maintenance
+      averageAssetAge: number; // Tuổi trung bình của tài sản (tính bằng tháng)
     };
   }> {
     // Tổng số tài sản
@@ -681,17 +686,24 @@ export class AssetsService {
     ]);
 
     const statusStats = {
-      ACTIVE: 0,
-      INACTIVE: 0,
-      MAINTENANCE: 0,
-      BROKEN: 0,
+      NEW: 0,
+      IN_USE: 0,
+      UNDER_MAINTENANCE: 0,
+      DAMAGED: 0,
+      LOST: 0,
+      DISPOSED: 0,
+      TRANSFERRED: 0,
     };
 
-    assetsByStatus.forEach((stat) => {
-      statusStats[stat._id as keyof typeof statusStats] = stat.count;
+    assetsByStatus.forEach((stat: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      if (stat._id in statusStats) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        statusStats[stat._id as keyof typeof statusStats] = stat.count;
+      }
     });
 
-    // Thống kê theo category
+    // Thống kê theo category với thêm thông tin
     const assetsByCategory = await this.assetModel.aggregate([
       {
         $lookup: {
@@ -706,8 +718,48 @@ export class AssetsService {
       },
       {
         $group: {
-          _id: '$category.name',
+          _id: {
+            id: '$category._id',
+            name: '$category.name',
+          },
           count: { $sum: 1 },
+          statuses: {
+            $push: '$status',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.id',
+          name: '$_id.name',
+          count: 1,
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
+          damaged: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DAMAGED'] },
+              },
+            },
+          },
         },
       },
       {
@@ -715,7 +767,7 @@ export class AssetsService {
       },
     ]);
 
-    // Thống kê theo type
+    // Thống kê theo type với thêm thông tin
     const assetsByType = await this.assetModel.aggregate([
       {
         $lookup: {
@@ -730,8 +782,39 @@ export class AssetsService {
       },
       {
         $group: {
-          _id: '$type.name',
+          _id: {
+            id: '$type._id',
+            name: '$type.name',
+          },
           count: { $sum: 1 },
+          statuses: {
+            $push: '$status',
+          },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.id',
+          name: '$_id.name',
+          count: 1,
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
         },
       },
       {
@@ -802,40 +885,35 @@ export class AssetsService {
               else: { $arrayElemAt: ['$areaCampusData.name', 0] },
             },
           },
+          status: 1,
         },
       },
       {
         $group: {
           _id: '$campus',
           count: { $sum: 1 },
+          statuses: { $push: '$status' },
+        },
+      },
+      {
+        $project: {
+          name: '$_id',
+          count: 1,
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
         },
       },
       {
         $sort: { count: -1 },
       },
     ]);
-
-    // Tài sản gần đây (5 tài sản mới nhất)
-    const recentAssets = await this.assetModel
-      .find()
-      .populate('assetType', 'name')
-      .populate('assetCategory', 'name')
-      .populate({
-        path: 'zone',
-        select: 'name',
-        populate: {
-          path: 'building',
-          select: 'name',
-          populate: {
-            path: 'campus',
-            select: 'name',
-          },
-        },
-      })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('name code status createdAt')
-      .lean();
 
     // Thống kê tháng này và tháng trước
     const now = new Date();
@@ -854,6 +932,12 @@ export class AssetsService {
       },
     });
 
+    // Tính tỷ lệ tăng trưởng
+    const growthRate =
+      assetsLastMonth > 0
+        ? ((assetsThisMonth - assetsLastMonth) / assetsLastMonth) * 100
+        : 0;
+
     // Tài sản hết bảo hành sớm (trong 30 ngày tới)
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
@@ -865,6 +949,14 @@ export class AssetsService {
       },
     });
 
+    // Tài sản đã hết bảo hành
+    const warrantyExpired = await this.assetModel.countDocuments({
+      warrantyEndDate: {
+        $lt: new Date(),
+      },
+      status: { $nin: ['DISPOSED', 'LOST'] },
+    });
+
     // Tài sản cần bảo trì (không được bảo trì trong 6 tháng qua)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -874,7 +966,34 @@ export class AssetsService {
         { lastMaintenanceDate: { $lt: sixMonthsAgo } },
         { lastMaintenanceDate: { $exists: false } },
       ],
+      status: { $nin: ['DISPOSED', 'LOST', 'NEW'] },
     });
+
+    // Tính tuổi trung bình của tài sản (tính bằng tháng)
+    const averageAgeResult = await this.assetModel.aggregate([
+      {
+        $project: {
+          ageInMonths: {
+            $divide: [
+              { $subtract: [new Date(), '$createdAt'] },
+              1000 * 60 * 60 * 24 * 30, // Convert milliseconds to months
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          averageAge: { $avg: '$ageInMonths' },
+        },
+      },
+    ]);
+
+    const averageAssetAge =
+      averageAgeResult.length > 0
+        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          Math.round(averageAgeResult[0].averageAge * 10) / 10
+        : 0;
 
     return {
       message: 'Lấy thống kê tài sản thành công',
@@ -888,11 +1007,520 @@ export class AssetsService {
           areas: assetsInAreas,
         },
         assetsByCampus,
-        recentAssets,
         assetsThisMonth,
         assetsLastMonth,
+        growthRate: Math.round(growthRate * 100) / 100,
         warrantyExpiringSoon,
+        warrantyExpired,
         maintenanceOverdue,
+        averageAssetAge,
+      },
+    };
+  }
+
+  // Thống kê chi tiết theo category
+  async getCategoryStatistics(): Promise<{
+    message: string;
+    data: any[];
+  }> {
+    const categoryStats = await this.assetModel.aggregate([
+      {
+        $lookup: {
+          from: 'assetcategories',
+          localField: 'assetCategory',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      {
+        $unwind: '$category',
+      },
+      {
+        $group: {
+          _id: {
+            id: '$category._id',
+            name: '$category.name',
+            image: '$category.image',
+          },
+          totalAssets: { $sum: 1 },
+          statuses: { $push: '$status' },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.id',
+          name: '$_id.name',
+          image: '$_id.image',
+          totalAssets: 1,
+          new: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'NEW'] },
+              },
+            },
+          },
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
+          damaged: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DAMAGED'] },
+              },
+            },
+          },
+          lost: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'LOST'] },
+              },
+            },
+          },
+          disposed: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DISPOSED'] },
+              },
+            },
+          },
+          transferred: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'TRANSFERRED'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $sort: { totalAssets: -1 },
+      },
+    ]);
+
+    return {
+      message: 'Lấy thống kê theo loại tài sản thành công',
+      data: categoryStats,
+    };
+  }
+
+  // Thống kê chi tiết theo type
+  async getTypeStatistics(categoryId?: string): Promise<{
+    message: string;
+    data: any[];
+  }> {
+    const matchStage: Record<string, any> = {};
+    if (categoryId && Types.ObjectId.isValid(categoryId)) {
+      matchStage.assetCategory = new Types.ObjectId(categoryId);
+    }
+
+    const pipeline: any[] = [];
+
+    if (Object.keys(matchStage).length > 0) {
+      pipeline.push({ $match: matchStage });
+    }
+
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'assettypes',
+          localField: 'assetType',
+          foreignField: '_id',
+          as: 'type',
+        },
+      },
+      {
+        $unwind: '$type',
+      },
+      {
+        $lookup: {
+          from: 'assetcategories',
+          localField: 'assetCategory',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+      {
+        $unwind: '$category',
+      },
+      {
+        $group: {
+          _id: {
+            id: '$type._id',
+            name: '$type.name',
+            categoryName: '$category.name',
+          },
+          totalAssets: { $sum: 1 },
+          statuses: { $push: '$status' },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.id',
+          name: '$_id.name',
+          categoryName: '$_id.categoryName',
+          totalAssets: 1,
+          new: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'NEW'] },
+              },
+            },
+          },
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
+          damaged: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DAMAGED'] },
+              },
+            },
+          },
+          lost: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'LOST'] },
+              },
+            },
+          },
+          disposed: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DISPOSED'] },
+              },
+            },
+          },
+          transferred: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'TRANSFERRED'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $sort: { totalAssets: -1 },
+      },
+    );
+
+    const typeStats = await this.assetModel.aggregate(pipeline);
+
+    return {
+      message: 'Lấy thống kê theo kiểu tài sản thành công',
+      data: typeStats,
+    };
+  }
+
+  // Thống kê theo địa điểm (zone/area)
+  async getLocationStatistics(): Promise<{
+    message: string;
+    data: {
+      byZones: any[];
+      byAreas: any[];
+    };
+  }> {
+    // Thống kê theo zones
+    const zoneStats = await this.assetModel.aggregate([
+      {
+        $match: {
+          zone: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $lookup: {
+          from: 'zones',
+          localField: 'zone',
+          foreignField: '_id',
+          as: 'zoneData',
+        },
+      },
+      {
+        $unwind: '$zoneData',
+      },
+      {
+        $lookup: {
+          from: 'buildings',
+          localField: 'zoneData.building',
+          foreignField: '_id',
+          as: 'buildingData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$buildingData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'campus',
+          localField: 'buildingData.campus',
+          foreignField: '_id',
+          as: 'campusData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$campusData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            zoneId: '$zoneData._id',
+            zoneName: '$zoneData.name',
+            buildingName: '$buildingData.name',
+            campusName: '$campusData.name',
+          },
+          totalAssets: { $sum: 1 },
+          statuses: { $push: '$status' },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.zoneId',
+          zoneName: '$_id.zoneName',
+          buildingName: '$_id.buildingName',
+          campusName: '$_id.campusName',
+          totalAssets: 1,
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
+          damaged: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DAMAGED'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $sort: { totalAssets: -1 },
+      },
+    ]);
+
+    // Thống kê theo areas
+    const areaStats = await this.assetModel.aggregate([
+      {
+        $match: {
+          area: { $exists: true, $ne: null },
+        },
+      },
+      {
+        $lookup: {
+          from: 'areas',
+          localField: 'area',
+          foreignField: '_id',
+          as: 'areaData',
+        },
+      },
+      {
+        $unwind: '$areaData',
+      },
+      {
+        $lookup: {
+          from: 'campus',
+          localField: 'areaData.campus',
+          foreignField: '_id',
+          as: 'campusData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$campusData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            areaId: '$areaData._id',
+            areaName: '$areaData.name',
+            campusName: '$campusData.name',
+          },
+          totalAssets: { $sum: 1 },
+          statuses: { $push: '$status' },
+        },
+      },
+      {
+        $project: {
+          _id: '$_id.areaId',
+          areaName: '$_id.areaName',
+          campusName: '$_id.campusName',
+          totalAssets: 1,
+          inUse: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'IN_USE'] },
+              },
+            },
+          },
+          underMaintenance: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
+              },
+            },
+          },
+          damaged: {
+            $size: {
+              $filter: {
+                input: '$statuses',
+                as: 'status',
+                cond: { $eq: ['$$status', 'DAMAGED'] },
+              },
+            },
+          },
+        },
+      },
+      {
+        $sort: { totalAssets: -1 },
+      },
+    ]);
+
+    return {
+      message: 'Lấy thống kê theo địa điểm thành công',
+      data: {
+        byZones: zoneStats,
+        byAreas: areaStats,
+      },
+    };
+  }
+
+  // Thống kê bảo trì và bảo hành
+  async getMaintenanceWarrantyStatistics(): Promise<{
+    message: string;
+    data: {
+      warrantyExpiring: number; // Số tài sản sắp hết bảo hành (30 ngày)
+      warrantyExpired: number; // Số tài sản đã hết bảo hành
+      maintenanceOverdue: number; // Số tài sản cần bảo trì (6 tháng)
+      recentlyMaintained: number; // Số tài sản được bảo trì gần đây (30 ngày)
+      neverMaintained: number; // Số tài sản chưa bao giờ được bảo trì
+    };
+  }> {
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    // Số tài sản hết hạn bảo hành trong 30 ngày tới
+    const warrantyExpiring = await this.assetModel.countDocuments({
+      warrantyEndDate: {
+        $gte: now,
+        $lte: thirtyDaysFromNow,
+      },
+    });
+
+    // Số tài sản đã hết hạn bảo hành
+    const warrantyExpired = await this.assetModel.countDocuments({
+      warrantyEndDate: {
+        $lt: now,
+      },
+      status: { $nin: ['DISPOSED', 'LOST'] },
+    });
+
+    // Số tài sản cần bảo trì
+    const maintenanceOverdue = await this.assetModel.countDocuments({
+      lastMaintenanceDate: { $lt: sixMonthsAgo },
+      status: { $nin: ['DISPOSED', 'LOST', 'NEW'] },
+    });
+
+    // Số tài sản được bảo trì gần đây (30 ngày qua)
+    const recentlyMaintained = await this.assetModel.countDocuments({
+      lastMaintenanceDate: { $gte: thirtyDaysAgo },
+    });
+
+    // Số tài sản chưa bao giờ được bảo trì
+    const neverMaintained = await this.assetModel.countDocuments({
+      lastMaintenanceDate: { $exists: false },
+      status: { $nin: ['DISPOSED', 'LOST', 'NEW'] },
+    });
+
+    return {
+      message: 'Lấy thống kê bảo trì và bảo hành thành công',
+      data: {
+        warrantyExpiring,
+        warrantyExpired,
+        maintenanceOverdue,
+        recentlyMaintained,
+        neverMaintained,
       },
     };
   }
