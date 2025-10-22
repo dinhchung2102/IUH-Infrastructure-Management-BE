@@ -11,4 +11,6 @@ export enum Resource {
   ASSET = 'ASSET',
   AUDIT = 'AUDIT',
   REPORT = 'REPORT',
+  NEWS = 'NEWS',
+  NEWS_CATEGORY = 'NEWS_CATEGORY',
 }

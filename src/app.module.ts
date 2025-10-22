@@ -16,6 +16,7 @@ import { ReportModule } from './features/report/report.module';
 import { ZoneAreaModule } from './features/zone-area/zone-area.module';
 import { UploadModule } from './shared/upload/upload.module';
 import { QrCodeModule } from './shared/qrcode/qrcode.module';
+import { NewsModule } from './features/news/news.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { QrCodeModule } from './shared/qrcode/qrcode.module';
     ZoneAreaModule,
     UploadModule,
     QrCodeModule,
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [
