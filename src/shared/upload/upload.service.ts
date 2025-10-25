@@ -8,10 +8,7 @@ export class UploadService {
   private readonly uploadPath: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.uploadPath =
-      process.env.NODE_ENV === 'production'
-        ? join(process.cwd(), 'dist', 'uploads')
-        : join(process.cwd(), 'uploads');
+    this.uploadPath = join(process.cwd(), 'uploads');
     this.ensureUploadDirectoryExists();
   }
 
