@@ -47,7 +47,7 @@ import { NewsModule } from './features/news/news.module';
         template: {
           dir:
             process.env.NODE_ENV === 'production'
-              ? process.cwd() + '/dist/shared/email/templates/'
+              ? process.cwd() + '/shared/email/templates/'
               : process.cwd() + '/src/shared/email/templates/',
           adapter: new HandlebarsAdapter(),
           options: {
