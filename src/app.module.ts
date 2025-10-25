@@ -45,7 +45,10 @@ import { NewsModule } from './features/news/news.module';
         },
         preview: false,
         template: {
-          dir: process.cwd() + '/src/shared/email/templates/',
+          dir:
+            process.env.NODE_ENV === 'production'
+              ? process.cwd() + '/dist/shared/email/templates/'
+              : process.cwd() + '/src/shared/email/templates/',
           adapter: new HandlebarsAdapter(),
           options: {
             strict: true,
