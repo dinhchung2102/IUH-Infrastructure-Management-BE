@@ -11,7 +11,8 @@
       },
       {
         "include": "../uploads/**/*",
-        "outDir": "dist"
+        "outDir": "dist/uploads",
+        "watchAssets": true
       }
     ]
   }
