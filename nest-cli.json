@@ -8,6 +8,10 @@
       {
         "include": "shared/email/templates/**/*",
         "outDir": "dist"
+      },
+      {
+        "include": "../uploads/**/*",
+        "outDir": "dist"
       }
     ]
   }
