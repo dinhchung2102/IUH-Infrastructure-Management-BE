@@ -180,12 +180,31 @@ export class AuthController {
   @Post('login')
   async login(
     @Body() loginDto: LoginDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.authService.login(loginDto);
 
-    // Set cookie expiry based on rememberMe
-    // Get expiry time from environment variables
+    // Detect client type
+    const ua = req.headers['user-agent'] || '';
+    const origin = req.headers['origin'];
+    const isMobile =
+      !origin &&
+      (ua.includes('okhttp') ||
+        ua.includes('ReactNative') ||
+        ua.includes('Expo'));
+
+    if (isMobile) {
+      // Return JSON for mobile with both tokens
+      return {
+        message: 'Đăng nhập thành công',
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        account: result.account,
+      };
+    }
+
+    // Web client - set refresh token in httpOnly cookie
     const refreshTokenExpiry = loginDto.rememberMe
       ? this.configService.get<string>('JWT_REMEMBER', '30d')
       : this.configService.get<string>('JWT_REFRESH_TOKEN_EXPIRES_IN', '1d');
@@ -197,9 +216,12 @@ export class AuthController {
       this.getCookieOptions(maxAge),
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { refresh_token, ...responseWithoutRefreshToken } = result;
-    return responseWithoutRefreshToken;
+    // Return only access token for web
+    return {
+      message: 'Đăng nhập thành công',
+      access_token: result.access_token,
+      account: result.account,
+    };
   }
 
   @UseGuards(AuthGuard)
@@ -270,19 +292,50 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const cookieHeader = request.headers.cookie;
-    const refreshToken = cookieHeader
-      ?.split(';')
-      .find((cookie) => cookie.trim().startsWith('refresh_token='))
-      ?.split('=')[1];
+    // Detect client type
+    const ua = request.headers['user-agent'] || '';
+    const origin = request.headers['origin'];
+    const isMobile =
+      !origin &&
+      (ua.includes('okhttp') ||
+        ua.includes('ReactNative') ||
+        ua.includes('Expo'));
 
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token không được tìm thấy');
+    let refreshToken: string;
+
+    if (isMobile) {
+      // For mobile, get refresh token from request body
+      const body = request.body;
+      if (!body?.refreshToken) {
+        throw new UnauthorizedException('Refresh token không được tìm thấy');
+      }
+      refreshToken = body.refreshToken;
+    } else {
+      // For web, get refresh token from cookie
+      const cookieHeader = request.headers.cookie;
+      const extractedToken = cookieHeader
+        ?.split(';')
+        .find((cookie) => cookie.trim().startsWith('refresh_token='))
+        ?.split('=')[1];
+
+      if (!extractedToken) {
+        throw new UnauthorizedException('Refresh token không được tìm thấy');
+      }
+      refreshToken = extractedToken as string;
     }
 
     const result = await this.authService.refreshToken({ refreshToken });
 
-    // Use the same expiry time determined by the service (1d or 30d)
+    if (isMobile) {
+      // Return JSON for mobile with both tokens
+      return {
+        message: 'Refresh token thành công',
+        accessToken: result.access_token,
+        refreshToken: result.refresh_token,
+      };
+    }
+
+    // Web client - set refresh token in httpOnly cookie
     const maxAge = this.parseTimeToMs(result.refreshTokenExpiry);
 
     response.cookie(
@@ -291,14 +344,11 @@ export class AuthController {
       this.getCookieOptions(maxAge),
     );
 
-    const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      refresh_token: _,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      refreshTokenExpiry: __,
-      ...responseWithoutRefreshToken
-    } = result;
-    return responseWithoutRefreshToken;
+    // Return only access token for web
+    return {
+      message: 'Refresh token thành công',
+      accessToken: result.access_token,
+    };
   }
 
   @UseGuards(AuthGuard)
@@ -306,10 +356,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(
     @CurrentUser() user: JwtPayload,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    // Clear refresh token cookie
-    response.clearCookie('refresh_token', this.getCookieOptions());
+    // Detect client type
+    const ua = request.headers['user-agent'] || '';
+    const origin = request.headers['origin'];
+    const isMobile =
+      !origin &&
+      (ua.includes('okhttp') ||
+        ua.includes('ReactNative') ||
+        ua.includes('Expo'));
+
+    // Clear refresh token cookie for web clients
+    if (!isMobile) {
+      response.clearCookie('refresh_token', this.getCookieOptions());
+    }
 
     return this.authService.logout(user.sub);
   }
