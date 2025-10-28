@@ -337,13 +337,50 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password, rememberMe } = loginDto;
 
-    const account = await this.accountModel.findOne({ email }).populate({
-      path: 'role',
-      populate: {
-        path: 'permissions',
-        select: 'resource action',
-      },
-    });
+    // Populate managed entities and their campus field, but exclude their 'accounts' field
+    const account = await this.accountModel
+      .findOne({ email })
+      .populate({
+        path: 'role',
+        populate: {
+          path: 'permissions',
+          select: 'resource action',
+        },
+      })
+      .populate({
+        path: 'areasManaged',
+        select: '-accounts',
+        populate: [
+          {
+            path: 'campus',
+            select: '',
+          },
+        ],
+      })
+      .populate({
+        path: 'buildingsManaged',
+        select: '-accounts',
+        populate: [
+          {
+            path: 'campus',
+            select: '',
+          },
+        ],
+      })
+      .populate({
+        path: 'zonesManaged',
+        select: '-accounts',
+        populate: [
+          {
+            path: 'campus',
+            select: '',
+          },
+        ],
+      })
+      .populate({
+        path: 'campusManaged',
+        select: '',
+      });
 
     if (!account) {
       throw new NotFoundException('Tài khoản không tồn tại');
@@ -402,6 +439,24 @@ export class AuthService {
       refreshToken: hashedRefreshToken,
     });
 
+    // Remove 'accounts' field if it is still present in any managed object
+    const omitAccountsField = (obj: any) => {
+      if (!obj) return obj;
+      if (Array.isArray(obj)) {
+        return obj.map(omitAccountsField);
+      }
+      // Destructure accounts out if present
+      // and recursively process nested structures
+      // and campus object as-is
+      // so that campus also returned as object
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { accounts, ...rest } = obj.toObject ? obj.toObject() : obj;
+      if (rest.campus && typeof rest.campus === 'object') {
+        rest.campus = omitAccountsField(rest.campus);
+      }
+      return rest;
+    };
+
     return {
       message: 'Đăng nhập thành công',
       access_token,
@@ -418,6 +473,10 @@ export class AuthService {
         isActive: account.isActive,
         role: roleName,
         permissions: permissions,
+        areasManaged: omitAccountsField(account.areasManaged),
+        buildingsManaged: omitAccountsField(account.buildingsManaged),
+        zonesManaged: omitAccountsField(account.zonesManaged),
+        campusManaged: omitAccountsField(account.campusManaged),
       },
     };
   }
