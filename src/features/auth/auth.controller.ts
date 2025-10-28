@@ -330,8 +330,8 @@ export class AuthController {
       // Return JSON for mobile with both tokens
       return {
         message: 'Refresh token thành công',
-        accessToken: result.access_token,
-        refreshToken: result.refresh_token,
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
       };
     }
 
