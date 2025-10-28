@@ -21,9 +21,11 @@ import { AuditService } from './audit.service';
 import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
+import { StaffAuditLogDto } from './dto/staff-auditlog.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UploadService } from '../../shared/upload/upload.service';
 
 @Controller('audit')
@@ -91,5 +93,16 @@ export class AuditController {
       message: 'Upload ảnh audit thành công',
       data: { urls },
     };
+  }
+
+  // ====== Staff Audit Logs ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:READ'])
+  @Get('staff/my-logs')
+  async getMyAuditLogs(
+    @CurrentUser('sub') staffId: string,
+    @Query() queryDto: StaffAuditLogDto,
+  ) {
+    return this.auditService.getStaffAuditLogs(staffId, queryDto);
   }
 }

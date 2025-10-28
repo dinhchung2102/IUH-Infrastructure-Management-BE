@@ -5,6 +5,7 @@ import { AuditLog, type AuditLogDocument } from './schema/auditlog.schema';
 import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
+import { StaffAuditLogDto, TimeRange } from './dto/staff-auditlog.dto';
 import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
@@ -478,6 +479,186 @@ export class AuditService {
 
     return {
       message: 'Xóa bản ghi kiểm tra thành công',
+    };
+  }
+
+  async getStaffAuditLogs(
+    staffId: string,
+    queryDto: StaffAuditLogDto,
+  ): Promise<{
+    message: string;
+    auditLogs: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+    timeRange: {
+      type: TimeRange;
+      startDate: Date;
+      endDate: Date;
+    };
+  }> {
+    const {
+      timeRange = TimeRange.DAY,
+      date,
+      week,
+      year,
+      month,
+      page = '1',
+      limit = '10',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = Math.min(parseInt(limit, 10), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Calculate date range based on timeRange
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (timeRange) {
+      case TimeRange.DAY: {
+        if (!date) {
+          throw new NotFoundException(
+            'Ngày không được để trống khi chọn loại ngày',
+          );
+        }
+        startDate = new Date(date);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      }
+
+      case TimeRange.WEEK: {
+        if (!week || !year) {
+          throw new NotFoundException(
+            'Tuần và năm không được để trống khi chọn loại tuần',
+          );
+        }
+        const weekNum = parseInt(week, 10);
+        const yearNum = parseInt(year, 10);
+
+        // Calculate start of week (Monday)
+        const jan1 = new Date(yearNum, 0, 1);
+        const daysToFirstMonday = (8 - jan1.getDay()) % 7;
+        const firstMonday = new Date(jan1);
+        firstMonday.setDate(jan1.getDate() + daysToFirstMonday);
+
+        startDate = new Date(firstMonday);
+        startDate.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+        startDate.setHours(0, 0, 0, 0);
+
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      }
+
+      case TimeRange.MONTH: {
+        if (!month || !year) {
+          throw new NotFoundException(
+            'Tháng và năm không được để trống khi chọn loại tháng',
+          );
+        }
+        const monthNum = parseInt(month, 10);
+        const monthYear = parseInt(year, 10);
+
+        startDate = new Date(monthYear, monthNum - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+
+        endDate = new Date(monthYear, monthNum, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      }
+
+      default:
+        throw new NotFoundException('Loại thời gian không hợp lệ');
+    }
+
+    // Build filter for staff audit logs
+    const filter: Record<string, any> = {
+      staffs: new Types.ObjectId(staffId),
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate,
+      },
+    };
+
+    const sort: Record<string, any> = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const [auditLogs, total] = await Promise.all([
+      this.auditLogModel
+        .find(filter)
+        .populate({
+          path: 'report',
+          select: 'type status description asset images createdBy',
+          populate: [
+            {
+              path: 'asset',
+              select: 'name code status image zone area',
+              populate: [
+                {
+                  path: 'zone',
+                  select: '_id name building',
+                  populate: {
+                    path: 'building',
+                    select: '_id name campus',
+                    populate: {
+                      path: 'campus',
+                      select: '_id name',
+                    },
+                  },
+                },
+                {
+                  path: 'area',
+                  select: '_id name building',
+                  populate: {
+                    path: 'building',
+                    select: '_id name campus',
+                    populate: {
+                      path: 'campus',
+                      select: '_id name',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              path: 'createdBy',
+              select: 'fullName email',
+            },
+          ],
+        })
+        .populate('staffs', 'fullName email')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      this.auditLogModel.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      message: 'Lấy danh sách bản ghi kiểm tra của nhân viên thành công',
+      auditLogs,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+      },
+      timeRange: {
+        type: timeRange,
+        startDate,
+        endDate,
+      },
     };
   }
 }
