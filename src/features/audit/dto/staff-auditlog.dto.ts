@@ -7,6 +7,7 @@ import {
   Max,
   Min,
   IsIn,
+  IsNumber,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
@@ -28,26 +29,44 @@ export class StaffAuditLogDto {
 
   // For week: week number (1-53) and year
   @IsOptional()
-  @IsNumberString({}, { message: 'Số tuần phải là số' })
-  @Type(() => Number)
+  @Transform(({ value }): number | string => {
+    if (typeof value === 'string') {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? value : num;
+    }
+    return value;
+  })
+  @IsNumber({}, { message: 'Số tuần phải là số' })
   @Min(1, { message: 'Số tuần phải từ 1 đến 53' })
   @Max(53, { message: 'Số tuần phải từ 1 đến 53' })
-  week?: string;
+  week?: number;
 
   @IsOptional()
-  @IsNumberString({}, { message: 'Năm phải là số' })
-  @Type(() => Number)
+  @Transform(({ value }): number | string => {
+    if (typeof value === 'string') {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? value : num;
+    }
+    return value;
+  })
+  @IsNumber({}, { message: 'Năm phải là số' })
   @Min(2000, { message: 'Năm phải từ 2000 trở lên' })
   @Max(2100, { message: 'Năm phải từ 2100 trở xuống' })
-  year?: string;
+  year?: number;
 
   // For month: month number (1-12) and year
   @IsOptional()
-  @IsNumberString({}, { message: 'Số tháng phải là số' })
-  @Type(() => Number)
+  @Transform(({ value }): number | string => {
+    if (typeof value === 'string') {
+      const num = parseInt(value, 10);
+      return isNaN(num) ? value : num;
+    }
+    return value;
+  })
+  @IsNumber({}, { message: 'Số tháng phải là số' })
   @Min(1, { message: 'Số tháng phải từ 1 đến 12' })
   @Max(12, { message: 'Số tháng phải từ 1 đến 12' })
-  month?: string;
+  month?: number;
 
   @IsOptional()
   @IsNumberString({}, { message: 'Số trang phải là số' })

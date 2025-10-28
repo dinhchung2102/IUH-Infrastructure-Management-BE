@@ -540,8 +540,8 @@ export class AuditService {
             'Tuần và năm không được để trống khi chọn loại tuần',
           );
         }
-        const weekNum = parseInt(week, 10);
-        const yearNum = parseInt(year, 10);
+        const weekNum = typeof week === 'string' ? parseInt(week, 10) : week;
+        const yearNum = typeof year === 'string' ? parseInt(year, 10) : year;
 
         // Calculate start of week (Monday)
         const jan1 = new Date(yearNum, 0, 1);
@@ -565,8 +565,9 @@ export class AuditService {
             'Tháng và năm không được để trống khi chọn loại tháng',
           );
         }
-        const monthNum = parseInt(month, 10);
-        const monthYear = parseInt(year, 10);
+        const monthNum =
+          typeof month === 'string' ? parseInt(month, 10) : month;
+        const monthYear = typeof year === 'string' ? parseInt(year, 10) : year;
 
         startDate = new Date(monthYear, monthNum - 1, 1);
         startDate.setHours(0, 0, 0, 0);
