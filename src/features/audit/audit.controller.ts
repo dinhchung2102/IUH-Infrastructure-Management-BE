@@ -105,4 +105,15 @@ export class AuditController {
   ) {
     return this.auditService.getStaffAuditLogs(staffId, queryDto);
   }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:UPDATE'])
+  @Post('staff/accept-log/:auditId')
+  @HttpCode(HttpStatus.OK)
+  async acceptAuditLog(
+    @Param('auditId') auditId: string,
+    @CurrentUser('sub') staffId: string,
+  ) {
+    return this.auditService.acceptAuditLog(auditId, staffId);
+  }
 }

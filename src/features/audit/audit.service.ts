@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, type AuditLogDocument } from './schema/auditlog.schema';
@@ -7,6 +12,7 @@ import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { StaffAuditLogDto, TimeRange } from './dto/staff-auditlog.dto';
 import { UploadService } from '../../shared/upload/upload.service';
+import { AuditStatus } from './enum/AuditStatus.enum';
 
 @Injectable()
 export class AuditService {
@@ -660,6 +666,75 @@ export class AuditService {
         startDate,
         endDate,
       },
+    };
+  }
+
+  async acceptAuditLog(
+    auditId: string,
+    staffId: string,
+  ): Promise<{
+    message: string;
+    data: any;
+  }> {
+    // Validate auditId format
+    if (!Types.ObjectId.isValid(auditId)) {
+      throw new BadRequestException('ID bản ghi kiểm tra không hợp lệ');
+    }
+
+    // Validate staffId format
+    if (!Types.ObjectId.isValid(staffId)) {
+      throw new BadRequestException('ID nhân viên không hợp lệ');
+    }
+
+    // Find audit log
+    const auditLog = await this.auditLogModel.findById(auditId);
+    if (!auditLog) {
+      throw new NotFoundException('Bản ghi kiểm tra không tồn tại');
+    }
+
+    // Check if staff is in the staffs list
+    const staffObjectId = new Types.ObjectId(staffId);
+    const isStaffInList = auditLog.staffs.some((staff) => {
+      const staffIdStr =
+        staff instanceof Types.ObjectId
+          ? staff.toString()
+          : (staff as any)._id?.toString() || String(staff);
+      return staffIdStr === staffObjectId.toString();
+    });
+
+    if (!isStaffInList) {
+      throw new ForbiddenException(
+        'Bạn không có quyền xác nhận bản ghi kiểm tra này',
+      );
+    }
+
+    // Check if audit log is in PENDING status
+    if (auditLog.status !== AuditStatus.PENDING) {
+      throw new BadRequestException(
+        'Chỉ có thể xác nhận bản ghi kiểm tra đang ở trạng thái PENDING',
+      );
+    }
+
+    // Update status to IN_PROGRESS
+    const updatedAuditLog = await this.auditLogModel
+      .findByIdAndUpdate(
+        auditId,
+        { status: AuditStatus.IN_PROGRESS },
+        { new: true },
+      )
+      .populate({
+        path: 'report',
+        select: 'type status description asset images createdBy',
+        populate: {
+          path: 'asset',
+          select: 'name code status',
+        },
+      })
+      .populate('staffs', 'fullName email');
+
+    return {
+      message: 'Xác nhận thực hiện bản ghi kiểm tra thành công',
+      data: updatedAuditLog,
     };
   }
 }
