@@ -10,6 +10,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { AuditStatus } from '../enum/AuditStatus.enum';
 
 export enum TimeRange {
   DAY = 'day',
@@ -21,6 +22,10 @@ export class StaffAuditLogDto {
   @IsOptional()
   @IsEnum(TimeRange, { message: 'Loại thời gian không hợp lệ' })
   timeRange?: TimeRange = TimeRange.DAY;
+
+  @IsOptional()
+  @IsEnum(AuditStatus, { message: 'Trạng thái kiểm tra không hợp lệ' })
+  status?: AuditStatus;
 
   // For day: specific date (YYYY-MM-DD)
   @IsOptional()

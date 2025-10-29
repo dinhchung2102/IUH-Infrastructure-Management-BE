@@ -508,6 +508,7 @@ export class AuditService {
   }> {
     const {
       timeRange = TimeRange.DAY,
+      status,
       date,
       week,
       year,
@@ -595,6 +596,11 @@ export class AuditService {
         $lte: endDate,
       },
     };
+
+    // Add status filter if provided
+    if (status) {
+      filter.status = status;
+    }
 
     const sort: Record<string, any> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
