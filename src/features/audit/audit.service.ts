@@ -316,6 +316,8 @@ export class AuditService {
           ],
         })
         .populate('staffs', 'fullName email')
+        .populate('acceptedBy', 'fullName email')
+        .populate('completedBy', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -388,6 +390,8 @@ export class AuditService {
         ],
       })
       .populate('staffs', 'fullName email')
+      .populate('acceptedBy', 'fullName email')
+      .populate('completedBy', 'fullName email')
       .lean();
 
     if (!auditLog) {
@@ -461,7 +465,9 @@ export class AuditService {
           select: 'name code status',
         },
       })
-      .populate('staffs', 'fullName email');
+      .populate('staffs', 'fullName email')
+      .populate('acceptedBy', 'fullName email')
+      .populate('completedBy', 'fullName email');
 
     return {
       message: 'Cập nhật bản ghi kiểm tra thành công',
@@ -649,6 +655,8 @@ export class AuditService {
           ],
         })
         .populate('staffs', 'fullName email')
+        .populate('acceptedBy', 'fullName email')
+        .populate('completedBy', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -721,11 +729,15 @@ export class AuditService {
       );
     }
 
-    // Update status to IN_PROGRESS
+    // Update status to IN_PROGRESS and set acceptedAt, acceptedBy
     const updatedAuditLog = await this.auditLogModel
       .findByIdAndUpdate(
         auditId,
-        { status: AuditStatus.IN_PROGRESS },
+        {
+          status: AuditStatus.IN_PROGRESS,
+          acceptedAt: new Date(),
+          acceptedBy: staffObjectId,
+        },
         { new: true },
       )
       .populate({
@@ -736,10 +748,99 @@ export class AuditService {
           select: 'name code status',
         },
       })
-      .populate('staffs', 'fullName email');
+      .populate('staffs', 'fullName email')
+      .populate('acceptedBy', 'fullName email');
 
     return {
       message: 'Xác nhận thực hiện bản ghi kiểm tra thành công',
+      data: updatedAuditLog,
+    };
+  }
+
+  async completeAuditLog(
+    auditId: string,
+    staffId: string,
+    notes?: string,
+    files?: Express.Multer.File[],
+  ): Promise<{
+    message: string;
+    data: any;
+  }> {
+    // Validate auditId format
+    if (!Types.ObjectId.isValid(auditId)) {
+      throw new BadRequestException('ID bản ghi kiểm tra không hợp lệ');
+    }
+
+    // Validate staffId format
+    if (!Types.ObjectId.isValid(staffId)) {
+      throw new BadRequestException('ID nhân viên không hợp lệ');
+    }
+
+    // Find audit log
+    const auditLog = await this.auditLogModel.findById(auditId);
+    if (!auditLog) {
+      throw new NotFoundException('Bản ghi kiểm tra không tồn tại');
+    }
+
+    // Check if staff is in the staffs list
+    const staffObjectId = new Types.ObjectId(staffId);
+    const isStaffInList = auditLog.staffs.some((staff) => {
+      const staffIdStr =
+        staff instanceof Types.ObjectId
+          ? staff.toString()
+          : (staff as any)._id?.toString() || String(staff);
+      return staffIdStr === staffObjectId.toString();
+    });
+
+    if (!isStaffInList) {
+      throw new ForbiddenException(
+        'Bạn không có quyền hoàn thành bản ghi kiểm tra này',
+      );
+    }
+
+    // Check if audit log is in IN_PROGRESS status
+    if (auditLog.status !== AuditStatus.IN_PROGRESS) {
+      throw new BadRequestException(
+        'Chỉ có thể hoàn thành bản ghi kiểm tra đang ở trạng thái IN_PROGRESS',
+      );
+    }
+
+    // Upload images if provided
+    let newImageUrls: string[] = [];
+    if (files && files.length > 0) {
+      newImageUrls = await this.uploadService.uploadMultipleFiles(files);
+    }
+
+    // Merge existing images with new images
+    const allImages = [...auditLog.images, ...newImageUrls];
+
+    // Update status to COMPLETED and set completedAt, completedBy, notes
+    const updatedAuditLog = await this.auditLogModel
+      .findByIdAndUpdate(
+        auditId,
+        {
+          status: AuditStatus.COMPLETED,
+          completedAt: new Date(),
+          completedBy: staffObjectId,
+          images: allImages,
+          notes: notes || undefined,
+        },
+        { new: true },
+      )
+      .populate({
+        path: 'report',
+        select: 'type status description asset images createdBy',
+        populate: {
+          path: 'asset',
+          select: 'name code status',
+        },
+      })
+      .populate('staffs', 'fullName email')
+      .populate('acceptedBy', 'fullName email')
+      .populate('completedBy', 'fullName email');
+
+    return {
+      message: 'Hoàn thành bản ghi kiểm tra thành công',
       data: updatedAuditLog,
     };
   }

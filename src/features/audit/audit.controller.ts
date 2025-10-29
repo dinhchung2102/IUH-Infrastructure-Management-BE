@@ -22,6 +22,7 @@ import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { StaffAuditLogDto } from './dto/staff-auditlog.dto';
+import { CompleteAuditLogDto } from './dto/complete-auditlog.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
@@ -115,5 +116,24 @@ export class AuditController {
     @CurrentUser('sub') staffId: string,
   ) {
     return this.auditService.acceptAuditLog(auditId, staffId);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:UPDATE'])
+  @Post('staff/complete-log/:auditId')
+  @UseInterceptors(FilesInterceptor('images', 10)) // Max 10 images
+  @HttpCode(HttpStatus.OK)
+  async completeAuditLog(
+    @Param('auditId') auditId: string,
+    @CurrentUser('sub') staffId: string,
+    @Body() completeDto: CompleteAuditLogDto,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    return this.auditService.completeAuditLog(
+      auditId,
+      staffId,
+      completeDto.notes,
+      files,
+    );
   }
 }

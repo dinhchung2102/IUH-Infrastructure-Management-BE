@@ -29,6 +29,21 @@ export class AuditLog {
 
   @Prop({ required: true })
   images: string[];
+
+  @Prop({ required: false, type: Types.ObjectId, ref: Account.name })
+  acceptedBy?: AccountDocument;
+
+  @Prop({ required: false })
+  acceptedAt?: Date;
+
+  @Prop({ required: false, type: Types.ObjectId, ref: Account.name })
+  completedBy?: AccountDocument;
+
+  @Prop({ required: false })
+  completedAt?: Date;
+
+  @Prop({ required: false })
+  notes?: string;
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
