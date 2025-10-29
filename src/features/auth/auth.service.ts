@@ -608,27 +608,6 @@ export class AuthService {
     };
   }
 
-  async changePassword(
-    accountId: string,
-    newPassword: string,
-  ): Promise<{ message: string }> {
-    const account = await this.accountModel.findOne({ _id: accountId });
-    if (!account) {
-      throw new NotFoundException({
-        message: `Tài khoản không tồn tại`,
-        errorCode: 'ACCOUNT_NOT_FOUND',
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
-    account.password = hashedPassword;
-
-    await account.save();
-    return {
-      message: 'Mật khẩu đã được thay đổi thành công',
-    };
-  }
-
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     const { refreshToken } = refreshTokenDto;
 
@@ -1973,6 +1952,112 @@ export class AuthService {
     return {
       message: 'Lấy danh sách tài khoản theo cơ sở thành công',
       accounts,
+    };
+  }
+
+  async updateProfile(
+    accountId: string,
+    updateProfileDto: any,
+    file?: Express.Multer.File,
+  ): Promise<{
+    message: string;
+    account: any;
+  }> {
+    // Validate accountId
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    // Find account
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    // Upload avatar if provided
+    let avatarUrl = updateProfileDto.avatar;
+    if (file) {
+      const uploadedUrls = await this.uploadService.uploadMultipleFiles([file]);
+      avatarUrl = uploadedUrls[0];
+    }
+
+    // Check if phoneNumber is being updated and already exists
+    if (
+      updateProfileDto.phoneNumber &&
+      updateProfileDto.phoneNumber !== account.phoneNumber
+    ) {
+      const existingAccount = await this.accountModel.findOne({
+        phoneNumber: updateProfileDto.phoneNumber,
+        _id: { $ne: accountId },
+      });
+      if (existingAccount) {
+        throw new ConflictException('Số điện thoại đã được sử dụng');
+      }
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+    if (updateProfileDto.phoneNumber)
+      updateData.phoneNumber = updateProfileDto.phoneNumber;
+    if (updateProfileDto.address) updateData.address = updateProfileDto.address;
+    if (avatarUrl) updateData.avatar = avatarUrl;
+    if (updateProfileDto.dateOfBirth)
+      updateData.dateOfBirth = new Date(updateProfileDto.dateOfBirth);
+
+    // Update account
+    const updatedAccount = await this.accountModel
+      .findByIdAndUpdate(accountId, updateData, { new: true })
+      .populate('role', 'name description')
+      .select('-password -refreshToken');
+
+    return {
+      message: 'Cập nhật thông tin cá nhân thành công',
+      account: updatedAccount,
+    };
+  }
+
+  async changePassword(
+    accountId: string,
+    oldPassword: string,
+    newPassword: string,
+  ): Promise<{
+    message: string;
+  }> {
+    // Validate accountId
+    if (!Types.ObjectId.isValid(accountId)) {
+      throw new NotFoundException('ID tài khoản không hợp lệ');
+    }
+
+    // Find account
+    const account = await this.accountModel.findById(accountId);
+    if (!account) {
+      throw new NotFoundException('Tài khoản không tồn tại');
+    }
+
+    // Verify old password
+    const isPasswordValid = await bcrypt.compare(oldPassword, account.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Mật khẩu cũ không đúng');
+    }
+
+    // Check if new password is same as old password
+    const isSamePassword = await bcrypt.compare(newPassword, account.password);
+    if (isSamePassword) {
+      throw new ConflictException(
+        'Mật khẩu mới không được trùng với mật khẩu cũ',
+      );
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await this.accountModel.findByIdAndUpdate(accountId, {
+      password: hashedPassword,
+    });
+
+    return {
+      message: 'Đổi mật khẩu thành công',
     };
   }
 }

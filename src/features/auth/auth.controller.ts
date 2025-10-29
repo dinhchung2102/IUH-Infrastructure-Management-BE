@@ -282,7 +282,11 @@ export class AuthController {
     @Body() dto: ChangePasswordDto,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.authService.changePassword(user.sub, dto.newPassword);
+    return this.authService.changePassword(
+      user.sub,
+      dto.oldPassword,
+      dto.newPassword,
+    );
   }
 
   @Public()
@@ -561,5 +565,23 @@ export class AuthController {
   @Get('accounts/by-campus/:campusId')
   async getAccountsByCampus(@Param('campusId') campusId: string) {
     return this.authService.getAccountsByCampus(campusId);
+  }
+
+  // ====== Profile Management ======
+  @UseGuards(AuthGuard)
+  @Patch('profile')
+  @UseInterceptors(AnyFilesInterceptor())
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser('sub') accountId: string,
+    @Body() updateProfileDto: any,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    const avatarFile = files?.find((file) => file.fieldname === 'avatar');
+    return this.authService.updateProfile(
+      accountId,
+      updateProfileDto,
+      avatarFile,
+    );
   }
 }
