@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -13,12 +14,16 @@ import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { StaffAuditLogDto, TimeRange } from './dto/staff-auditlog.dto';
 import { UploadService } from '../../shared/upload/upload.service';
 import { AuditStatus } from './enum/AuditStatus.enum';
+import { EventsService } from '../../shared/events/events.service';
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     private readonly uploadService: UploadService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async createAuditLog(
@@ -28,6 +33,10 @@ export class AuditService {
     message: string;
     auditLog: any;
   }> {
+    this.logger.log(
+      `Creating audit log: "${createAuditLogDto.subject}" for ${createAuditLogDto.staffs.length} staff(s)`,
+    );
+
     // Xử lý upload files nếu có
     let auditImages = createAuditLogDto.images || [];
     if (files && files.length > 0) {
@@ -70,6 +79,7 @@ export class AuditService {
     });
 
     const savedAuditLog = await newAuditLog.save();
+
     await savedAuditLog.populate([
       {
         path: 'report',
@@ -81,6 +91,37 @@ export class AuditService {
       },
       { path: 'staffs', select: 'fullName email' },
     ]);
+
+    // Send notification to assigned staffs via WebSocket
+    for (const staffId of createAuditLogDto.staffs) {
+      this.eventsService.sendNotificationToUser(staffId, {
+        title: 'Nhiệm vụ kiểm tra mới',
+        message: `Bạn đã được giao nhiệm vụ: ${createAuditLogDto.subject}`,
+        type: 'info',
+        data: {
+          auditLogId: savedAuditLog._id.toString(),
+          subject: createAuditLogDto.subject,
+          status: savedAuditLog.status,
+          reportId: createAuditLogDto.report,
+        },
+      });
+    }
+
+    // Emit update event to all clients
+    this.eventsService.emitUpdate({
+      entity: 'auditlog',
+      action: 'created',
+      data: {
+        _id: savedAuditLog._id,
+        subject: savedAuditLog.subject,
+        status: savedAuditLog.status,
+        staffs: createAuditLogDto.staffs,
+      },
+    });
+
+    this.logger.log(
+      `Audit log created and notifications sent to ${createAuditLogDto.staffs.length} staff(s)`,
+    );
 
     return {
       message: 'Tạo bản ghi kiểm tra thành công',

@@ -13,6 +13,10 @@ export class EventsService {
   private readonly logger = new Logger(EventsService.name);
   private server: Server;
   private clients: Map<string, ClientInfo> = new Map();
+  private pendingNotifications: Map<
+    string,
+    Array<{ event: string; data: any }>
+  > = new Map();
 
   /**
    * Set Socket.IO server instance
@@ -44,6 +48,29 @@ export class EventsService {
     this.logger.log(
       `Client connected: ${socket.id} (userId: ${socket.userId || 'anonymous'})`,
     );
+
+    // Flush pending notifications for this user
+    if (socket.userId) {
+      this.flushPendingNotifications(socket.userId);
+    }
+  }
+
+  /**
+   * Flush pending notifications when client connects
+   */
+  private flushPendingNotifications(userId: string): void {
+    const pending = this.pendingNotifications.get(userId);
+    if (pending && pending.length > 0) {
+      this.logger.log(
+        `Flushing ${pending.length} pending notification(s) for user: ${userId}`,
+      );
+
+      pending.forEach((notification) => {
+        this.emitToUser(userId, notification.event, notification.data);
+      });
+
+      this.pendingNotifications.delete(userId);
+    }
   }
 
   /**
@@ -88,7 +115,8 @@ export class EventsService {
   emitToSocket(socketId: string, event: string, data: any): void {
     if (this.server) {
       this.server.to(socketId).emit(event, data);
-      this.logger.debug(`Emitted '${event}' to socket ${socketId}`);
+    } else {
+      this.logger.error('Server instance is not available!');
     }
   }
 
@@ -97,13 +125,27 @@ export class EventsService {
    */
   emitToUser(userId: string, event: string, data: any): void {
     const userClients = this.getClientsByUserId(userId);
+
     if (userClients.length > 0) {
       userClients.forEach((client) => {
         this.emitToSocket(client.socketId, event, data);
       });
-      this.logger.debug(
-        `Emitted '${event}' to user ${userId} (${userClients.length} sockets)`,
+      this.logger.log(
+        `Emitted '${event}' to user ${userId} (${userClients.length} socket(s))`,
       );
+    } else {
+      // No clients connected, queue the notification
+      if (!this.pendingNotifications.has(userId)) {
+        this.pendingNotifications.set(userId, []);
+      }
+
+      const queue = this.pendingNotifications.get(userId);
+      if (queue) {
+        queue.push({ event, data });
+        this.logger.log(
+          `Queued '${event}' for user ${userId} (offline, queue: ${queue.length})`,
+        );
+      }
     }
   }
 
@@ -122,8 +164,11 @@ export class EventsService {
    */
   broadcast(event: string, data: any): void {
     if (this.server) {
+      const totalClients = this.getConnectedClientsCount();
       this.server.emit(event, data);
-      this.logger.debug(`Broadcasted '${event}' to all clients`);
+      this.logger.log(`Broadcasted '${event}' to ${totalClients} clients`);
+    } else {
+      this.logger.error('Server instance is not available!');
     }
   }
 
@@ -134,10 +179,12 @@ export class EventsService {
     userId: string,
     notification: NotificationPayload,
   ): void {
-    this.emitToUser(userId, 'notification', {
+    const payload = {
       ...notification,
       timestamp: new Date(),
-    });
+    };
+
+    this.emitToUser(userId, 'notification', payload);
   }
 
   /**

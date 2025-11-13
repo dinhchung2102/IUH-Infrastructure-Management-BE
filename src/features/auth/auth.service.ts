@@ -31,6 +31,7 @@ import { UpdateAccountDto } from './dto/update-account.dto';
 import { AccountStatsDto } from './dto/account-stats.dto';
 import { CreateStaffAccountDto } from './dto/create-staff-account.dto';
 import { UploadService } from '../../shared/upload/upload.service';
+import { EventsService } from '../../shared/events/events.service';
 
 export interface RoleStats {
   role: string;
@@ -71,6 +72,7 @@ export class AuthService {
     private readonly mailerService: MailerService,
     private readonly redisService: RedisService,
     private readonly uploadService: UploadService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async createPermission(permissionDto: PermissionDto) {
@@ -456,6 +458,13 @@ export class AuthService {
       }
       return rest;
     };
+
+    // Send welcome notification via WebSocket if user is connected
+    this.eventsService.sendNotificationToUser(account._id.toString(), {
+      title: 'Đăng nhập thành công',
+      message: `Chào mừng ${account.fullName} quay trở lại!`,
+      type: 'success',
+    });
 
     return {
       message: 'Đăng nhập thành công',

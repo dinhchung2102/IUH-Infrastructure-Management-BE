@@ -25,15 +25,20 @@ import {
   type AuditLogDocument,
 } from '../audit/schema/auditlog.schema';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
+import { EventsService } from '../../shared/events/events.service';
+import { Logger } from '@nestjs/common';
 
 @Injectable()
 export class ReportService {
+  private readonly logger = new Logger(ReportService.name);
+
   constructor(
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     private readonly uploadService: UploadService,
     private readonly redisService: RedisService,
     private readonly mailerService: MailerService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async sendReportOTP(email: string): Promise<{ message: string }> {
@@ -720,6 +725,37 @@ export class ReportService {
 
       // 7. Commit transaction
       await session.commitTransaction();
+
+      // 8. Send WebSocket notifications to assigned staffs
+      for (const staffId of staffIds) {
+        this.eventsService.sendNotificationToUser(staffId, {
+          title: 'Nhiệm vụ kiểm tra mới',
+          message: `Bạn đã được giao nhiệm vụ: ${subject}`,
+          type: 'info',
+          data: {
+            auditLogId: savedAuditLog._id.toString(),
+            subject,
+            status: savedAuditLog.status,
+            reportId,
+          },
+        });
+      }
+
+      // 9. Emit update event to all clients
+      this.eventsService.emitUpdate({
+        entity: 'auditlog',
+        action: 'created',
+        data: {
+          _id: savedAuditLog._id,
+          subject: savedAuditLog.subject,
+          status: savedAuditLog.status,
+          staffs: staffIds,
+        },
+      });
+
+      this.logger.log(
+        `Report approved and audit log notifications sent to ${staffIds.length} staff(s)`,
+      );
 
       return {
         message: 'Phê duyệt báo cáo và tạo bản ghi kiểm tra thành công',

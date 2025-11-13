@@ -67,32 +67,27 @@ socket.on('notification', (data) => {
 });
 ```
 
-## 📚 Tài liệu chi tiết
+## 📚 Tài liệu
 
-- **[USAGE.md](./USAGE.md)** - Hướng dẫn sử dụng đầy đủ
-- **[examples/backend-usage.example.ts](./examples/backend-usage.example.ts)** - Ví dụ sử dụng trong Backend
-- **[examples/client-usage.example.js](./examples/client-usage.example.js)** - Ví dụ sử dụng trong Frontend
+- **[WEBSOCKET_API.md](./WEBSOCKET_API.md)** - 📖 API Documentation đầy đủ cho Frontend Developer
 
 ## 🏗️ Cấu trúc
 
 ```
 src/shared/events/
 ├── dto/                           # Data Transfer Objects
-│   ├── socket-event.dto.ts       # DTOs cho events
+│   ├── socket-event.dto.ts
 │   └── index.ts
 ├── interfaces/                    # TypeScript Interfaces
 │   ├── socket-client.interface.ts
 │   ├── event-payload.interface.ts
 │   └── index.ts
-├── examples/                      # Ví dụ code
-│   ├── backend-usage.example.ts
-│   └── client-usage.example.js
 ├── events.gateway.ts              # WebSocket Gateway
-├── events.service.ts              # Events Service
+├── events.service.ts              # Events Service (with queue system)
 ├── events.module.ts               # Module definition
 ├── index.ts                       # Exports
 ├── README.md                      # File này
-└── USAGE.md                       # Hướng dẫn chi tiết
+└── WEBSOCKET_API.md              # API Documentation
 ```
 
 ## 🔌 WebSocket Endpoint
@@ -134,7 +129,62 @@ wss://your-domain.com/events
 
 ## 🎯 Use Cases phổ biến
 
-### 1. Real-time notifications
+### 1. ⭐ Staff Login & Audit Log Notifications (Đã tích hợp)
+
+**Backend (AuthService):**
+
+```typescript
+// Khi staff đăng nhập thành công
+this.eventsService.sendNotificationToUser(account._id.toString(), {
+  title: 'Đăng nhập thành công',
+  message: `Chào mừng ${account.fullName} quay trở lại!`,
+  type: 'success',
+});
+```
+
+**Backend (AuditService):**
+
+```typescript
+// Khi tạo audit log mới, notify các staff được giao
+for (const staffId of createAuditLogDto.staffs) {
+  this.eventsService.sendNotificationToUser(staffId, {
+    title: 'Nhiệm vụ kiểm tra mới',
+    message: `Bạn đã được giao nhiệm vụ: ${createAuditLogDto.subject}`,
+    type: 'info',
+    data: {
+      auditLogId: savedAuditLog._id.toString(),
+      subject: createAuditLogDto.subject,
+      status: savedAuditLog.status,
+    },
+  });
+}
+```
+
+**Frontend:**
+
+```javascript
+// Sau khi login, khởi tạo WebSocket
+const socket = io('http://localhost:3000/events', {
+  query: {
+    userId: loginResponse.account._id,
+    accountId: loginResponse.account._id,
+    role: loginResponse.account.role,
+  },
+});
+
+// Listen for notifications
+socket.on('notification', (notification) => {
+  if (notification.data?.auditLogId) {
+    // Có audit log mới được giao
+    showToast(notification.title, notification.message);
+    navigateToAuditLog(notification.data.auditLogId);
+  }
+});
+```
+
+📖 **Xem chi tiết**: [WEBSOCKET_API.md](./WEBSOCKET_API.md)
+
+### 2. Real-time notifications
 
 ```typescript
 this.eventsService.sendNotificationToUser(userId, {
@@ -144,7 +194,7 @@ this.eventsService.sendNotificationToUser(userId, {
 });
 ```
 
-### 2. Data synchronization
+### 3. Data synchronization
 
 ```typescript
 this.eventsService.emitUpdate({
@@ -154,7 +204,7 @@ this.eventsService.emitUpdate({
 });
 ```
 
-### 3. Room-based communication
+### 4. Room-based communication
 
 ```typescript
 // Backend
@@ -167,7 +217,7 @@ socket.on('newReport', (data) => {
 });
 ```
 
-### 4. Online status tracking
+### 5. Online status tracking
 
 ```typescript
 const isOnline = this.eventsService.isUserConnected(userId);
@@ -288,16 +338,19 @@ Internal use only for IUH Infrastructure Management project.
 
 ## 👥 Support
 
-Nếu có câu hỏi hoặc gặp vấn đề, vui lòng:
+Nếu có câu hỏi hoặc gặp vấn đề:
 
-1. Đọc file USAGE.md
-2. Xem examples trong thư mục examples/
-3. Check server logs để debug
+1. Đọc [WEBSOCKET_API.md](./WEBSOCKET_API.md) để xem API đầy đủ
+2. Check server logs để debug
+3. Check browser/React Native console logs
 
-## 🔄 Updates
+## ✨ Tính năng đã tích hợp
 
-- **v1.0.0** (2025-01-13): Initial release
-  - WebSocket Gateway
-  - Events Service
-  - Full TypeScript support
-  - Documentation và examples
+- ✅ WebSocket Gateway với Socket.IO
+- ✅ Notification queue system (tự động gửi khi client connect)
+- ✅ Login success notification
+- ✅ Audit log assignment notification (cả từ `/api/audit` và `/api/report/approve`)
+- ✅ Real-time data updates
+- ✅ Room management
+- ✅ Client tracking
+- ✅ Auto-reconnection support
