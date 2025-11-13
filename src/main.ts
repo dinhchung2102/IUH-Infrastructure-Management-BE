@@ -5,9 +5,13 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { SuccessResponseInterceptor } from './common/interceptors/transform.interceptor';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Enable WebSocket support with Socket.IO
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   app.setGlobalPrefix('api');
 

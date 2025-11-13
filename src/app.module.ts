@@ -17,6 +17,7 @@ import { ZoneAreaModule } from './features/zone-area/zone-area.module';
 import { UploadModule } from './shared/upload/upload.module';
 import { QrCodeModule } from './shared/qrcode/qrcode.module';
 import { NewsModule } from './features/news/news.module';
+import { EventsModule } from './shared/events/events.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { NewsModule } from './features/news/news.module';
     UploadModule,
     QrCodeModule,
     NewsModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [
