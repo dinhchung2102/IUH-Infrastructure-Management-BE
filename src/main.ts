@@ -14,7 +14,7 @@ async function bootstrap() {
   });
 
   // Use custom logger
-  app.useLogger(new LoggerService('NestApplication'));
+  app.useLogger(LoggerService.forContext('NestApplication'));
 
   // Enable WebSocket support with Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
@@ -35,7 +35,7 @@ async function bootstrap() {
         'https://iuh.nagentech.com',
       ];
 
-  const logger = new LoggerService('Bootstrap');
+  const logger = LoggerService.forContext('Bootstrap');
   logger.log(`Allowed CORS Origins: ${allowedOrigins.join(', ')}`);
 
   app.enableCors({

@@ -8,9 +8,24 @@ export class LoggerService implements NestLoggerService {
   private logger: winston.Logger;
   private context?: string;
 
-  constructor(context?: string) {
-    this.context = context;
+  constructor() {
     this.logger = this.createLogger();
+  }
+
+  /**
+   * Set context for logging
+   */
+  setContext(context: string): void {
+    this.context = context;
+  }
+
+  /**
+   * Create a new logger instance with specific context
+   */
+  static forContext(context: string): LoggerService {
+    const logger = new LoggerService();
+    logger.setContext(context);
+    return logger;
   }
 
   private createLogger(): winston.Logger {
@@ -197,4 +212,3 @@ export class LoggerService implements NestLoggerService {
     });
   }
 }
-
