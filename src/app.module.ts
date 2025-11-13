@@ -18,6 +18,7 @@ import { UploadModule } from './shared/upload/upload.module';
 import { QrCodeModule } from './shared/qrcode/qrcode.module';
 import { NewsModule } from './features/news/news.module';
 import { EventsModule } from './shared/events/events.module';
+import { LoggerModule } from './shared/logging/logger.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { EventsModule } from './shared/events/events.module';
     QrCodeModule,
     NewsModule,
     EventsModule,
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [

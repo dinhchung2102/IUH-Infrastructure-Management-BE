@@ -6,9 +6,15 @@ import { SuccessResponseInterceptor } from './common/interceptors/transform.inte
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { LoggerService } from './shared/logging/logger.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Use custom logger
+  app.useLogger(new LoggerService('NestApplication'));
 
   // Enable WebSocket support with Socket.IO
   app.useWebSocketAdapter(new IoAdapter(app));
@@ -29,7 +35,8 @@ async function bootstrap() {
         'https://iuh.nagentech.com',
       ];
 
-  console.log('🌐 Allowed CORS Origins:', allowedOrigins);
+  const logger = new LoggerService('Bootstrap');
+  logger.log(`Allowed CORS Origins: ${allowedOrigins.join(', ')}`);
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -39,8 +46,7 @@ async function bootstrap() {
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn(`❌ CORS blocked origin: ${origin}`);
-        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+        logger.warn(`CORS blocked origin: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -66,6 +72,11 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new SuccessResponseInterceptor());
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`WebSocket endpoint: ws://localhost:${port}/events`);
+  logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 }
 void bootstrap();
