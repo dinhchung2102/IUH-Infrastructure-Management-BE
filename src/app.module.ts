@@ -19,6 +19,7 @@ import { QrCodeModule } from './shared/qrcode/qrcode.module';
 import { NewsModule } from './features/news/news.module';
 import { EventsModule } from './shared/events/events.module';
 import { LoggerModule } from './shared/logging/logger.module';
+import { DashboardModule } from './features/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { LoggerModule } from './shared/logging/logger.module';
     NewsModule,
     EventsModule,
     LoggerModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [
