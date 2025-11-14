@@ -13,6 +13,7 @@ import { SyncService } from './services/sync.service';
 // Controllers
 import { AIChatController } from './controllers/ai-chat.controller';
 import { AIClassificationController } from './controllers/ai-classification.controller';
+import { AISyncController } from './controllers/ai-sync.controller';
 
 // Processors
 import { IndexingProcessor } from './processors/indexing.processor';
@@ -22,6 +23,7 @@ import {
   IndexedDocument,
   IndexedDocumentSchema,
 } from './schemas/indexed-document.schema';
+import { Report, ReportSchema } from '../report/schema/report.schema';
 
 // Auth Module
 import { AuthModule } from '../auth/auth.module';
@@ -30,6 +32,7 @@ import { AuthModule } from '../auth/auth.module';
   imports: [
     MongooseModule.forFeature([
       { name: IndexedDocument.name, schema: IndexedDocumentSchema },
+      { name: Report.name, schema: ReportSchema },
     ]),
     BullModule.registerQueueAsync({
       name: 'ai-indexing',
@@ -52,7 +55,7 @@ import { AuthModule } from '../auth/auth.module';
     SyncService,
     IndexingProcessor,
   ],
-  controllers: [AIChatController, AIClassificationController],
+  controllers: [AIChatController, AIClassificationController, AISyncController],
   exports: [
     GeminiService,
     QdrantService,

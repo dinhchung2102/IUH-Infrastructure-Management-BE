@@ -26,7 +26,8 @@ import {
 } from '../audit/schema/auditlog.schema';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
 import { EventsService } from '../../shared/events/events.service';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject, forwardRef } from '@nestjs/common';
+import { SyncService } from '../ai/services/sync.service';
 
 @Injectable()
 export class ReportService {
@@ -39,6 +40,8 @@ export class ReportService {
     private readonly redisService: RedisService,
     private readonly mailerService: MailerService,
     private readonly eventsService: EventsService,
+    @Inject(forwardRef(() => SyncService))
+    private syncService?: SyncService, // Optional để tránh circular dependency - đặt cuối cùng
   ) {}
 
   async sendReportOTP(email: string): Promise<{ message: string }> {
@@ -195,6 +198,15 @@ export class ReportService {
       { path: 'asset', select: 'name code status' },
       { path: 'createdBy', select: 'fullName email' },
     ]);
+
+    // Auto-index to Qdrant for RAG
+    if (this.syncService) {
+      this.syncService.onReportCreated(savedReport).catch((error) => {
+        this.logger.warn(
+          `Failed to index report ${savedReport._id}: ${error.message}`,
+        );
+      });
+    }
 
     return {
       message: 'Tạo báo cáo thành công',
@@ -395,6 +407,15 @@ export class ReportService {
       .populate('asset', 'name code status')
       .populate('createdBy', 'fullName email');
 
+    // Auto-update index in Qdrant for RAG
+    if (this.syncService && updatedReport) {
+      this.syncService.onReportUpdated(updatedReport).catch((error) => {
+        this.logger.warn(
+          `Failed to update index for report ${id}: ${error.message}`,
+        );
+      });
+    }
+
     return {
       message: 'Cập nhật báo cáo thành công',
       data: updatedReport,
@@ -414,6 +435,15 @@ export class ReportService {
     }
 
     await this.reportModel.findByIdAndDelete(id);
+
+    // Auto-delete from Qdrant for RAG
+    if (this.syncService) {
+      this.syncService.onReportDeleted(id).catch((error) => {
+        this.logger.warn(
+          `Failed to delete index for report ${id}: ${error.message}`,
+        );
+      });
+    }
 
     return {
       message: 'Xóa báo cáo thành công',
