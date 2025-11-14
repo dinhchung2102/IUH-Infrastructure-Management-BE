@@ -31,6 +31,7 @@ import type { JwtPayload } from './interfaces/jwt-payload.interface';
 import { RequirePermissions } from './decorators';
 import { SendOtpDto, VerifyOTPDto } from './dto/otp.dto';
 import { ChangePasswordDto, ResetPasswordDto } from './dto/password.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UnauthorizedException } from '@nestjs/common';
 import { QueryAccountsDto } from './dto/query-accounts.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
@@ -309,7 +310,7 @@ export class AuthController {
 
     if (isMobile) {
       // For mobile, get refresh token from request body
-      const body = request.body;
+      const body = request.body as RefreshTokenDto;
       if (!body?.refreshToken) {
         throw new UnauthorizedException('Refresh token không được tìm thấy');
       }
@@ -325,7 +326,7 @@ export class AuthController {
       if (!extractedToken) {
         throw new UnauthorizedException('Refresh token không được tìm thấy');
       }
-      refreshToken = extractedToken as string;
+      refreshToken = extractedToken;
     }
 
     const result = await this.authService.refreshToken({ refreshToken });
@@ -351,7 +352,7 @@ export class AuthController {
     // Return only access token for web
     return {
       message: 'Refresh token thành công',
-      accessToken: result.access_token,
+      access_token: result.access_token,
     };
   }
 
