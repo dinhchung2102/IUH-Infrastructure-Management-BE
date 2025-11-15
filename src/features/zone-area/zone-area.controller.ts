@@ -156,6 +156,12 @@ export class ZoneAreaController {
   }
 
   @Public()
+  @Get('areas/:areaId/zones')
+  async findAllZonesByArea(@Param('areaId') areaId: string) {
+    return this.zoneAreaService.findAllZonesByArea(areaId);
+  }
+
+  @Public()
   @Get('campus/:campusId/buildings')
   async findAllBuildingsByCampus(@Param('campusId') campusId: string) {
     return this.zoneAreaService.findAllBuildingsByCampus(campusId);

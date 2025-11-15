@@ -8,6 +8,8 @@ import {
   IsNumber,
   Min,
   Max,
+  IsOptional,
+  ValidateIf,
 } from 'class-validator';
 import { CommonStatus } from '../../../../common/enum/CommonStatus.enum';
 import { ZoneType } from '../../enum/ZoneType.enum';
@@ -29,17 +31,26 @@ export class CreateZoneDto {
   @IsEnum(CommonStatus, { message: 'Trạng thái không hợp lệ' })
   status: CommonStatus;
 
-  @IsNotEmpty({ message: 'Tòa nhà không được để trống' })
+  // Zone can belong to either building OR area (but not both)
+  @IsOptional()
   @IsMongoId({ message: 'ID tòa nhà không hợp lệ' })
-  building: string;
+  @ValidateIf((o) => !o.area, { message: 'Phải có tòa nhà hoặc khu vực ngoài trời' })
+  building?: string;
+
+  @IsOptional()
+  @IsMongoId({ message: 'ID khu vực ngoài trời không hợp lệ' })
+  @ValidateIf((o) => !o.building, { message: 'Phải có tòa nhà hoặc khu vực ngoài trời' })
+  area?: string;
 
   @IsNotEmpty({ message: 'Loại khu vực không được để trống' })
   @IsEnum(ZoneType, { message: 'Loại khu vực không hợp lệ' })
   zoneType: ZoneType;
 
-  @IsNotEmpty({ message: 'Vị trí tầng không được để trống' })
+  // floorLocation only required when zone belongs to a building
+  @IsOptional()
   @IsNumber({}, { message: 'Vị trí tầng phải là số' })
   @Min(1, { message: 'Vị trí tầng phải lớn hơn 0' })
   @Max(100, { message: 'Vị trí tầng không được quá 100' })
-  floorLocation: number;
+  @ValidateIf((o) => !!o.building, { message: 'Vị trí tầng bắt buộc khi zone thuộc tòa nhà' })
+  floorLocation?: number;
 }

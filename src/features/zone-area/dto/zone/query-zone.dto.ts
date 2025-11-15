@@ -31,6 +31,10 @@ export class QueryZoneDto {
 
   @IsOptional()
   @IsString()
+  area?: string;
+
+  @IsOptional()
+  @IsString()
   campus?: string;
 
   @IsOptional()
