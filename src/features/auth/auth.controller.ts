@@ -424,6 +424,13 @@ export class AuthController {
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
+  @Get('accounts/staff-only/stats')
+  async getStaffStats() {
+    return this.authService.getStaffStats();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/:id')
   async getAccountById(@Param('id') id: string) {
     return this.authService.getAccountById(id);

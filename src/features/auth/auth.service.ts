@@ -860,6 +860,67 @@ export class AuthService {
     };
   }
 
+  async getStaffStats(): Promise<{
+    message: string;
+    stats: {
+      total: number;
+      active: number;
+      inactive: number;
+      newThisMonth: number;
+    };
+  }> {
+    // Lấy IDs của roles cần loại trừ (GUEST, STUDENT, LECTURER)
+    const excludedRoles = await this.roleModel
+      .find({
+        roleName: {
+          $in: [RoleName.GUEST, RoleName.STUDENT, RoleName.LECTURER],
+        },
+      })
+      .select('_id')
+      .lean();
+
+    const excludedRoleIds = excludedRoles.map((r) => r._id);
+
+    // Base filter: chỉ lấy staff (loại trừ GUEST, STUDENT, LECTURER)
+    const baseFilter = {
+      role: { $nin: excludedRoleIds },
+    };
+
+    // Tính toán thống kê
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [total, active, inactive, newThisMonth] = await Promise.all([
+      // Tổng nhân sự
+      this.accountModel.countDocuments(baseFilter),
+      // Đang hoạt động
+      this.accountModel.countDocuments({
+        ...baseFilter,
+        isActive: true,
+      }),
+      // Không hoạt động
+      this.accountModel.countDocuments({
+        ...baseFilter,
+        isActive: false,
+      }),
+      // Mới tháng này
+      this.accountModel.countDocuments({
+        ...baseFilter,
+        createdAt: { $gte: startOfMonth },
+      }),
+    ]);
+
+    return {
+      message: 'Lấy thống kê nhân sự thành công',
+      stats: {
+        total,
+        active,
+        inactive,
+        newThisMonth,
+      },
+    };
+  }
+
   async findStaffAccounts(queryDto: QueryAccountsDto): Promise<{
     message: string;
     accounts: any[];
