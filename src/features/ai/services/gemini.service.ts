@@ -7,10 +7,11 @@ export class GeminiService {
   private readonly logger = new Logger(GeminiService.name);
   private genAI: GoogleGenerativeAI;
   private readonly embeddingModel = 'text-embedding-004';
-  // Use stable model instead of experimental (better free tier support)
-  private readonly chatModel = 'gemini-2.0-flash';
+  private chatModel: string;
 
   constructor(private configService: ConfigService) {
+    this.chatModel =
+      this.configService.get<string>('GEMINI_CHAT_MODEL') || 'gemini-2.0-flash';
     const apiKey = this.configService.get<string>('GEMINI_KEY');
     if (!apiKey) {
       throw new Error('GEMINI_KEY is not configured in environment variables');
