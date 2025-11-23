@@ -73,7 +73,7 @@ export class CampusService {
       page = '1',
       limit = '10',
       sortBy = 'createdAt',
-      sortOrder = 'desc',
+      sortOrder = 'asc',
     } = queryDto;
 
     const pageNum = parseInt(page);

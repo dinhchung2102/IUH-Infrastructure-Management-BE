@@ -294,6 +294,15 @@ export class ZoneAreaMainService {
     }
 
     if (campus) {
+      // Validate campus ID format
+      if (!Types.ObjectId.isValid(campus)) {
+        throw new BadRequestException('ID campus không hợp lệ');
+      }
+      // Validate campus exists
+      const campusExists = await this.campusModel.findById(campus);
+      if (!campusExists) {
+        throw new NotFoundException('Campus không tồn tại');
+      }
       filter.campus = new Types.ObjectId(campus);
     }
 
