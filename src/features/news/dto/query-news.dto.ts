@@ -29,4 +29,8 @@ export class QueryNewsDto {
   @IsOptional()
   @IsString({ message: 'ID tác giả phải là chuỗi' })
   author?: string;
+
+  @IsOptional()
+  @IsString({ message: 'ID danh mục phải là chuỗi' })
+  category?: string;
 }

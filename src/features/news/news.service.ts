@@ -61,6 +61,7 @@ export class NewsService {
       search,
       status,
       author,
+      category,
       page = '1',
       limit = '10',
       sortBy = 'createdAt',
@@ -88,6 +89,10 @@ export class NewsService {
 
     if (author) {
       filter.author = author;
+    }
+
+    if (category) {
+      filter.category = category;
     }
 
     // Xây dựng sort
