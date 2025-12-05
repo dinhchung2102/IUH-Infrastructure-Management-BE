@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: iuh-qdrant
+    ports:
+      - '6333:6333' # REST API
+      - '6334:6334' # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - iuh-network
+
+  # MongoDB (nếu chưa có)
+  # mongodb:
+  #   image: mongo:7
+  #   container_name: iuh-mongodb
+  #   ports:
+  #     - '27017:27017'
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #   environment:
+  #     - MONGO_INITDB_ROOT_USERNAME=admin
+  #     - MONGO_INITDB_ROOT_PASSWORD=your_password
+  #   restart: unless-stopped
+  #   networks:
+  #     - iuh-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: iuh-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - iuh-network
+
+  # NestJS Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iuh-csvc-api
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      # Use service name for Redis in Docker network
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Override Qdrant URL to use service name in Docker network
+      - QDRANT_URL=http://qdrant:6333
+    env_file:
+      - .env
+    depends_on:
+      - qdrant
+      - redis
+      # - mongodb
+    restart: unless-stopped
+    networks:
+      - iuh-network
+
+volumes:
+  qdrant_storage:
+    driver: local
+  redis_data:
+    driver: local
+  # mongodb_data:
+  #   driver: local
+
+networks:
+  iuh-network:
+    driver: bridge

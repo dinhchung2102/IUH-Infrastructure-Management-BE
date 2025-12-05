@@ -10,6 +10,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { ReportType } from '../enum/ReportType.enum';
+import { ReportPriority } from '../enum/ReportPriority.enum';
 
 export class CreateReportDto {
   @IsNotEmpty({ message: 'Asset không được để trống' })
@@ -33,6 +34,10 @@ export class CreateReportDto {
   @IsOptional()
   @IsString({ message: 'OTP phải là chuỗi' })
   authOTP?: string;
+
+  @IsOptional()
+  @IsEnum(ReportPriority, { message: 'Độ ưu tiên không hợp lệ' })
+  priority?: ReportPriority;
 
   @IsOptional()
   @IsArray({ message: 'Hình ảnh phải là mảng' })

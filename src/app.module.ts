@@ -20,6 +20,8 @@ import { NewsModule } from './features/news/news.module';
 import { EventsModule } from './shared/events/events.module';
 import { LoggerModule } from './shared/logging/logger.module';
 import { DashboardModule } from './features/dashboard/dashboard.module';
+import { AIModule } from './features/ai/ai.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
@@ -59,6 +61,16 @@ import { DashboardModule } from './features/dashboard/dashboard.module';
         },
       }),
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST') || 'localhost',
+          port: parseInt(configService.get('REDIS_PORT') || '6379'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
 
     AuthModule,
     AuditModule,
@@ -73,6 +85,7 @@ import { DashboardModule } from './features/dashboard/dashboard.module';
     EventsModule,
     LoggerModule,
     DashboardModule,
+    AIModule,
   ],
   controllers: [AppController],
   providers: [
