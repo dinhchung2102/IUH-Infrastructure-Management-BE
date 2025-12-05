@@ -230,6 +230,8 @@ export class ReportService {
       type,
       status,
       createdBy,
+      fromDate,
+      toDate,
       page = '1',
       limit = '10',
       sortBy = 'createdAt',
@@ -258,6 +260,20 @@ export class ReportService {
     }
     if (createdBy) {
       filter.createdBy = new Types.ObjectId(createdBy);
+    }
+
+    // Date range filter
+    if (fromDate || toDate) {
+      const dateFilter: any = {};
+      if (fromDate) {
+        dateFilter.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDateTime = new Date(toDate);
+        endDateTime.setHours(23, 59, 59, 999); // End of day
+        dateFilter.$lte = endDateTime;
+      }
+      filter.createdAt = dateFilter;
     }
 
     const sort: Record<string, any> = {};

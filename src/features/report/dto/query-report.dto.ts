@@ -4,6 +4,7 @@ import {
   IsNumberString,
   IsOptional,
   IsString,
+  IsDateString,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ReportType } from '../enum/ReportType.enum';
@@ -29,6 +30,20 @@ export class QueryReportDto {
   @IsOptional()
   @IsMongoId()
   createdBy?: string;
+
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'Từ ngày phải có định dạng ISO 8601 (YYYY-MM-DD)' },
+  )
+  fromDate?: string;
+
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'Đến ngày phải có định dạng ISO 8601 (YYYY-MM-DD)' },
+  )
+  toDate?: string;
 
   @IsOptional()
   @IsNumberString({}, { message: 'Số trang phải là số' })

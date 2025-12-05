@@ -294,6 +294,15 @@ export class ZoneAreaMainService {
     }
 
     if (campus) {
+      // Validate campus ID format
+      if (!Types.ObjectId.isValid(campus)) {
+        throw new BadRequestException('ID campus không hợp lệ');
+      }
+      // Validate campus exists
+      const campusExists = await this.campusModel.findById(campus);
+      if (!campusExists) {
+        throw new NotFoundException('Campus không tồn tại');
+      }
       filter.campus = new Types.ObjectId(campus);
     }
 
@@ -436,33 +445,91 @@ export class ZoneAreaMainService {
       throw new ConflictException('Tên khu vực đã tồn tại');
     }
 
-    // Kiểm tra building có tồn tại không
-    const building = await this.buildingModel.findById(createZoneDto.building);
-    if (!building) {
-      throw new NotFoundException('Tòa nhà không tồn tại');
-    }
-
-    // Kiểm tra floorLocation không vượt quá số tầng của building
-    if (createZoneDto.floorLocation > building.floor) {
+    // Validate: Zone must belong to either building OR area (but not both)
+    if (!createZoneDto.building && !createZoneDto.area) {
       throw new BadRequestException(
-        `Vị trí tầng không được vượt quá số tầng của tòa nhà (${building.floor} tầng)`,
+        'Zone phải thuộc về một tòa nhà hoặc một khu vực ngoài trời',
       );
     }
 
-    const newZone = new this.zoneModel({
-      ...createZoneDto,
-      building: new Types.ObjectId(createZoneDto.building),
-    });
+    if (createZoneDto.building && createZoneDto.area) {
+      throw new BadRequestException(
+        'Zone không thể thuộc về cả tòa nhà và khu vực ngoài trời. Vui lòng chọn một.',
+      );
+    }
 
+    const zoneData: any = {
+      name: createZoneDto.name,
+      description: createZoneDto.description,
+      status: createZoneDto.status,
+      zoneType: createZoneDto.zoneType,
+    };
+
+    // Handle building case
+    if (createZoneDto.building) {
+      const building = await this.buildingModel.findById(createZoneDto.building);
+      if (!building) {
+        throw new NotFoundException('Tòa nhà không tồn tại');
+      }
+
+      // floorLocation is required for zones in buildings
+      if (!createZoneDto.floorLocation) {
+        throw new BadRequestException(
+          'Vị trí tầng là bắt buộc khi zone thuộc tòa nhà',
+        );
+      }
+
+      // Kiểm tra floorLocation không vượt quá số tầng của building
+      if (createZoneDto.floorLocation > building.floor) {
+        throw new BadRequestException(
+          `Vị trí tầng không được vượt quá số tầng của tòa nhà (${building.floor} tầng)`,
+        );
+      }
+
+      zoneData.building = new Types.ObjectId(createZoneDto.building);
+      zoneData.floorLocation = createZoneDto.floorLocation;
+    }
+
+    // Handle area case
+    if (createZoneDto.area) {
+      const area = await this.areaModel.findById(createZoneDto.area);
+      if (!area) {
+        throw new NotFoundException('Khu vực ngoài trời không tồn tại');
+      }
+
+      // floorLocation should not be set for zones in areas
+      if (createZoneDto.floorLocation) {
+        throw new BadRequestException(
+          'Zone trong khu vực ngoài trời không thể có vị trí tầng',
+        );
+      }
+
+      zoneData.area = new Types.ObjectId(createZoneDto.area);
+    }
+
+    const newZone = new this.zoneModel(zoneData);
     const savedZone = await newZone.save();
-    await savedZone.populate({
-      path: 'building',
-      select: 'name floor',
-      populate: {
-        path: 'campus',
-        select: 'name address',
-      },
-    });
+
+    // Populate based on whether it's a building or area
+    if (savedZone.building) {
+      await savedZone.populate({
+        path: 'building',
+        select: 'name floor',
+        populate: {
+          path: 'campus',
+          select: 'name address',
+        },
+      });
+    } else if (savedZone.area) {
+      await savedZone.populate({
+        path: 'area',
+        select: 'name description',
+        populate: {
+          path: 'campus',
+          select: 'name address',
+        },
+      });
+    }
 
     return {
       message: 'Tạo khu vực thành công',
@@ -499,12 +566,16 @@ export class ZoneAreaMainService {
 
     // Xây dựng filter
     const filter: Record<string, any> = {};
+    const andConditions: any[] = [];
 
+    // Search condition
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-      ];
+      andConditions.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+        ],
+      });
     }
 
     if (status) {
@@ -519,17 +590,48 @@ export class ZoneAreaMainService {
       filter.building = new Types.ObjectId(building);
     }
 
+    if (queryDto.area) {
+      filter.area = new Types.ObjectId(queryDto.area);
+    }
+
     if (campus) {
-      // Tìm zones thông qua building
-      const buildings = await this.buildingModel.find({
-        campus: new Types.ObjectId(campus),
-      });
+      // Tìm zones thông qua building hoặc area
+      const [buildings, areas] = await Promise.all([
+        this.buildingModel.find({
+          campus: new Types.ObjectId(campus),
+        }),
+        this.areaModel.find({
+          campus: new Types.ObjectId(campus),
+        }),
+      ]);
+      
       const buildingIds = buildings.map((b) => b._id);
-      filter.building = { $in: buildingIds };
+      const areaIds = areas.map((a) => a._id);
+      
+      // Zones can be in buildings OR areas of this campus
+      const campusConditions: any[] = [];
+      if (buildingIds.length > 0) {
+        campusConditions.push({ building: { $in: buildingIds } });
+      }
+      if (areaIds.length > 0) {
+        campusConditions.push({ area: { $in: areaIds } });
+      }
+      
+      if (campusConditions.length > 0) {
+        andConditions.push({ $or: campusConditions });
+      } else {
+        // No buildings or areas in this campus, return empty result
+        andConditions.push({ _id: { $in: [] } });
+      }
     }
 
     if (floorLocation !== undefined) {
       filter.floorLocation = floorLocation;
+    }
+
+    // Combine all conditions
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     // Xây dựng sort
@@ -540,14 +642,24 @@ export class ZoneAreaMainService {
     const [zones, total] = await Promise.all([
       this.zoneModel
         .find(filter)
-        .populate({
-          path: 'building',
-          select: 'name floor',
-          populate: {
-            path: 'campus',
-            select: 'name address',
+        .populate([
+          {
+            path: 'building',
+            select: 'name floor',
+            populate: {
+              path: 'campus',
+              select: 'name address',
+            },
           },
-        })
+          {
+            path: 'area',
+            select: 'name description',
+            populate: {
+              path: 'campus',
+              select: 'name address',
+            },
+          },
+        ])
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -582,6 +694,24 @@ export class ZoneAreaMainService {
 
     const zones = await this.zoneModel
       .find({ building: new Types.ObjectId(buildingId), floorLocation: floor })
+      .populate([
+        {
+          path: 'building',
+          select: 'name floor',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+        {
+          path: 'area',
+          select: 'name description',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+      ])
       .lean();
 
     return {
@@ -600,14 +730,24 @@ export class ZoneAreaMainService {
 
     const zone = await this.zoneModel
       .findById(id)
-      .populate({
-        path: 'building',
-        select: 'name floor',
-        populate: {
-          path: 'campus',
-          select: 'name address phone email',
+      .populate([
+        {
+          path: 'building',
+          select: 'name floor',
+          populate: {
+            path: 'campus',
+            select: 'name address phone email',
+          },
         },
-      })
+        {
+          path: 'area',
+          select: 'name description',
+          populate: {
+            path: 'campus',
+            select: 'name address phone email',
+          },
+        },
+      ])
       .lean();
 
     if (!zone) {
@@ -642,49 +782,106 @@ export class ZoneAreaMainService {
       }
     }
 
-    // Kiểm tra building có tồn tại không (nếu có thay đổi)
-    let buildingToCheck = null;
-    if (updateZoneDto.building) {
-      buildingToCheck = await this.buildingModel.findById(
-        updateZoneDto.building,
+    // Determine final building and area values after update
+    const finalBuilding = updateZoneDto.building
+      ? updateZoneDto.building
+      : existingZone.building?.toString();
+    const finalArea = updateZoneDto.area
+      ? updateZoneDto.area
+      : existingZone.area?.toString();
+
+    // Validate: Zone must belong to either building OR area (but not both)
+    if (finalBuilding && finalArea) {
+      throw new BadRequestException(
+        'Zone không thể thuộc về cả tòa nhà và khu vực ngoài trời. Vui lòng chọn một.',
       );
-      if (!buildingToCheck) {
+    }
+
+    if (!finalBuilding && !finalArea) {
+      throw new BadRequestException(
+        'Zone phải thuộc về một tòa nhà hoặc một khu vực ngoài trời',
+      );
+    }
+
+    // Prepare update data
+    const updateData: Record<string, any> = { ...updateZoneDto };
+
+    // Handle building case
+    if (finalBuilding) {
+      const building = await this.buildingModel.findById(finalBuilding);
+      if (!building) {
         throw new NotFoundException('Tòa nhà không tồn tại');
       }
-    } else {
-      // Nếu không thay đổi building, lấy building hiện tại
-      buildingToCheck = await this.buildingModel.findById(
-        existingZone.building,
-      );
-    }
 
-    // Kiểm tra floorLocation không vượt quá số tầng của building
-    if (updateZoneDto.floorLocation && buildingToCheck) {
-      const buildingData = buildingToCheck as any;
-      const buildingFloor = buildingData.floor as number;
-      if (updateZoneDto.floorLocation > buildingFloor) {
+      // If switching from area to building, floorLocation is required
+      const floorLocation =
+        updateZoneDto.floorLocation !== undefined
+          ? updateZoneDto.floorLocation
+          : existingZone.floorLocation;
+
+      if (!floorLocation) {
         throw new BadRequestException(
-          `Vị trí tầng không được vượt quá số tầng của tòa nhà (${buildingFloor} tầng)`,
+          'Vị trí tầng là bắt buộc khi zone thuộc tòa nhà',
         );
+      }
+
+      // Kiểm tra floorLocation không vượt quá số tầng của building
+      if (floorLocation > building.floor) {
+        throw new BadRequestException(
+          `Vị trí tầng không được vượt quá số tầng của tòa nhà (${building.floor} tầng)`,
+        );
+      }
+
+      updateData.building = new Types.ObjectId(finalBuilding);
+      updateData.floorLocation = floorLocation;
+      // Clear area if switching
+      if (existingZone.area) {
+        updateData.area = null;
       }
     }
 
-    // Chuẩn bị data update
-    const updateData: Record<string, any> = { ...updateZoneDto };
-    if (updateZoneDto.building) {
-      updateData.building = new Types.ObjectId(updateZoneDto.building);
+    // Handle area case
+    if (finalArea) {
+      const area = await this.areaModel.findById(finalArea);
+      if (!area) {
+        throw new NotFoundException('Khu vực ngoài trời không tồn tại');
+      }
+
+      // Zone in area cannot have floorLocation
+      if (updateZoneDto.floorLocation !== undefined) {
+        throw new BadRequestException(
+          'Zone trong khu vực ngoài trời không thể có vị trí tầng',
+        );
+      }
+
+      updateData.area = new Types.ObjectId(finalArea);
+      // Clear building and floorLocation if switching
+      if (existingZone.building) {
+        updateData.building = null;
+        updateData.floorLocation = null;
+      }
     }
 
     const updatedZone = await this.zoneModel
       .findByIdAndUpdate(id, updateData, { new: true })
-      .populate({
-        path: 'building',
-        select: 'name floor',
-        populate: {
-          path: 'campus',
-          select: 'name address',
+      .populate([
+        {
+          path: 'building',
+          select: 'name floor',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
         },
-      });
+        {
+          path: 'area',
+          select: 'name description',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+      ]);
 
     return {
       message: 'Cập nhật khu vực thành công',
@@ -725,19 +922,72 @@ export class ZoneAreaMainService {
 
     const zones = await this.zoneModel
       .find({ building: new Types.ObjectId(buildingId) })
-      .populate({
-        path: 'building',
-        select: 'name floor',
-        populate: {
-          path: 'campus',
-          select: 'name address',
+      .populate([
+        {
+          path: 'building',
+          select: 'name floor',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
         },
-      })
+        {
+          path: 'area',
+          select: 'name description',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+      ])
       .sort({ floorLocation: 1, name: 1 })
       .lean();
 
     return {
       message: 'Lấy danh sách khu vực theo tòa nhà thành công',
+      zones,
+    };
+  }
+
+  async findAllZonesByArea(areaId: string): Promise<{
+    message: string;
+    zones: any[];
+  }> {
+    if (!Types.ObjectId.isValid(areaId)) {
+      throw new BadRequestException('ID khu vực ngoài trời không hợp lệ');
+    }
+
+    // Kiểm tra area có tồn tại không
+    const area = await this.areaModel.findById(areaId);
+    if (!area) {
+      throw new NotFoundException('Khu vực ngoài trời không tồn tại');
+    }
+
+    const zones = await this.zoneModel
+      .find({ area: new Types.ObjectId(areaId) })
+      .populate([
+        {
+          path: 'building',
+          select: 'name floor',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+        {
+          path: 'area',
+          select: 'name description',
+          populate: {
+            path: 'campus',
+            select: 'name address',
+          },
+        },
+      ])
+      .sort({ name: 1 })
+      .lean();
+
+    return {
+      message: 'Lấy danh sách khu vực theo khu vực ngoài trời thành công',
       zones,
     };
   }

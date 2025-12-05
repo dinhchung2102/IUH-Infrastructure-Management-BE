@@ -37,6 +37,13 @@ export class AuditService {
       `Creating audit log: "${createAuditLogDto.subject}" for ${createAuditLogDto.staffs.length} staff(s)`,
     );
 
+    // Validate: Phải có ít nhất report hoặc asset
+    if (!createAuditLogDto.report && !createAuditLogDto.asset) {
+      throw new BadRequestException(
+        'Phải cung cấp ít nhất một trong hai: report hoặc asset',
+      );
+    }
+
     // Xử lý upload files nếu có
     let auditImages = createAuditLogDto.images || [];
     if (files && files.length > 0) {
@@ -48,12 +55,24 @@ export class AuditService {
       }
     }
 
-    // Kiểm tra report có tồn tại không
-    const report = await this.auditLogModel.db
-      .collection('reports')
-      .findOne({ _id: new Types.ObjectId(createAuditLogDto.report) });
-    if (!report) {
-      throw new NotFoundException('Báo cáo không tồn tại');
+    // Kiểm tra report có tồn tại không (nếu có)
+    if (createAuditLogDto.report) {
+      const report = await this.auditLogModel.db
+        .collection('reports')
+        .findOne({ _id: new Types.ObjectId(createAuditLogDto.report) });
+      if (!report) {
+        throw new NotFoundException('Báo cáo không tồn tại');
+      }
+    }
+
+    // Kiểm tra asset có tồn tại không (nếu có)
+    if (createAuditLogDto.asset) {
+      const asset = await this.auditLogModel.db
+        .collection('assets')
+        .findOne({ _id: new Types.ObjectId(createAuditLogDto.asset) });
+      if (!asset) {
+        throw new NotFoundException('Tài sản không tồn tại');
+      }
     }
 
     // Kiểm tra staffs tồn tại
@@ -69,28 +88,74 @@ export class AuditService {
       throw new NotFoundException('Một hoặc nhiều nhân viên không tồn tại');
     }
 
-    const newAuditLog = new this.auditLogModel({
-      report: new Types.ObjectId(createAuditLogDto.report),
+    // Tạo audit log data
+    const auditLogData: any = {
       status: createAuditLogDto.status,
       subject: createAuditLogDto.subject,
       description: createAuditLogDto.description,
       staffs: staffObjectIds,
       images: auditImages,
-    });
+    };
 
+    if (createAuditLogDto.report) {
+      auditLogData.report = new Types.ObjectId(createAuditLogDto.report);
+    }
+
+    if (createAuditLogDto.asset) {
+      auditLogData.asset = new Types.ObjectId(createAuditLogDto.asset);
+    }
+
+    const newAuditLog = new this.auditLogModel(auditLogData);
     const savedAuditLog = await newAuditLog.save();
 
-    await savedAuditLog.populate([
-      {
+    // Populate dựa trên có report hay asset
+    const populatePaths: any[] = [{ path: 'staffs', select: 'fullName email' }];
+
+    if (createAuditLogDto.report) {
+      populatePaths.push({
         path: 'report',
         select: 'type status description asset',
         populate: {
           path: 'asset',
           select: 'name code status',
         },
-      },
-      { path: 'staffs', select: 'fullName email' },
-    ]);
+      });
+    }
+
+    if (createAuditLogDto.asset) {
+      populatePaths.push({
+        path: 'asset',
+        select: 'name code status zone area image',
+        populate: [
+          {
+            path: 'zone',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+          {
+            path: 'area',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+        ],
+      });
+    }
+
+    await savedAuditLog.populate(populatePaths);
 
     // Send notification to assigned staffs via WebSocket
     for (const staffId of createAuditLogDto.staffs) {
@@ -103,6 +168,7 @@ export class AuditService {
           subject: createAuditLogDto.subject,
           status: savedAuditLog.status,
           reportId: createAuditLogDto.report,
+          assetId: createAuditLogDto.asset,
         },
       });
     }
@@ -353,6 +419,36 @@ export class AuditService {
             {
               path: 'createdBy',
               select: 'fullName email',
+            },
+          ],
+        })
+        .populate({
+          path: 'asset',
+          select: 'name code status image zone area',
+          populate: [
+            {
+              path: 'zone',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+            {
+              path: 'area',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
             },
           ],
         })

@@ -28,5 +28,5 @@ export class QueryCampusDto {
 
   @IsOptional()
   @IsString()
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  sortOrder?: 'asc' | 'desc' = 'asc';
 }

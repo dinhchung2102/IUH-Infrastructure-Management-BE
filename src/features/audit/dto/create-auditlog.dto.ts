@@ -11,9 +11,13 @@ import {
 import { AuditStatus } from '../enum/AuditStatus.enum';
 
 export class CreateAuditLogDto {
-  @IsNotEmpty({ message: 'Báo cáo không được để trống' })
+  @IsOptional()
   @IsMongoId({ message: 'ID báo cáo không hợp lệ' })
-  report: string;
+  report?: string;
+
+  @IsOptional()
+  @IsMongoId({ message: 'ID tài sản không hợp lệ' })
+  asset?: string;
 
   @IsNotEmpty({ message: 'Trạng thái kiểm tra không được để trống' })
   @IsEnum(AuditStatus, { message: 'Trạng thái kiểm tra không hợp lệ' })

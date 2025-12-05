@@ -25,15 +25,27 @@ export class AuthGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (isPublic) {
-      return true;
-    }
-
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: JwtPayload }>();
     const token = this.extractTokenFromHeader(request);
 
+    // If endpoint is public, try to extract token but don't require it
+    if (isPublic) {
+      if (token) {
+        try {
+          const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+            secret: this.configService.get<string>('JWT_SECRET'),
+          });
+          request.user = payload;
+        } catch {
+          // Token invalid but endpoint is public, so ignore and continue
+        }
+      }
+      return true;
+    }
+
+    // If endpoint is not public, token is required
     if (!token) {
       throw new UnauthorizedException('Token không được cung cấp');
     }
