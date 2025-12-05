@@ -4,6 +4,10 @@ import { AuditStatus } from '../enum/AuditStatus.enum';
 import { type ReportDocument } from '../../../features/report/schema/report.schema';
 import { Report } from '../../../features/report/schema/report.schema';
 import {
+  Asset,
+  type AssetDocument,
+} from '../../../features/assets/schema/asset.schema';
+import {
   Account,
   type AccountDocument,
 } from '../../../features/auth/schema/account.schema';
@@ -12,8 +16,11 @@ export type AuditLogDocument = AuditLog & Document;
 
 @Schema({ timestamps: true })
 export class AuditLog {
-  @Prop({ required: true, type: Types.ObjectId, ref: Report.name })
-  report: ReportDocument;
+  @Prop({ required: false, type: Types.ObjectId, ref: Report.name })
+  report?: ReportDocument;
+
+  @Prop({ required: false, type: Types.ObjectId, ref: Asset.name })
+  asset?: AssetDocument;
 
   @Prop({ required: true, default: AuditStatus.PENDING })
   status: AuditStatus;
@@ -27,8 +34,8 @@ export class AuditLog {
   @Prop({ required: true, type: [Types.ObjectId], ref: Account.name })
   staffs: AccountDocument[];
 
-  @Prop({ required: true })
-  images: string[];
+  @Prop({ required: false, default: [] })
+  images?: string[];
 
   @Prop({ required: false, type: Types.ObjectId, ref: Account.name })
   acceptedBy?: AccountDocument;

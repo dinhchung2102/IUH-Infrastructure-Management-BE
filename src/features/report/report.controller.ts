@@ -63,6 +63,21 @@ export class ReportController {
     return this.reportService.findAllReports(queryDto);
   }
 
+  // ====== Statistics (phải đặt trước các dynamic routes) ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
+  @Get('stats')
+  async getReportStatistics() {
+    return this.reportService.getReportStatistics();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
+  @Get('statistics/dashboard')
+  async getReportStatisticsDashboard() {
+    return this.reportService.getReportStatistics();
+  }
+
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get(':id')
@@ -87,13 +102,6 @@ export class ReportController {
   @HttpCode(HttpStatus.OK)
   async removeReport(@Param('id') id: string) {
     return this.reportService.removeReport(id);
-  }
-
-  @UseGuards(AuthGuard, PermissionsGuard)
-  @RequirePermissions(['REPORT:READ'])
-  @Get('statistics/dashboard')
-  async getReportStatistics() {
-    return this.reportService.getReportStatistics();
   }
 
   @Public()
