@@ -63,12 +63,16 @@ import { BullModule } from '@nestjs/bullmq';
     }),
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get('REDIS_HOST') || 'localhost',
-          port: parseInt(configService.get('REDIS_PORT') || '6379'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        return {
+          connection: {
+            host: configService.get('REDIS_HOST') || 'localhost',
+            port: parseInt(configService.get('REDIS_PORT') || '6379'),
+            ...(redisPassword && { password: redisPassword }),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
 

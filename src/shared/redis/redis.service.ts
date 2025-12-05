@@ -12,7 +12,14 @@ export class RedisService {
     const redisHost =
       this.configService.get<string>('REDIS_HOST') || 'localhost';
     const redisPort = this.configService.get<string>('REDIS_PORT') || '6379';
-    const redisUrl = `redis://${redisHost}:${redisPort}`;
+    const redisPassword = this.configService.get<string>('REDIS_PASSWORD');
+
+    // Build Redis URL with optional password
+    let redisUrl = `redis://`;
+    if (redisPassword) {
+      redisUrl += `:${redisPassword}@`;
+    }
+    redisUrl += `${redisHost}:${redisPort}`;
 
     const redis = new KeyvRedis(redisUrl);
     this.keyv = new Keyv({

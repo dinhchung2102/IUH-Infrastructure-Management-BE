@@ -37,12 +37,16 @@ import { AuthModule } from '../auth/auth.module';
     BullModule.registerQueueAsync({
       name: 'ai-indexing',
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('REDIS_HOST') || 'localhost',
-          port: parseInt(configService.get<string>('REDIS_PORT') || '6379'),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
+        return {
+          connection: {
+            host: configService.get<string>('REDIS_HOST') || 'localhost',
+            port: parseInt(configService.get<string>('REDIS_PORT') || '6379'),
+            ...(redisPassword && { password: redisPassword }),
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     AuthModule,
