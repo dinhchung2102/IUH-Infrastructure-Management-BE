@@ -6,6 +6,7 @@ import {
 } from '../../../features/assets/schema/asset.schema';
 import { ReportType } from '../enum/ReportType.enum';
 import { ReportStatus } from '../enum/ReportStatus.enum';
+import { ReportPriority } from '../enum/ReportPriority.enum';
 import {
   Account,
   type AccountDocument,
@@ -23,6 +24,13 @@ export class Report {
 
   @Prop({ required: true, enum: ReportStatus })
   status: ReportStatus;
+
+  @Prop({
+    required: false,
+    enum: ReportPriority,
+    default: ReportPriority.MEDIUM,
+  })
+  priority?: ReportPriority;
 
   @Prop({ required: true })
   description: string;
