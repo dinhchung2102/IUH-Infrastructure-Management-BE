@@ -55,6 +55,21 @@ export class AuditController {
     return this.auditService.findAllAuditLogs(queryDto);
   }
 
+  // ====== Statistics (phải đặt trước các dynamic routes) ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:READ'])
+  @Get('statistics/dashboard')
+  async getAuditStatistics() {
+    return this.auditService.getAuditStatistics();
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:READ'])
+  @Get('stats')
+  async getAuditStatsShortcut() {
+    return this.auditService.getAuditStatistics();
+  }
+
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['AUDIT:READ'])
   @Get(':id')

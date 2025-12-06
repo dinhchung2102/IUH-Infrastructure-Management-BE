@@ -981,4 +981,117 @@ export class AuditService {
       data: updatedAuditLog,
     };
   }
+
+  async getAuditStatistics(): Promise<{
+    message: string;
+    data: {
+      totalAudits: number;
+      auditsByStatus: {
+        PENDING: number;
+        IN_PROGRESS: number;
+        COMPLETED: number;
+        CANCELLED: number;
+      };
+      recentAudits: any[];
+      auditsThisMonth: number;
+      auditsLastMonth: number;
+      averageCompletionTime: number; // in days
+    };
+  }> {
+    // Tổng số audit logs
+    const totalAudits = await this.auditLogModel.countDocuments();
+
+    // Thống kê theo status
+    const auditsByStatusAgg = await this.auditLogModel.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const statusStats = {
+      PENDING: 0,
+      IN_PROGRESS: 0,
+      COMPLETED: 0,
+      CANCELLED: 0,
+    };
+
+    auditsByStatusAgg.forEach((stat) => {
+      statusStats[stat._id as keyof typeof statusStats] = stat.count;
+    });
+
+    // Audit logs gần đây (5 bản ghi mới nhất)
+    const recentAudits = await this.auditLogModel
+      .find()
+      .populate('asset', 'name code')
+      .populate('report', 'type status')
+      .populate('staffs', 'fullName email')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('subject status createdAt')
+      .lean();
+
+    // Thống kê tháng này
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const auditsThisMonth = await this.auditLogModel.countDocuments({
+      createdAt: { $gte: startOfMonth },
+    });
+
+    // Thống kê tháng trước
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const auditsLastMonth = await this.auditLogModel.countDocuments({
+      createdAt: {
+        $gte: startOfLastMonth,
+        $lte: endOfLastMonth,
+      },
+    });
+
+    // Tính thời gian hoàn thành trung bình (chỉ tính các audit đã COMPLETED)
+    const completedAudits = await this.auditLogModel
+      .find({
+        status: AuditStatus.COMPLETED,
+        completedAt: { $exists: true },
+        createdAt: { $exists: true },
+      })
+      .select('createdAt completedAt')
+      .lean();
+
+    let averageCompletionTime = 0;
+    if (completedAudits.length > 0) {
+      const totalDays = completedAudits.reduce((sum, audit: any) => {
+        // Filter out audits without required dates
+        if (!audit.createdAt || !audit.completedAt) {
+          return sum;
+        }
+        const created = new Date(audit.createdAt);
+        const completed = new Date(audit.completedAt);
+        const diffTime = completed.getTime() - created.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        return sum + diffDays;
+      }, 0);
+      const validAuditsCount = completedAudits.filter(
+        (audit: any) => audit.createdAt && audit.completedAt,
+      ).length;
+      if (validAuditsCount > 0) {
+        averageCompletionTime =
+          Math.round((totalDays / validAuditsCount) * 10) / 10; // Round to 1 decimal
+      }
+    }
+
+    return {
+      message: 'Lấy thống kê bản ghi kiểm tra thành công',
+      data: {
+        totalAudits,
+        auditsByStatus: statusStats,
+        recentAudits: recentAudits as any[],
+        auditsThisMonth,
+        auditsLastMonth,
+        averageCompletionTime: averageCompletionTime as number,
+      },
+    };
+  }
 }
