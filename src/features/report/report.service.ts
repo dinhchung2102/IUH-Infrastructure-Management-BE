@@ -9,6 +9,7 @@ import { Model, Types } from 'mongoose';
 import { Report, type ReportDocument } from './schema/report.schema';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { QueryReportDto } from './dto/query-report.dto';
 import { ApproveReportDto } from './dto/approve-report.dto';
 import { UploadService } from '../../shared/upload/upload.service';
@@ -457,6 +458,46 @@ export class ReportService {
 
     return {
       message: 'Cập nhật báo cáo thành công',
+      data: updatedReport,
+    };
+  }
+
+  async updateReportStatus(
+    id: string,
+    updateStatusDto: UpdateReportStatusDto,
+  ): Promise<{
+    message: string;
+    data: any;
+  }> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('ID báo cáo không hợp lệ');
+    }
+
+    const existingReport = await this.reportModel.findById(id);
+    if (!existingReport) {
+      throw new NotFoundException('Báo cáo không tồn tại');
+    }
+
+    const updatedReport = await this.reportModel
+      .findByIdAndUpdate(
+        id,
+        { status: updateStatusDto.status },
+        { new: true },
+      )
+      .populate('asset', 'name code status')
+      .populate('createdBy', 'fullName email');
+
+    // Auto-update index in Qdrant for RAG
+    if (this.syncService && updatedReport) {
+      this.syncService.onReportUpdated(updatedReport).catch((error) => {
+        this.logger.warn(
+          `Failed to update index for report ${id}: ${error.message}`,
+        );
+      });
+    }
+
+    return {
+      message: 'Cập nhật trạng thái báo cáo thành công',
       data: updatedReport,
     };
   }

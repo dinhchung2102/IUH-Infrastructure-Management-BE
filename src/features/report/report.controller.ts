@@ -20,6 +20,7 @@ import {
 import { ReportService } from './report.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { UpdateReportDto } from './dto/update-report.dto';
+import { UpdateReportStatusDto } from './dto/update-report-status.dto';
 import { QueryReportDto } from './dto/query-report.dto';
 import { ApproveReportDto } from './dto/approve-report.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -83,6 +84,18 @@ export class ReportController {
   @Get(':id')
   async findOneReport(@Param('id') id: string) {
     return this.reportService.findOneReport(id);
+  }
+
+  // ====== Update Status (phải đặt trước PATCH :id) ======
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:UPDATE'])
+  @Patch(':id/status')
+  @HttpCode(HttpStatus.OK)
+  async updateReportStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateReportStatusDto,
+  ) {
+    return this.reportService.updateReportStatus(id, updateStatusDto);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
