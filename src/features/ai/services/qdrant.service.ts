@@ -12,12 +12,27 @@ export class QdrantService implements OnModuleInit {
   constructor(private configService: ConfigService) {
     const qdrantUrl =
       this.configService.get<string>('QDRANT_URL') || 'http://localhost:6333';
-    this.client = new QdrantClient({ url: qdrantUrl });
+    this.client = new QdrantClient({
+      url: qdrantUrl,
+      apiKey: this.configService.get<string>('QDRANT_API_KEY'),
+    });
     this.logger.log(`Qdrant client initialized with URL: ${qdrantUrl}`);
   }
 
   async onModuleInit() {
-    await this.ensureCollection();
+    try {
+      await this.ensureCollection();
+    } catch (error: unknown) {
+      this.logger.error(
+        'Failed to initialize Qdrant. AI features may not work properly.',
+      );
+      this.logger.error(
+        'Please ensure Qdrant server is running and QDRANT_URL is correct in .env',
+      );
+      if (error instanceof Error) {
+        this.logger.debug(`Error details: ${error.message}`);
+      }
+    }
   }
 
   /**
@@ -44,18 +59,21 @@ export class QdrantService implements OnModuleInit {
         });
 
         this.logger.log(
-          `Collection '${this.collectionName}' created successfully`,
+          `✓ Collection '${this.collectionName}' created successfully`,
         );
       } else {
-        this.logger.log(`Collection '${this.collectionName}' already exists`);
+        this.logger.log(`✓ Collection '${this.collectionName}' already exists`);
       }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Error ensuring collection: ${errorMessage}`,
+        `✗ Error ensuring collection: ${errorMessage}`,
         errorStack,
+      );
+      this.logger.error(
+        'Please check: 1) Qdrant server is running, 2) QDRANT_URL is correct in .env',
       );
       throw error;
     }
@@ -94,6 +112,26 @@ export class QdrantService implements OnModuleInit {
     payload: Record<string, any>,
   ): Promise<void> {
     try {
+      // Validate vector dimension
+      if (vector.length !== this.vectorSize) {
+        throw new Error(
+          `Vector dimension mismatch: expected ${this.vectorSize}, got ${vector.length}`,
+        );
+      }
+
+      // Ensure collection exists before upserting
+      const exists = await this.collectionExists();
+      if (!exists) {
+        this.logger.warn(
+          `Collection '${this.collectionName}' does not exist. Creating...`,
+        );
+        await this.ensureCollection();
+      }
+
+      this.logger.debug(
+        `Upserting ID: ${id}, Vector size: ${vector.length}, Payload: ${JSON.stringify(payload).substring(0, 200)}...`,
+      );
+
       await this.client.upsert(this.collectionName, {
         points: [
           {
@@ -104,7 +142,7 @@ export class QdrantService implements OnModuleInit {
         ],
       });
 
-      this.logger.debug(`Upserted document ${id} to Qdrant`);
+      this.logger.debug(`✓ Upserted document ${id} to Qdrant`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -112,6 +150,9 @@ export class QdrantService implements OnModuleInit {
       this.logger.error(
         `Error upserting document ${id}: ${errorMessage}`,
         errorStack,
+      );
+      this.logger.error(
+        `Details - Vector size: ${vector.length}, Expected: ${this.vectorSize}, Payload keys: ${Object.keys(payload).join(', ')}`,
       );
       throw error;
     }
@@ -192,8 +233,7 @@ export class QdrantService implements OnModuleInit {
    * @param id Document ID
    * @returns Document or null
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getDocument(id: string): Promise<any | null> {
+  async getDocument(id: string): Promise<Record<string, unknown> | null> {
     try {
       const result = await this.client.retrieve(this.collectionName, {
         ids: [id],

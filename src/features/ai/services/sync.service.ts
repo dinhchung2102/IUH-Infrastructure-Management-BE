@@ -6,18 +6,29 @@ import { GeminiService } from './gemini.service';
 import { IndexedDocument } from '../schemas/indexed-document.schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { v5 as uuidv5 } from 'uuid';
 
 @Injectable()
 export class SyncService {
   private readonly logger = new Logger(SyncService.name);
+  // UUID namespace for IUH CSVC (fixed namespace for consistent UUID generation)
+  private readonly UUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
   constructor(
-    private qdrantService: QdrantService,
-    private geminiService: GeminiService,
+    private readonly qdrantService: QdrantService,
+    private readonly geminiService: GeminiService,
     @InjectModel(IndexedDocument.name)
     private indexedDocModel: Model<IndexedDocument>,
     @InjectQueue('ai-indexing') private indexingQueue: Queue,
   ) {}
+
+  /**
+   * Convert MongoDB ObjectID to UUID v5 (deterministic)
+   * Same ObjectID always produces same UUID
+   */
+  private mongoIdToUUID(objectId: string): string {
+    return uuidv5(objectId, this.UUID_NAMESPACE);
+  }
 
   /**
    * Sync report when created
@@ -25,15 +36,19 @@ export class SyncService {
    */
   async onReportCreated(report: any): Promise<void> {
     try {
-      const vectorId = report._id.toString();
+      const mongoId = report._id.toString();
+      const vectorId = this.mongoIdToUUID(mongoId); // Convert to UUID
       const text = this.formatReportText(report);
+
+      this.logger.log(`Converting Report ID ${mongoId} → UUID ${vectorId}`);
 
       await this.indexingQueue.add(
         'index-document',
         {
           vectorId,
+          mongoId, // Keep MongoDB ID for tracking
           sourceType: 'report',
-          sourceId: report._id.toString(),
+          sourceId: mongoId,
           text,
           metadata: {
             title: `Report ${report.type}`,
@@ -70,7 +85,8 @@ export class SyncService {
    */
   async onReportUpdated(report: any): Promise<void> {
     try {
-      const vectorId = report._id.toString();
+      const mongoId = report._id.toString();
+      const vectorId = this.mongoIdToUUID(mongoId);
 
       // Update metadata only, không re-generate embedding
       await this.qdrantService.updatePayload(vectorId, {
@@ -103,7 +119,7 @@ export class SyncService {
    */
   async onReportDeleted(reportId: string): Promise<void> {
     try {
-      const vectorId = reportId;
+      const vectorId = this.mongoIdToUUID(reportId);
 
       await this.qdrantService.deleteDocument(vectorId);
       await this.indexedDocModel.updateOne(
@@ -144,12 +160,15 @@ export class SyncService {
       for (let i = 0; i < reports.length; i += batchSize) {
         const batch = reports.slice(i, i + batchSize);
 
-        const batchJobs = batch.map((report: any) => ({
-          name: 'index-document',
-          data: {
-            vectorId: String(report._id),
-            sourceType: 'report',
-            sourceId: String(report._id),
+        const batchJobs = batch.map((report: any) => {
+          const mongoId = String(report._id);
+          return {
+            name: 'index-document',
+            data: {
+              vectorId: this.mongoIdToUUID(mongoId),
+              mongoId,
+              sourceType: 'report',
+              sourceId: mongoId,
             text: this.formatReportText(report),
             metadata: {
               title: `Report ${report.type}`,
@@ -159,11 +178,12 @@ export class SyncService {
               createdAt: report.createdAt,
             },
           },
-          opts: {
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 2000 },
-          },
-        }));
+            opts: {
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 2000 },
+            },
+          };
+        });
 
         try {
           await this.indexingQueue.addBulk(batchJobs);
@@ -225,6 +245,119 @@ export class SyncService {
   }
 
   /**
+   * Sync knowledge when created
+   * @param knowledge Knowledge document
+   */
+  async onKnowledgeCreated(knowledge: any): Promise<void> {
+    try {
+      const mongoId = knowledge._id.toString();
+      const vectorId = this.mongoIdToUUID(mongoId); // Convert to UUID
+      const text = this.formatKnowledgeText(knowledge);
+
+      this.logger.log(`Converting Knowledge ID ${mongoId} → UUID ${vectorId}`);
+
+      await this.indexingQueue.add(
+        'index-document',
+        {
+          vectorId,
+          mongoId,
+          sourceType: knowledge.type.toLowerCase(), // 'faq', 'sop', 'facilities'
+          sourceId: mongoId,
+          text,
+          metadata: {
+            title: knowledge.title,
+            category: knowledge.category,
+            type: knowledge.type,
+            tags: knowledge.tags,
+            createdAt: knowledge.createdAt,
+          },
+        },
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 2000,
+          },
+        },
+      );
+
+      this.logger.log(`Queued knowledge ${vectorId} for indexing`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Error queueing knowledge for indexing: ${errorMessage}`,
+        errorStack,
+      );
+    }
+  }
+
+  /**
+   * Sync knowledge when updated
+   * @param knowledge Updated knowledge
+   */
+  async onKnowledgeUpdated(knowledge: any): Promise<void> {
+    try {
+      const mongoId = knowledge._id.toString();
+      const vectorId = this.mongoIdToUUID(mongoId);
+      const text = this.formatKnowledgeText(knowledge);
+
+      // Re-index completely (update content + embedding)
+      await this.indexingQueue.add('index-document', {
+        vectorId,
+        mongoId,
+        sourceType: knowledge.type.toLowerCase(),
+        sourceId: mongoId,
+        text,
+        metadata: {
+          title: knowledge.title,
+          category: knowledge.category,
+          type: knowledge.type,
+          tags: knowledge.tags,
+          updatedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`Queued knowledge ${vectorId} for re-indexing`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Error updating knowledge: ${errorMessage}`,
+        errorStack,
+      );
+    }
+  }
+
+  /**
+   * Sync knowledge when deleted
+   * @param knowledgeId Knowledge ID
+   */
+  async onKnowledgeDeleted(knowledgeId: string): Promise<void> {
+    try {
+      const vectorId = this.mongoIdToUUID(knowledgeId);
+
+      await this.qdrantService.deleteDocument(vectorId);
+      await this.indexedDocModel.updateOne(
+        { vectorId },
+        { $set: { isActive: false } },
+      );
+
+      this.logger.log(`Deleted knowledge ${vectorId} from index`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Error deleting knowledge: ${errorMessage}`,
+        errorStack,
+      );
+    }
+  }
+
+  /**
    * Format report text for indexing
    * @param report Report document
    * @returns Formatted text
@@ -249,6 +382,29 @@ export class SyncService {
 
     if (report.createdBy) {
       parts.push(`Người báo cáo: ${report.createdBy.fullName}`);
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Format knowledge text for indexing
+   * @param knowledge Knowledge document
+   * @returns Formatted text
+   */
+  private formatKnowledgeText(knowledge: any): string {
+    const parts: string[] = [];
+
+    parts.push(`Tiêu đề: ${knowledge.title}`);
+    parts.push(`Loại: ${knowledge.type}`);
+    parts.push(`Nội dung: ${knowledge.content}`);
+
+    if (knowledge.category) {
+      parts.push(`Danh mục: ${knowledge.category}`);
+    }
+
+    if (knowledge.tags && knowledge.tags.length > 0) {
+      parts.push(`Tags: ${knowledge.tags.join(', ')}`);
     }
 
     return parts.join('\n');

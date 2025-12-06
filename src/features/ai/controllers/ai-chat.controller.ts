@@ -18,8 +18,9 @@ export class AIChatController {
       success: true,
       data: {
         answer: result.answer,
-        sources: result.sources,
         conversationId: dto.conversationId,
+        // sources: result.sources, // Hidden for cleaner response
+        sourcesCount: result.sources.length,
       },
       meta: {
         usage: result.usage,
@@ -36,7 +37,8 @@ export class AIChatController {
       success: true,
       data: {
         answer: result.answer,
-        sources: result.sources,
+        // sources: result.sources, // Hidden
+        sourcesCount: result.sources.length,
       },
     };
   }
@@ -49,7 +51,7 @@ export class AIChatController {
       success: true,
       data: {
         answer: result.answer,
-        sources: result.sources,
+        sourcesCount: result.sources.length,
       },
     };
   }
@@ -62,7 +64,7 @@ export class AIChatController {
       success: true,
       data: {
         answer: result.answer,
-        sources: result.sources,
+        sourcesCount: result.sources.length,
       },
     };
   }
@@ -75,7 +77,7 @@ export class AIChatController {
       success: true,
       data: {
         answer: result.answer,
-        sources: result.sources,
+        sourcesCount: result.sources.length,
       },
     };
   }

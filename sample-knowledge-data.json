@@ -1,0 +1,105 @@
+[
+  {
+    "title": "Phòng Quản trị ở đâu?",
+    "content": "Phòng Quản trị nằm ở tầng 1, tòa nhà A, cơ sở Nguyễn Văn Bảo. Giờ làm việc: 7h30 - 17h00 từ thứ 2 đến thứ 6. Nghỉ trưa: 12h00 - 13h00. Liên hệ: 028.xxxx.xxxx hoặc email: quanlytaisan@iuh.edu.vn",
+    "type": "FAQ",
+    "category": "campus-info",
+    "tags": ["phòng quản trị", "địa điểm", "giờ làm việc"],
+    "metadata": {
+      "building": "Tòa A",
+      "floor": 1,
+      "room": "A.1.01",
+      "campus": "Nguyễn Văn Bảo",
+      "phone": "028.xxxx.xxxx"
+    }
+  },
+  {
+    "title": "Làm sao để báo cáo sự cố?",
+    "content": "Để báo cáo sự cố, bạn có thể:\n\n1. QUÉT QR CODE trên thiết bị\n- Mỗi thiết bị có QR code riêng\n- Quét bằng điện thoại để mở form báo cáo\n\n2. ĐIỀN THÔNG TIN\n- Chọn loại sự cố (Hỏng hóc, Bảo trì, Mất mát...)\n- Mô tả chi tiết (tối thiểu 10 ký tự)\n- Chụp ảnh minh họa (tối thiểu 1 ảnh)\n\n3. XÁC THỰC EMAIL\n- Nhập email của bạn\n- Nhận mã OTP qua email\n- Nhập OTP để xác nhận\n\n4. THEO DÕI\n- Nhận email thông báo khi có cập nhật\n- Kiểm tra trạng thái qua app",
+    "type": "FAQ",
+    "category": "reporting",
+    "tags": ["báo cáo", "sự cố", "qr code", "hướng dẫn"]
+  },
+  {
+    "title": "Thư viện mở cửa mấy giờ?",
+    "content": "Thư viện trường mở cửa:\n- Thứ 2 - Thứ 6: 7h00 - 21h00\n- Thứ 7: 8h00 - 17h00\n- Chủ nhật: Nghỉ\n\nYêu cầu:\n- Sinh viên mang thẻ SV\n- Giữ trật tự, không ồn ào\n- Không mang đồ ăn, thức uống vào\n\nLiên hệ: thuvien@iuh.edu.vn",
+    "type": "FAQ",
+    "category": "library",
+    "tags": ["thư viện", "giờ mở cửa", "quy định"]
+  },
+  {
+    "title": "Tòa nhà A - Cơ sở Nguyễn Văn Bảo",
+    "content": "Tòa nhà A là tòa nhà chính của trường tại cơ sở Nguyễn Văn Bảo, có 5 tầng:\n\n- TẦNG 1: Phòng Quản trị, Phòng Tài vụ, Thư viện\n- TẦNG 2-4: Các phòng học lý thuyết (A.2.01 đến A.4.15)\n- TẦNG 5: Phòng Lab máy tính, Phòng họp\n\nTiện nghi: Thang máy, điều hòa, WiFi toàn tòa nhà. Nhà vệ sinh ở mỗi tầng. Bảo vệ túc trực 24/7.",
+    "type": "FACILITIES",
+    "category": "buildings",
+    "tags": ["tòa A", "cơ sở chính", "Nguyễn Văn Bảo"],
+    "metadata": {
+      "building": "Tòa A",
+      "floors": 5,
+      "campus": "Nguyễn Văn Bảo",
+      "hasElevator": true,
+      "hasAC": true
+    }
+  },
+  {
+    "title": "Phòng Lab H.3.05 - Lab Máy Tính",
+    "content": "Phòng Lab máy tính H.3.05 tại tầng 3, tòa H. Thông tin chi tiết:\n\n- SỨC CHỨA: 50 sinh viên\n- THIẾT BỊ:\n  + 50 máy tính Dell OptiPlex\n  + 1 máy chiếu HD\n  + 2 điều hòa 2 chiều\n  + Bảng thông minh\n\n- MÔN HỌC: Lập trình C/C++, Java, Python, Cấu trúc dữ liệu\n\n- LỊCH MỞ CỬA: Theo lịch học, có thể đăng ký thêm giờ",
+    "type": "FACILITIES",
+    "category": "computer-lab",
+    "tags": ["lab", "máy tính", "tòa H", "tầng 3"],
+    "metadata": {
+      "building": "Tòa H",
+      "floor": 3,
+      "room": "H.3.05",
+      "capacity": 50,
+      "equipment": ["computer", "projector", "air-conditioner", "smart-board"]
+    }
+  },
+  {
+    "title": "Quy trình xử lý sự cố điện khẩn cấp",
+    "content": "QUY TRÌNH XỬ LÝ SỰ CỐ ĐIỆN KHẨN CẤP\n\n⚠️ MỨC ĐỘ: CRITICAL - XỬ LÝ NGAY LẬP TỨC\n\n📋 CÁC BƯỚC THỰC HIỆN:\n\n1. NGẮT NGUỒN ĐIỆN\n   - Ngắt cầu dao tổng tại khu vực sự cố\n   - KHÔNG chạm vào thiết bị điện\n   - KHÔNG dùng nước dập cháy điện\n\n2. BÁO CÁO KHẨN CẤP\n   - Gọi điện: 028.xxxx.xxxx (Phòng Quản trị)\n   - Hoặc: Báo cáo qua app với mức độ CRITICAL\n   - Thông tin cần có: Vị trí chính xác, mô tả tình huống\n\n3. CÁCH LY KHU VỰC\n   - Đặt biển cảnh báo \"NGUY HIỂM - CẤM VÀO\"\n   - Giữ khoảng cách an toàn tối thiểu 2m\n   - Không cho người vào khu vực\n\n4. CHỜ NHÂN VIÊN CHUYÊN TRÁCH\n   - Chỉ nhân viên có chứng chỉ điện mới được xử lý\n   - KHÔNG tự ý sửa chữa\n\n⏱️ THỜI GIAN XỬ LÝ: Tối đa 30 phút kể từ khi báo cáo\n\n☎️ HOTLINE KHẨN CẤP: 028.xxxx.xxxx (24/7)",
+    "type": "SOP",
+    "category": "emergency",
+    "tags": ["điện", "khẩn cấp", "an toàn", "quy trình"],
+    "metadata": {
+      "priority": "CRITICAL",
+      "department": "Bảo trì điện",
+      "maxResponseTime": 30,
+      "hotline": "028.xxxx.xxxx"
+    }
+  },
+  {
+    "title": "Quy trình báo cáo thiết bị hỏng thông thường",
+    "content": "QUY TRÌNH BÁO CÁO THIẾT BỊ HỎNG\n\n1️⃣ KIỂM TRA THIẾT BỊ\n   - Xác định tên thiết bị và mã số\n   - Kiểm tra mức độ hư hỏng\n   - Chụp ảnh minh họa\n\n2️⃣ QUÉT QR CODE\n   - Mỗi thiết bị có QR code dán sẵn\n   - Quét bằng camera điện thoại\n   - Tự động mở form báo cáo\n\n3️⃣ ĐIỀN FORM\n   - Chọn loại sự cố:\n     + DAMAGED: Hỏng hóc\n     + MAINTENANCE: Cần bảo trì\n     + LOST: Thất lạc\n   - Mô tả chi tiết (tối thiểu 10 ký tự)\n   - Upload ảnh (tối thiểu 1 ảnh)\n\n4️⃣ XÁC THỰC\n   - Nhập email của bạn\n   - Nhận mã OTP (có hiệu lực 5 phút)\n   - Nhập OTP để xác nhận\n\n5️⃣ THEO DÕI\n   - Nhận email khi có cập nhật\n   - Xem trạng thái: PENDING → APPROVED → IN_PROGRESS\n\n⏱️ Thời gian xử lý: 1-3 ngày làm việc",
+    "type": "SOP",
+    "category": "reporting",
+    "tags": ["báo cáo", "thiết bị", "quy trình", "qr code"],
+    "metadata": {
+      "priority": "MEDIUM",
+      "estimatedTime": 5,
+      "difficulty": "easy"
+    }
+  },
+  {
+    "title": "Về Trường Đại học Công nghiệp TP.HCM (IUH)",
+    "content": "Trường Đại học Công nghiệp Thành phố Hồ Chí Minh (IUH - Industrial University of Ho Chi Minh City) được thành lập năm 2004.\n\n🏫 CƠ SỞ:\n\n1. CƠ SỞ NGUYỄN VĂN BẢO (Quận 5)\n   - Địa chỉ: 12 Nguyễn Văn Bảo, Phường 4, Quận Gò Vấp\n   - Cơ sở chính với đầy đủ khoa, phòng ban\n   - Các tòa nhà: A, B, C, D, H\n\n2. CƠ SỞ HÓC MÔN\n   - Khu thực hành, nghiên cứu\n   - Các xưởng cơ khí, điện\n\n🎓 KHOA ĐÀO TẠO:\n- Công nghệ Thông tin\n- Cơ khí - Chế tạo máy\n- Điện - Điện tử\n- Kinh tế\n- Ngoại ngữ\n- Môi trường\n\n📞 LIÊN HỆ:\n- Website: iuh.edu.vn\n- Email: info@iuh.edu.vn\n- Điện thoại: 028.xxxx.xxxx",
+    "type": "GENERAL",
+    "category": "about-university",
+    "tags": ["iuh", "giới thiệu", "trường đại học", "thông tin chung"],
+    "metadata": {
+      "founded": 2004,
+      "campuses": 2,
+      "website": "iuh.edu.vn"
+    }
+  },
+  {
+    "title": "Các dịch vụ hỗ trợ sinh viên",
+    "content": "Trường cung cấp các dịch vụ hỗ trợ sinh viên:\n\n📚 HỌC TẬP:\n- Thư viện điện tử\n- Phòng tự học 24/7\n- Trung tâm ngoại ngữ\n- Phòng Lab thực hành\n\n💼 SINH HOẠT:\n- Căn tin, quán ăn\n- Ký túc xá\n- Sân thể thao\n- Câu lạc bộ\n\n🏥 Y TẾ:\n- Phòng y tế\n- Bảo hiểm y tế sinh viên\n\n💰 HỖ TRỢ TÀI CHÍNH:\n- Học bổng khuyến khích học tập\n- Hỗ trợ sinh viên khó khăn\n- Vay vốn ưu đãi\n\n📞 Liên hệ: Phòng Công tác Sinh viên - 028.xxxx.xxxx",
+    "type": "GENERAL",
+    "category": "student-services",
+    "tags": ["dịch vụ", "sinh viên", "hỗ trợ"],
+    "metadata": {
+      "department": "Phòng Công tác Sinh viên"
+    }
+  }
+]
