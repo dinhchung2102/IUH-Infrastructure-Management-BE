@@ -10,6 +10,8 @@ import { LoggerService } from './shared/logging/logger.service';
 import * as express from 'express';
 
 async function bootstrap() {
+  const logger = LoggerService.forContext('Bootstrap');
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
     bodyParser: true,
@@ -30,9 +32,8 @@ async function bootstrap() {
   // Serve static files from uploads directory
   // Sử dụng UPLOADS_DIR từ .env hoặc fallback về local uploads
   const uploadsDir = process.env.UPLOADS_DIR || join(__dirname, 'uploads');
-  const logger = LoggerService.forContext('Bootstrap');
   logger.log(`Serving static files from: ${uploadsDir}`);
-  
+
   app.useStaticAssets(uploadsDir, {
     prefix: '/uploads/',
   });
@@ -46,7 +47,6 @@ async function bootstrap() {
         'https://iuh.nagentech.com',
       ];
 
-  const logger = LoggerService.forContext('Bootstrap');
   logger.log(`Allowed CORS Origins: ${allowedOrigins.join(', ')}`);
 
   app.enableCors({
