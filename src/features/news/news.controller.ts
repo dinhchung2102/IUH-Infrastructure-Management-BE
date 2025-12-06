@@ -28,7 +28,11 @@ export class NewsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:CREATE', 'NEWS:ADMIN_ACTION'])
   @Post()
-  @UseInterceptors(FileInterceptor('thumbnail'))
+  @UseInterceptors(
+    FileInterceptor('thumbnail', {
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    }),
+  )
   async create(
     @Body() createNewsDto: CreateNewsDto,
     @UploadedFile() thumbnailFile?: Express.Multer.File,
@@ -64,7 +68,11 @@ export class NewsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:UPDATE', 'NEWS:ADMIN_ACTION'])
   @Patch(':id')
-  @UseInterceptors(FileInterceptor('thumbnail'))
+  @UseInterceptors(
+    FileInterceptor('thumbnail', {
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    }),
+  )
   async update(
     @Param('id') id: string,
     @Body() updateNewsDto: UpdateNewsDto,

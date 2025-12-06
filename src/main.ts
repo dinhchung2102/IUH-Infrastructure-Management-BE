@@ -7,11 +7,17 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { LoggerService } from './shared/logging/logger.service';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    bodyParser: true,
   });
+
+  // Configure body parser limits for file uploads (10MB)
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Use custom logger
   app.useLogger(LoggerService.forContext('NestApplication'));
