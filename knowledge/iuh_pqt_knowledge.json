@@ -1,0 +1,97 @@
+[
+  {
+    "title": "Phòng Quản trị - Thông tin liên hệ",
+    "content": "Phòng Quản trị - Trường Đại học Công nghiệp TP.HCM\n\nĐịa chỉ: Tầng trệt nhà B - 12 Nguyễn Văn Bảo, Phường 1, Quận Gò Vấp, TP. HCM\nĐiện thoại: 0283 8940 390 - 140\nWebsite: iuh.info\nEmail: phongquantri@iuh.edu.vn",
+    "type": "FAQ",
+    "category": "contact-info",
+    "tags": ["phòng quản trị", "liên hệ", "địa chỉ", "điện thoại", "email"]
+  },
+  {
+    "title": "Phòng Quản trị - Chức năng tổng quát",
+    "content": "Chức năng chính của Phòng Quản trị:\n\nTham mưu và giúp Hiệu trưởng trong việc:\n- Quản lý, tổng hợp, đề xuất ý kiến\n- Tổ chức thực hiện việc quản lý toàn bộ hệ thống của trường về công tác quản trị\n- Quản lý toàn bộ thiết bị của Trường\n- Quản lý công tác đầu tư xây dựng",
+    "type": "GENERAL",
+    "category": "department-info",
+    "tags": ["phòng quản trị", "chức năng", "tham mưu", "quản lý"]
+  },
+  {
+    "title": "Phòng Quản trị - Quản lý thiết bị",
+    "content": "Chức năng quản lý thiết bị của Phòng Quản trị:\n\n1. Quản lý toàn bộ hệ thống điện trong Trường\n2. Quản lý toàn bộ hệ thống cấp thoát nước trong Trường\n3. Quản lý toàn bộ các công trình kiến trúc trong Trường\n4. Tổng hợp, báo cáo, tư vấn về tình hình thiết bị, máy móc, công trình kiến trúc\n5. Phối hợp với các đơn vị liên quan quy hoạch, xây dựng và triển khai các dự án đầu tư trang thiết bị",
+    "type": "GENERAL",
+    "category": "equipment-management",
+    "tags": ["phòng quản trị", "quản lý thiết bị", "điện", "nước", "công trình"]
+  },
+  {
+    "title": "Phòng Quản trị - Quản lý cơ sở hạ tầng",
+    "content": "Chức năng quản trị cơ sở hạ tầng:\n\nPhòng Quản trị chịu trách nhiệm trước Hiệu trưởng về:\n\n1. Quản lý hạ tầng kỹ thuật:\n- Đất đai, nhà cửa\n- Lớp học, phòng làm việc, hội trường\n- Phòng thí nghiệm, xưởng\n- Hệ thống giao thông nội bộ\n\n2. Bảo trì và sửa chữa:\n- Lập kế hoạch sửa chữa nhỏ\n- Giám sát thực hiện\n- Duy trì chức năng, chống xuống cấp cơ sở vật chất",
+    "type": "GENERAL",
+    "category": "infrastructure-management",
+    "tags": ["phòng quản trị", "cơ sở hạ tầng", "quản lý", "bảo trì"]
+  },
+  {
+    "title": "Phòng Quản trị - Nhiệm vụ quản lý thiết bị",
+    "content": "Nhiệm vụ quản lý hệ thống thiết bị, máy móc:\n\n1. Hướng dẫn và kiểm tra:\n- Hướng dẫn, kiểm tra chuyên môn nghiệp vụ quản lý thiết bị, máy móc, vật tư, hóa chất, điện thoại\n- Áp dụng cho tất cả các đơn vị trong Trường\n\n2. Bảo trì và sửa chữa:\n- Tổ chức triển khai sửa chữa, bảo trì thiết bị\n- Công tác kiểm kê, thanh lý thiết bị\n- Lắp đặt, sửa chữa điện thoại, mạng internet, thiết bị văn phòng",
+    "type": "SOP",
+    "category": "equipment-procedures",
+    "tags": ["phòng quản trị", "nhiệm vụ", "thiết bị", "bảo trì", "kiểm kê"]
+  },
+  {
+    "title": "Phòng Quản trị - Nhiệm vụ quản lý hệ thống điện",
+    "content": "Nhiệm vụ quản lý hệ thống điện:\n\n1. Quản lý vận hành:\n- Tổ chức quản lý, vận hành, bảo trì, thay thế hệ thống điện tổng thể trong Trường\n\n2. Cung cấp điện năng:\n- Tổ chức triển khai sửa chữa, lắp đặt và cung cấp nguồn điện\n- Lắp đặt, theo dõi và ghi số công tơ đo đếm điện năng tiêu thụ\n- Áp dụng cho tất cả các đơn vị trong Trường",
+    "type": "SOP",
+    "category": "electrical-management",
+    "tags": [
+      "phòng quản trị",
+      "hệ thống điện",
+      "điện năng",
+      "công tơ",
+      "bảo trì điện"
+    ]
+  },
+  {
+    "title": "Phòng Quản trị - Nhiệm vụ quản lý hệ thống cấp nước",
+    "content": "Nhiệm vụ quản lý hệ thống cấp nước:\n\n1. Vận hành hệ thống:\n- Tổ chức quản lý, vận hành toàn bộ hệ thống cấp thoát nước trong Trường\n\n2. Cung cấp nước:\n- Tổ chức triển khai sửa chữa, lắp đặt và cung cấp nguồn nước\n- Lắp đặt, theo dõi và ghi số công tơ đo đếm nước tiêu thụ\n- Áp dụng cho tất cả các đơn vị trong Trường",
+    "type": "SOP",
+    "category": "water-management",
+    "tags": [
+      "phòng quản trị",
+      "hệ thống nước",
+      "cấp thoát nước",
+      "công tơ nước"
+    ]
+  },
+  {
+    "title": "Phòng Quản trị - Tổng hợp và báo cáo",
+    "content": "Nhiệm vụ tổng hợp, báo cáo, tư vấn:\n\n1. Thống kê và báo cáo:\n- Tổng hợp, thống kê tình hình thiết bị, điện, nước, điện thoại, thiết bị văn phòng trong Trường\n- Báo cáo định kỳ cho Ban Giám hiệu\n\n2. Tham gia các Hội đồng:\n- Ban quản lý công sản\n- Các Hội đồng, Tổ công tác liên quan đến chức năng quản lý\n- Thực hiện các nhiệm vụ khác do Hiệu trưởng phân công",
+    "type": "GENERAL",
+    "category": "reporting-duties",
+    "tags": ["phòng quản trị", "báo cáo", "thống kê", "tư vấn", "hội đồng"]
+  },
+  {
+    "title": "Phòng Quản trị - Đầu tư và xây dựng",
+    "content": "Nhiệm vụ quy hoạch, xây dựng, triển khai dự án đầu tư:\n\n1. Lập kế hoạch đầu tư:\n- Xây dựng kế hoạch đầu tư ngắn hạn và dài hạn trang thiết bị trong Trường\n\n2. Đấu thầu và mua sắm:\n- Phối hợp tổ chức đấu thầu mua sắm thiết bị theo các dự án\n- Mua sắm theo các đề tài nghiên cứu khoa học",
+    "type": "GENERAL",
+    "category": "investment-planning",
+    "tags": ["phòng quản trị", "đầu tư", "mua sắm", "đấu thầu", "kế hoạch"]
+  },
+  {
+    "title": "Phòng Quản trị - Quản lý đất đai và công trình",
+    "content": "Nhiệm vụ quản trị đất đai và công trình:\n\n1. Quản lý đất đai:\n- Quản lý toàn bộ cơ sở hạ tầng đất đai, hàng rào, hệ thống giao thông, cống rãnh\n- Ngăn ngừa hành vi xâm phạm đất đai của trường\n- Bảo vệ sự toàn vẹn địa giới thuộc Trường quản lý\n\n2. Quản lý công trình:\n- Quản lý toàn bộ hệ thống nhà: nhà làm việc, xưởng, phòng thí nghiệm, lớp học, hội trường, phòng khách, câu lạc bộ, sân bãi thể thao\n- Quản lý, tu sửa, bảo dưỡng toàn bộ hệ thống cấp thoát nước trong khuôn viên",
+    "type": "GENERAL",
+    "category": "land-building-management",
+    "tags": ["phòng quản trị", "đất đai", "công trình", "hàng rào", "nhà cửa"]
+  },
+  {
+    "title": "Phòng Quản trị - Xây dựng và phối hợp",
+    "content": "Nhiệm vụ xây dựng và phối hợp:\n\n1. Nghiệm thu công trình:\n- Phối hợp nghiệm thu công trình xây dựng mới\n- Nghiệm thu công trình sửa chữa, cải tạo\n- Nhận bàn giao và lập kế hoạch đưa vào sử dụng hiệu quả\n\n2. Trang bị nội thất:\n- Lập kế hoạch sửa chữa và mua sắm đồ gỗ, trang bị nội thất\n- Đảm bảo tiện nghi phòng ốc cho viên chức và sinh viên\n\n3. An toàn:\n- Phối hợp tổ chức phòng chống bão lụt\n- Phòng cháy chữa cháy\n- Trưởng/Phó Trưởng phòng là ủy viên thường trực các Hội đồng về công trình xây dựng, phòng chống bão lụt, PCCC",
+    "type": "GENERAL",
+    "category": "construction-safety",
+    "tags": [
+      "phòng quản trị",
+      "xây dựng",
+      "nghiệm thu",
+      "nội thất",
+      "an toàn",
+      "phòng cháy"
+    ]
+  }
+]

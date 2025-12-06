@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Cơ sở vật chất Nhà trường",
+    "content": "Cơ sở vật chất Nhà trường với trên 500 giảng đường và phòng học rộng rãi thoáng mát, trên 350 phòng thí nghiệm và xưởng thực hành có trang thiết bị hiện đại, các khu nội trú có sức chứa 8.000 người. Nhà ăn sinh viên được xây dựng hiện đại, rộng rãi, sinh viên có thể tự chọn món ăn cho vừa với sở thích và túi tiền theo phong cách tự phục vụ nhằm hội nhập với lối sống hiện đại. Thư viện hiện có trên 200.000 bản sách các loại. Nhà trường đã tin học toàn bộ và sâu rộng mọi hoạt động trong trường, sinh viên có thể truy cập internet, sử dụng mạng để tìm kiếm các thông tin thư viện điện tử phục vụ học tập. Mọi liên hệ giao tiếp với thầy và tìm kiếm những thông tin về khoa, về trường v.v..., sinh viên học sinh có thể tìm kiếm trên mạng.",
+    "type": "GENERAL",
+    "category": "infrastructure-overview",
+    "tags": [
+      "cơ sở vật chất",
+      "giảng đường",
+      "phòng học",
+      "phòng thí nghiệm",
+      "xưởng thực hành",
+      "kí túc xá",
+      "nhà ăn",
+      "thư viện",
+      "internet",
+      "tin học"
+    ]
+  },
+  {
+    "title": "Các tiện ích hiện đại phục vụ sinh viên",
+    "content": "Nhà ăn, kí túc xá sinh viên, nhà truyền thống, phòng tập thể thao đa năng, thư viện điện tử, hệ thống xưởng thực tập, phòng thí nghiệm và các phòng học, giảng đường ngày càng được hoàn thiện theo tiêu chuẩn quốc tế. Các phương tiện tin học trong Nhà trường được nối mạng và kết nối internet sẽ ngày càng được sử dụng rộng rãi.",
+    "type": "GENERAL",
+    "category": "student-facilities",
+    "tags": [
+      "nhà ăn",
+      "kí túc xá",
+      "nhà truyền thống",
+      "phòng tập thể thao",
+      "thư viện điện tử",
+      "xưởng thực tập",
+      "phòng thí nghiệm",
+      "giảng đường",
+      "tin học",
+      "internet"
+    ]
+  }
+]

@@ -54,16 +54,33 @@ export class RAGService {
           }
         : undefined;
 
-      const searchResults = await this.qdrantService.search(queryVector, {
+      // Search WITHOUT threshold first to see all results
+      const allResults = await this.qdrantService.search(queryVector, {
         limit: options?.topK || 8,
-        scoreThreshold: options?.minScore || 0.3, // Lowered from 0.7 to 0.3 for better recall
+        scoreThreshold: undefined, // No threshold to see all results
         filter,
       });
 
-      this.logger.log(`Found ${searchResults.length} relevant documents`);
+      this.logger.log(
+        `Search returned ${allResults.length} total results (no threshold)`,
+      );
+      if (allResults.length > 0) {
+        this.logger.log(
+          `Score range: ${allResults[0].score.toFixed(3)} to ${allResults[allResults.length - 1].score.toFixed(3)}`,
+        );
+      }
+
+      // Filter by threshold manually
+      const searchResults = allResults.filter(
+        (r) => r.score >= (options?.minScore || 0.3),
+      );
+
+      this.logger.log(
+        `Found ${searchResults.length} relevant documents (score >= ${options?.minScore || 0.3})`,
+      );
       if (searchResults.length > 0) {
-        this.logger.debug(
-          `Top result: ${searchResults[0].payload.title} (score: ${searchResults[0].score.toFixed(3)})`,
+        this.logger.log(
+          `Top result: ${searchResults[0].payload.title || 'No title'} (score: ${searchResults[0].score.toFixed(3)})`,
         );
       }
 
