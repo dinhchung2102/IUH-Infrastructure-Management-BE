@@ -59,6 +59,9 @@ export class NewsService {
     const newNews = new this.newsModel(createNewsDto);
     const savedNews = await newNews.save();
 
+    // Populate category trước khi return
+    await savedNews.populate('category', 'name slug description isActive');
+
     return {
       message: 'Tạo tin tức thành công',
       newNews: savedNews,
@@ -117,9 +120,15 @@ export class NewsService {
     const sort: Record<string, any> = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    // Thực hiện query
+    // Thực hiện query với populate category
     const [news, total] = await Promise.all([
-      this.newsModel.find(filter).sort(sort).skip(skip).limit(limitNum).lean(),
+      this.newsModel
+        .find(filter)
+        .populate('category', 'name slug description isActive')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
       this.newsModel.countDocuments(filter),
     ]);
 
@@ -145,7 +154,10 @@ export class NewsService {
       throw new BadRequestException('ID tin tức không hợp lệ');
     }
 
-    const news = await this.newsModel.findById(id).lean();
+    const news = await this.newsModel
+      .findById(id)
+      .populate('category', 'name slug description isActive')
+      .lean();
 
     if (!news) {
       throw new NotFoundException('Tin tức không tồn tại');
@@ -161,7 +173,10 @@ export class NewsService {
     message: string;
     data: any;
   }> {
-    const news = await this.newsModel.findOne({ slug }).lean();
+    const news = await this.newsModel
+      .findOne({ slug })
+      .populate('category', 'name slug description isActive')
+      .lean();
 
     if (!news) {
       throw new NotFoundException('Tin tức không tồn tại');
@@ -213,6 +228,11 @@ export class NewsService {
     const updatedNews = await this.newsModel.findByIdAndUpdate(id, updateData, {
       new: true,
     });
+
+    // Populate category trước khi return
+    if (updatedNews) {
+      await updatedNews.populate('category', 'name slug description isActive');
+    }
 
     return {
       message: 'Cập nhật tin tức thành công',
