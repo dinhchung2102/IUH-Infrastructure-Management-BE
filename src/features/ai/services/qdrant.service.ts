@@ -128,6 +128,10 @@ export class QdrantService implements OnModuleInit {
         await this.ensureCollection();
       }
 
+      this.logger.debug(
+        `Upserting ID: ${id}, Vector size: ${vector.length}, Payload: ${JSON.stringify(payload).substring(0, 200)}...`,
+      );
+
       await this.client.upsert(this.collectionName, {
         points: [
           {
@@ -138,7 +142,7 @@ export class QdrantService implements OnModuleInit {
         ],
       });
 
-      this.logger.debug(`Upserted document ${id} to Qdrant`);
+      this.logger.debug(`✓ Upserted document ${id} to Qdrant`);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);

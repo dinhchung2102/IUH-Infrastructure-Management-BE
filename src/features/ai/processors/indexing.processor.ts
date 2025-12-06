@@ -44,13 +44,23 @@ export class IndexingProcessor extends WorkerHost {
       await job.updateProgress(30);
       const embedding = await this.geminiService.generateEmbedding(text);
 
-      // 2. Upsert to Qdrant
+      // 2. Upsert to Qdrant (sanitize metadata)
       await job.updateProgress(60);
+      const sanitizedMetadata = this.sanitizeMetadata(metadata);
+
+      // Log payload before upserting
+      this.logger.debug(
+        `[${job.id}] Original metadata: ${JSON.stringify(metadata)}`,
+      );
+      this.logger.debug(
+        `[${job.id}] Sanitized metadata: ${JSON.stringify(sanitizedMetadata)}`,
+      );
+
       await this.qdrantService.upsertDocument(vectorId, embedding, {
         sourceType,
         sourceId,
         content: text.substring(0, 500), // Preview only
-        ...metadata,
+        ...sanitizedMetadata,
       });
 
       // 3. Save tracking to MongoDB
@@ -150,5 +160,45 @@ export class IndexingProcessor extends WorkerHost {
       );
       throw error;
     }
+  }
+
+  /**
+   * Sanitize metadata for Qdrant (keep arrays, convert dates to strings)
+   */
+  private sanitizeMetadata(metadata: any): Record<string, any> {
+    if (!metadata || typeof metadata !== 'object') {
+      return {};
+    }
+
+    const sanitized: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(metadata)) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+
+      // Keep arrays as-is (Qdrant supports arrays)
+      if (Array.isArray(value)) {
+        sanitized[key] = value;
+        continue;
+      }
+
+      // Convert Date to ISO string
+      if (value instanceof Date) {
+        sanitized[key] = value.toISOString();
+        continue;
+      }
+
+      // Convert non-Date objects to JSON string
+      if (typeof value === 'object') {
+        sanitized[key] = JSON.stringify(value);
+        continue;
+      }
+
+      // Keep primitives (string, number, boolean)
+      sanitized[key] = value;
+    }
+
+    return sanitized;
   }
 }

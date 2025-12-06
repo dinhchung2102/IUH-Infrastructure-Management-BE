@@ -56,11 +56,16 @@ export class RAGService {
 
       const searchResults = await this.qdrantService.search(queryVector, {
         limit: options?.topK || 8,
-        scoreThreshold: options?.minScore || 0.7,
+        scoreThreshold: options?.minScore || 0.3, // Lowered from 0.7 to 0.3 for better recall
         filter,
       });
 
-      this.logger.debug(`Found ${searchResults.length} relevant documents`);
+      this.logger.log(`Found ${searchResults.length} relevant documents`);
+      if (searchResults.length > 0) {
+        this.logger.debug(
+          `Top result: ${searchResults[0].payload.title} (score: ${searchResults[0].score.toFixed(3)})`,
+        );
+      }
 
       // 3. Assemble context
       const context = this.assembleContext(searchResults);
@@ -95,28 +100,44 @@ export class RAGService {
    * Specialized FAQ search
    */
   async chatFAQ(query: string): Promise<RAGSearchResult> {
-    return this.query(query, { sourceTypes: ['faq'], topK: 5 });
+    return this.query(query, {
+      sourceTypes: ['faq'],
+      topK: 5,
+      minScore: 0.3, // Lower threshold for FAQ
+    });
   }
 
   /**
    * Specialized facilities search
    */
   async searchFacilities(query: string): Promise<RAGSearchResult> {
-    return this.query(query, { sourceTypes: ['facility', 'asset'], topK: 10 });
+    return this.query(query, {
+      sourceTypes: ['facilities', 'facility', 'asset'],
+      topK: 10,
+      minScore: 0.3,
+    });
   }
 
   /**
    * Specialized SOP/Policy search
    */
   async searchSOPs(query: string): Promise<RAGSearchResult> {
-    return this.query(query, { sourceTypes: ['sop', 'policy'], topK: 8 });
+    return this.query(query, {
+      sourceTypes: ['sop', 'policy'],
+      topK: 8,
+      minScore: 0.3,
+    });
   }
 
   /**
    * Search reports for similar issues
    */
   async searchSimilarReports(query: string): Promise<RAGSearchResult> {
-    return this.query(query, { sourceTypes: ['report'], topK: 10 });
+    return this.query(query, {
+      sourceTypes: ['report'],
+      topK: 10,
+      minScore: 0.3,
+    });
   }
 
   /**
@@ -153,16 +174,17 @@ chuyên hỗ trợ về quản lý cơ sở vật chất và giải đáp thắc
 
 NHIỆM VỤ:
 - Trả lời câu hỏi dựa trên thông tin trong CONTEXT được cung cấp
+- Trả lời NGẮN GỌN, SÚCTRỌNG tâm, dễ hiểu
 - Nếu không tìm thấy thông tin đủ rõ ràng, hãy nói rõ và đề xuất liên hệ bộ phận hỗ trợ
 - Giữ giọng điệu thân thiện, chuyên nghiệp
 - Trả lời bằng tiếng Việt
-- Trích dẫn nguồn thông tin khi trả lời (ví dụ: "Theo tài liệu [1]...")
+- KHÔNG trích dẫn nguồn dạng "Theo tài liệu [1]..." - trả lời trực tiếp
 
 CHÚ Ý QUAN TRỌNG:
 - KHÔNG bịa đặt thông tin không có trong CONTEXT
 - Nếu CONTEXT không đủ thông tin để trả lời, hãy thừa nhận và đưa ra gợi ý
 - Ưu tiên độ chính xác hơn là trả lời đầy đủ
-- Khi không chắc chắn, hãy nói rõ mức độ chắc chắn
+- Trả lời ngắn gọn, KHÔNG dài dòng
     `.trim();
   }
 }
