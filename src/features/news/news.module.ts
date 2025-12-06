@@ -6,6 +6,7 @@ import { NewsService } from './news.service';
 import { News, NewsSchema } from './schema/news.schema';
 import { NewsCategory, NewsCategorySchema } from './schema/newsCategory.schema';
 import { AuthModule } from '../auth/auth.module';
+import { UploadModule } from '../../shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: NewsCategory.name, schema: NewsCategorySchema },
     ]),
     AuthModule,
+    UploadModule,
   ],
   controllers: [NewsController, NewsCategoryController],
   providers: [NewsService],

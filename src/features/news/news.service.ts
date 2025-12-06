@@ -16,6 +16,7 @@ import {
   UpdateNewsCategoryDto,
   QueryNewsCategoryDto,
 } from './dto';
+import { UploadService } from '../../shared/upload/upload.service';
 
 @Injectable()
 export class NewsService {
@@ -23,9 +24,26 @@ export class NewsService {
     @InjectModel(News.name) private newsModel: Model<News>,
     @InjectModel(NewsCategory.name)
     private newsCategoryModel: Model<NewsCategory>,
+    private readonly uploadService: UploadService,
   ) {}
 
-  async create(createNewsDto: CreateNewsDto) {
+  async create(
+    createNewsDto: CreateNewsDto,
+    thumbnailFile?: Express.Multer.File,
+  ) {
+    // Xử lý upload thumbnail nếu có file
+    if (thumbnailFile) {
+      const thumbnailUrl = await this.uploadService.uploadFile(thumbnailFile);
+      createNewsDto.thumbnail = thumbnailUrl;
+    }
+
+    // Validate: Phải có thumbnail (từ file upload hoặc URL)
+    if (!createNewsDto.thumbnail) {
+      throw new BadRequestException(
+        'Vui lòng upload ảnh thumbnail hoặc cung cấp URL ảnh thumbnail',
+      );
+    }
+
     // Kiểm tra slug đã tồn tại chưa (chỉ để đề phòng)
     const existingSlug = await this.newsModel.findOne({
       slug: createNewsDto.title
@@ -155,7 +173,11 @@ export class NewsService {
     };
   }
 
-  async update(id: string, updateNewsDto: UpdateNewsDto) {
+  async update(
+    id: string,
+    updateNewsDto: UpdateNewsDto,
+    thumbnailFile?: Express.Multer.File,
+  ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID tin tức không hợp lệ');
     }
@@ -163,6 +185,12 @@ export class NewsService {
     const existingNews = await this.newsModel.findById(id);
     if (!existingNews) {
       throw new NotFoundException('Tin tức không tồn tại');
+    }
+
+    // Xử lý upload thumbnail nếu có file
+    if (thumbnailFile) {
+      const thumbnailUrl = await this.uploadService.uploadFile(thumbnailFile);
+      updateNewsDto.thumbnail = thumbnailUrl;
     }
 
     // Convert to plain object for easier access

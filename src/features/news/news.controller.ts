@@ -10,7 +10,10 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { NewsService } from './news.service';
 import { CreateNewsDto, UpdateNewsDto, QueryNewsDto } from './dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -25,8 +28,12 @@ export class NewsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:CREATE', 'NEWS:ADMIN_ACTION'])
   @Post()
-  async create(@Body() createNewsDto: CreateNewsDto) {
-    return this.newsService.create(createNewsDto);
+  @UseInterceptors(FileInterceptor('thumbnail'))
+  async create(
+    @Body() createNewsDto: CreateNewsDto,
+    @UploadedFile() thumbnailFile?: Express.Multer.File,
+  ) {
+    return this.newsService.create(createNewsDto, thumbnailFile);
   }
 
   @Public()
@@ -57,8 +64,13 @@ export class NewsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:UPDATE', 'NEWS:ADMIN_ACTION'])
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateNewsDto: UpdateNewsDto) {
-    return this.newsService.update(id, updateNewsDto);
+  @UseInterceptors(FileInterceptor('thumbnail'))
+  async update(
+    @Param('id') id: string,
+    @Body() updateNewsDto: UpdateNewsDto,
+    @UploadedFile() thumbnailFile?: Express.Multer.File,
+  ) {
+    return this.newsService.update(id, updateNewsDto, thumbnailFile);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

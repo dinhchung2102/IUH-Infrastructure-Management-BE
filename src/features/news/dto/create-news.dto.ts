@@ -21,9 +21,9 @@ export class CreateNewsDto {
   @MaxLength(500, { message: 'Mô tả không được quá 500 ký tự' })
   description: string;
 
-  @IsNotEmpty({ message: 'Ảnh thumbnail không được để trống' })
-  @IsString({ message: 'Ảnh thumbnail phải là chuỗi' })
-  thumbnail: string;
+  @IsOptional()
+  @IsString({ message: 'Ảnh thumbnail phải là chuỗi (URL)' })
+  thumbnail?: string; // Optional: có thể upload file hoặc dùng URL
 
   @IsNotEmpty({ message: 'Nội dung không được để trống' })
   content: any;
