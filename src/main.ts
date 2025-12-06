@@ -28,7 +28,12 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Serve static files from uploads directory
-  app.useStaticAssets(join(__dirname, 'uploads'), {
+  // Sử dụng UPLOADS_DIR từ .env hoặc fallback về local uploads
+  const uploadsDir = process.env.UPLOADS_DIR || join(__dirname, 'uploads');
+  const logger = LoggerService.forContext('Bootstrap');
+  logger.log(`Serving static files from: ${uploadsDir}`);
+  
+  app.useStaticAssets(uploadsDir, {
     prefix: '/uploads/',
   });
 

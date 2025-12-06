@@ -9,15 +9,21 @@ export class UploadService {
   private readonly uploadPath: string;
 
   constructor(private readonly configService: ConfigService) {
-    // Use dist/uploads in production, uploads in development
-    const basePath =
-      process.env.NODE_ENV === 'production'
-        ? join(process.cwd(), 'dist', 'uploads')
-        : join(process.cwd(), 'uploads');
-    this.uploadPath = basePath;
+    // Sử dụng UPLOADS_DIR từ .env, fallback về uploads local
+    const uploadDir = this.configService.get<string>('UPLOADS_DIR');
+
+    if (uploadDir) {
+      // Sử dụng path từ .env (production: /var/www/uploads/iuh/)
+      this.uploadPath = uploadDir;
+      this.logger.log(`Using UPLOADS_DIR from .env: ${this.uploadPath}`);
+    } else {
+      // Fallback: local development
+      this.uploadPath = join(process.cwd(), 'uploads');
+      this.logger.log(`Using default upload path: ${this.uploadPath}`);
+    }
+
     // Initialize directory asynchronously (non-blocking)
     void this.ensureUploadDirectoryExists();
-    this.logger.log(`Upload directory: ${this.uploadPath}`);
   }
 
   private async ensureUploadDirectoryExists(): Promise<void> {
