@@ -22,6 +22,7 @@ import { LoggerModule } from './shared/logging/logger.module';
 import { DashboardModule } from './features/dashboard/dashboard.module';
 import { AIModule } from './features/ai/ai.module';
 import { KnowledgeBaseModule } from './features/knowledge-base/knowledge-base.module';
+import { StatisticsModule } from './features/statistics/statistics.module';
 import { BullModule } from '@nestjs/bullmq';
 
 @Module({
@@ -92,6 +93,7 @@ import { BullModule } from '@nestjs/bullmq';
     DashboardModule,
     AIModule,
     KnowledgeBaseModule,
+    StatisticsModule,
   ],
   controllers: [AppController],
   providers: [
