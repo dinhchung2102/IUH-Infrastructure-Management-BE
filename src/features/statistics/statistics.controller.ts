@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-  Param,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import { QueryStatisticsDto, TimePeriod } from './dto/query-statistics.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -72,4 +66,3 @@ export class StatisticsController {
     return this.statisticsService.getReportByLocation(type);
   }
 }
-

@@ -23,6 +23,7 @@ import { DashboardModule } from './features/dashboard/dashboard.module';
 import { AIModule } from './features/ai/ai.module';
 import { KnowledgeBaseModule } from './features/knowledge-base/knowledge-base.module';
 import { StatisticsModule } from './features/statistics/statistics.module';
+import { MaintenanceModule } from './features/maintenance/maintenance.module';
 import { BullModule } from '@nestjs/bullmq';
 
 @Module({
@@ -94,6 +95,7 @@ import { BullModule } from '@nestjs/bullmq';
     AIModule,
     KnowledgeBaseModule,
     StatisticsModule,
+    MaintenanceModule,
   ],
   controllers: [AppController],
   providers: [
