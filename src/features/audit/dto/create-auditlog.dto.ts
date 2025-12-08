@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsDateString,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -44,4 +45,8 @@ export class CreateAuditLogDto {
   @IsArray({ message: 'Hình ảnh phải là mảng' })
   @IsString({ each: true, message: 'Mỗi URL hình ảnh phải là chuỗi' })
   images?: string[];
+
+  @IsOptional()
+  @IsDateString({}, { message: 'Ngày hết hạn phải là định dạng ngày hợp lệ' })
+  expiresAt?: string;
 }

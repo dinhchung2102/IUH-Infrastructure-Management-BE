@@ -51,6 +51,9 @@ export class AuditLog {
 
   @Prop({ required: false })
   notes?: string;
+
+  @Prop({ required: false, type: Date })
+  expiresAt?: Date;
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);

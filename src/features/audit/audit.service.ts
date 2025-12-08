@@ -105,6 +105,10 @@ export class AuditService {
       auditLogData.asset = new Types.ObjectId(createAuditLogDto.asset);
     }
 
+    if (createAuditLogDto.expiresAt) {
+      auditLogData.expiresAt = new Date(createAuditLogDto.expiresAt);
+    }
+
     const newAuditLog = new this.auditLogModel(auditLogData);
     const savedAuditLog = await newAuditLog.save();
 
@@ -590,6 +594,9 @@ export class AuditService {
       updateData.staffs = updateAuditLogDto.staffs.map(
         (id) => new Types.ObjectId(id),
       );
+    }
+    if (updateAuditLogDto.expiresAt) {
+      updateData.expiresAt = new Date(updateAuditLogDto.expiresAt);
     }
 
     const updatedAuditLog = await this.auditLogModel
