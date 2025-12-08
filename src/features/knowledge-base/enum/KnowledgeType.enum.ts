@@ -3,4 +3,5 @@ export enum KnowledgeType {
   SOP = 'SOP',
   FACILITIES = 'FACILITIES',
   GENERAL = 'GENERAL',
+  REGULATION = 'REGULATION',
 }

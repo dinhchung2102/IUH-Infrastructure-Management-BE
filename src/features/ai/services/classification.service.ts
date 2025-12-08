@@ -1,11 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { GeminiService } from './gemini.service';
+import { RAGService } from './rag.service';
 
 export interface ClassificationResult {
   category: string;
   priority: string;
   suggestedStaffSkills: string[];
   estimatedDuration: number; // minutes
+  processingDays: number; // Số ngày xử lý gợi ý (từ lúc được phê duyệt)
   reasoning: string;
   confidence: number;
 }
@@ -14,7 +16,11 @@ export interface ClassificationResult {
 export class ClassificationService {
   private readonly logger = new Logger(ClassificationService.name);
 
-  constructor(private geminiService: GeminiService) {}
+  constructor(
+    private geminiService: GeminiService,
+    @Inject(forwardRef(() => RAGService))
+    private ragService?: RAGService,
+  ) {}
 
   /**
    * Phân loại report tự động bằng AI
@@ -31,7 +37,75 @@ export class ClassificationService {
         `Classifying report: "${description.substring(0, 50)}..."`,
       );
 
-      const prompt = this.buildClassificationPrompt(description, location);
+      // Lấy quy định thời gian xử lý từ RAG knowledge base (nếu có)
+      let processingTimeContext = '';
+      if (this.ragService) {
+        try {
+          // Thử tìm với filter regulation trước (lowercase vì sync service lưu lowercase)
+          let ragResult = await this.ragService.query(
+            `quy định thời gian xử lý sự cố ${description}`,
+            {
+              sourceTypes: ['regulation'],
+              topK: 3,
+              minScore: 0.3,
+            },
+          );
+
+          // Nếu không tìm thấy với filter, thử lại không có filter để tìm trong tất cả knowledge
+          if (!ragResult.sources || ragResult.sources.length === 0) {
+            this.logger.log(
+              'No regulation documents found with filter, trying without filter...',
+            );
+            ragResult = await this.ragService.query(
+              `quy định thời gian xử lý sự cố ${description}`,
+              {
+                topK: 5,
+                minScore: 0.3,
+              },
+            );
+          }
+
+          if (ragResult.sources && ragResult.sources.length > 0) {
+            // Lọc chỉ lấy các documents có type là regulation hoặc có từ khóa liên quan
+            const relevantSources = ragResult.sources.filter((s) => {
+              const metadata = s.metadata as
+                | { type?: string; category?: string }
+                | undefined;
+              const type = metadata?.type?.toLowerCase() || '';
+              const category = metadata?.category || '';
+              const content = s.content.toLowerCase();
+
+              return (
+                type === 'regulation' ||
+                category.includes('processing-time') ||
+                content.includes('thời gian xử lý') ||
+                content.includes('processing') ||
+                content.includes('ngày')
+              );
+            });
+
+            if (relevantSources.length > 0) {
+              processingTimeContext = `\n\nQUY ĐỊNH THỜI GIAN XỬ LÝ TỪ CƠ SỞ DỮ LIỆU:\n${relevantSources.map((s, i) => `[${i + 1}] ${s.content}`).join('\n\n')}`;
+              this.logger.log(
+                `Retrieved ${relevantSources.length} relevant documents from RAG`,
+              );
+            }
+          }
+        } catch (ragError: unknown) {
+          const errorMessage =
+            ragError instanceof Error ? ragError.message : String(ragError);
+          this.logger.warn(
+            `Failed to retrieve processing time regulations from RAG: ${errorMessage}`,
+          );
+          // Không throw error, tiếp tục với default logic
+        }
+      }
+
+      const prompt = this.buildClassificationPrompt(
+        description,
+        location,
+        processingTimeContext,
+      );
 
       const response = await this.geminiService.chatCompletion(
         [{ role: 'user', content: prompt }],
@@ -42,24 +116,39 @@ export class ClassificationService {
       const jsonText = response.content
         .replace(/```json\n?|\n?```/g, '')
         .trim();
-      const classification = JSON.parse(jsonText);
+      const classification = JSON.parse(jsonText) as {
+        category?: string;
+        priority?: string;
+        suggestedStaffSkills?: string[];
+        estimatedDuration?: number;
+        processingDays?: number;
+        reasoning?: string;
+        confidence?: number;
+      };
 
       this.logger.log(
-        `Classification result: ${classification.category} - ${classification.priority}`,
+        `Classification result: ${classification.category || 'UNKNOWN'} - ${classification.priority || 'UNKNOWN'}`,
       );
 
+      const priority = classification.priority || 'MEDIUM';
       return {
-        category: classification.category,
-        priority: classification.priority,
+        category: classification.category || 'KHAC',
+        priority,
         suggestedStaffSkills: classification.suggestedStaffSkills || [],
         estimatedDuration: classification.estimatedDuration || 60,
-        reasoning: classification.reasoning,
+        processingDays:
+          classification.processingDays ||
+          this.calculateDefaultProcessingDays(priority),
+        reasoning: classification.reasoning || 'Phân loại tự động',
         confidence: classification.confidence || 0.8,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Error classifying report: ${error.message}`,
-        error.stack,
+        `Error classifying report: ${errorMessage}`,
+        errorStack,
       );
 
       // Fallback to default classification
@@ -68,6 +157,7 @@ export class ClassificationService {
         priority: 'MEDIUM',
         suggestedStaffSkills: [],
         estimatedDuration: 60,
+        processingDays: 3, // Default 3 ngày
         reasoning: 'Không thể phân loại tự động',
         confidence: 0.5,
       };
@@ -83,7 +173,7 @@ export class ClassificationService {
     try {
       const classification = await this.classifyReport(description);
       return classification.priority;
-    } catch (error) {
+    } catch {
       return 'MEDIUM';
     }
   }
@@ -97,6 +187,7 @@ export class ClassificationService {
   private buildClassificationPrompt(
     description: string,
     location?: string,
+    processingTimeContext?: string,
   ): string {
     return `
 Bạn là hệ thống AI phân loại báo cáo sự cố tại Trường Đại học Công nghiệp TP.HCM.
@@ -112,6 +203,7 @@ YÊU CẦU: Phân tích và trả về JSON với format chính xác:
   "priority": "CRITICAL|HIGH|MEDIUM|LOW",
   "suggestedStaffSkills": ["skill1", "skill2"],
   "estimatedDuration": 60,
+  "processingDays": 3,
   "reasoning": "Lý do phân loại",
   "confidence": 0.85
 }
@@ -144,7 +236,37 @@ SUGGESTED SKILLS (KỸ NĂNG ĐỀ XUẤT):
 ESTIMATED DURATION (phút):
 - Dựa vào độ phức tạp: 15-30 phút (đơn giản), 30-120 phút (trung bình), 120+ phút (phức tạp)
 
+PROCESSING DAYS (Số ngày xử lý từ lúc được phê duyệt):
+- CRITICAL: 1-2 ngày (cần xử lý gấp)
+- HIGH: 2-3 ngày (xử lý trong vài ngày)
+- MEDIUM: 3-5 ngày (xử lý trong tuần)
+- LOW: 5-7 ngày (có thể xử lý sau)
+- Dựa vào độ phức tạp và ưu tiên để đưa ra số ngày hợp lý
+${processingTimeContext || ''}
+
+QUAN TRỌNG: Nếu có quy định thời gian xử lý từ cơ sở dữ liệu ở trên, HÃY ƯU TIÊN SỬ DỤNG quy định đó để đưa ra processingDays chính xác nhất. Nếu không có, sử dụng quy tắc mặc định ở trên.
+
 CHỈ TRẢ VỀ JSON, KHÔNG THÊM TEXT KHÁC.
     `.trim();
+  }
+
+  /**
+   * Tính số ngày xử lý mặc định dựa trên priority
+   * @param priority Priority level
+   * @returns Số ngày xử lý
+   */
+  private calculateDefaultProcessingDays(priority: string): number {
+    switch (priority) {
+      case 'CRITICAL':
+        return 1;
+      case 'HIGH':
+        return 2;
+      case 'MEDIUM':
+        return 3;
+      case 'LOW':
+        return 5;
+      default:
+        return 3;
+    }
   }
 }

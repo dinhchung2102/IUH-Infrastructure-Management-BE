@@ -40,6 +40,9 @@ export class Report {
 
   @Prop({ required: true, type: Types.ObjectId, ref: Account.name })
   createdBy: AccountDocument;
+
+  @Prop({ required: false, type: Number })
+  suggestedProcessingDays?: number; // Số ngày xử lý gợi ý từ AI (từ lúc được phê duyệt)
 }
 
 export const ReportSchema = SchemaFactory.createForClass(Report);

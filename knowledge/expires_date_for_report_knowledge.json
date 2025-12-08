@@ -1,0 +1,78 @@
+[
+  {
+    "title": "Quy định thời gian xử lý sự cố theo độ ưu tiên",
+    "content": "Theo quy định của Trường Đại học Công nghiệp TP.HCM, thời gian xử lý sự cố được phân loại theo độ ưu tiên như sau:\n\n1. CRITICAL (Khẩn cấp): 1-2 ngày làm việc\n   - Sự cố nguy hiểm tính mạng, cháy nổ, điện giật\n   - Nước tràn lớn, ảnh hưởng nghiêm trọng đến hoạt động\n   - Mất điện toàn bộ khu vực\n   - Sự cố an ninh nghiêm trọng\n\n2. HIGH (Cao): 2-3 ngày làm việc\n   - Ảnh hưởng nhiều người, phòng học/lab\n   - Cần xử lý trong ngày hoặc ngày hôm sau\n   - Sự cố điện ảnh hưởng nhiều phòng\n   - Mất nước, tắc nghẽn lớn\n   - Sự cố mạng ảnh hưởng nhiều người dùng\n\n3. MEDIUM (Trung bình): 3-5 ngày làm việc\n   - Ảnh hưởng ít người, không cần xử lý gấp\n   - Có thể đợi 1-2 ngày\n   - Sự cố nội thất, bàn ghế\n   - Điều hòa không hoạt động\n   - Vệ sinh, rác thải\n\n4. LOW (Thấp): 5-7 ngày làm việc\n   - Vấn đề nhỏ, không ảnh hưởng sử dụng\n   - Có thể xử lý sau\n   - Sửa chữa nhỏ, bảo trì định kỳ\n   - Cải thiện, nâng cấp",
+    "type": "REGULATION",
+    "category": "processing-time-priority",
+    "tags": [
+      "thời gian xử lý",
+      "độ ưu tiên",
+      "CRITICAL",
+      "HIGH",
+      "MEDIUM",
+      "LOW",
+      "quy định",
+      "số ngày xử lý"
+    ]
+  },
+  {
+    "title": "Quy định thời gian xử lý sự cố theo loại",
+    "content": "Quy định thời gian xử lý sự cố theo từng loại cụ thể:\n\n1. ĐIỆN (DIEN):\n   - CRITICAL (cháy, điện giật, mất điện lớn): 1 ngày\n   - HIGH (mất điện phòng, chập điện): 2 ngày\n   - MEDIUM (bóng đèn hỏng, công tắc): 3 ngày\n   - LOW (thay bóng đèn, sửa ổ cắm nhỏ): 5 ngày\n\n2. NƯỚC (NUOC):\n   - CRITICAL (nước tràn lớn, vỡ ống chính): 1 ngày\n   - HIGH (rò rỉ lớn, tắc nghẽn nghiêm trọng): 2 ngày\n   - MEDIUM (rò rỉ nhỏ, vòi nước hỏng): 3-4 ngày\n   - LOW (sửa vòi, thông tắc nhỏ): 5-7 ngày\n\n3. MẠNG (MANG):\n   - CRITICAL (mất mạng toàn bộ): 1 ngày\n   - HIGH (mất mạng khu vực lớn): 2 ngày\n   - MEDIUM (mất mạng phòng, WiFi yếu): 3-4 ngày\n   - LOW (cấu hình lại, cải thiện tín hiệu): 5-7 ngày\n\n4. NỘI THẤT (NOI_THAT):\n   - CRITICAL (cửa khóa, nguy hiểm): 1-2 ngày\n   - HIGH (bàn ghế hỏng ảnh hưởng học tập): 2-3 ngày\n   - MEDIUM (bàn ghế hỏng nhỏ, tủ): 4-5 ngày\n   - LOW (sửa chữa nhỏ, bảo trì): 5-7 ngày\n\n5. ĐIỀU HÒA (DIEU_HOA):\n   - CRITICAL (không hoạt động trong mùa nóng): 2 ngày\n   - HIGH (không lạnh, ồn): 3 ngày\n   - MEDIUM (lạnh yếu, cần bảo trì): 4-5 ngày\n   - LOW (vệ sinh, bảo trì định kỳ): 7 ngày\n\n6. VỆ SINH (VE_SINH):\n   - CRITICAL (rác thải nguy hiểm): 1 ngày\n   - HIGH (rác thải tích tụ lớn): 2 ngày\n   - MEDIUM (vệ sinh khu vực): 3-4 ngày\n   - LOW (vệ sinh định kỳ): 5-7 ngày\n\n7. AN NINH (AN_NINH):\n   - CRITICAL (cửa khóa không mở được, nguy hiểm): 1 ngày\n   - HIGH (cửa hỏng, camera không hoạt động): 2-3 ngày\n   - MEDIUM (khóa hỏng, sửa chữa): 4-5 ngày\n   - LOW (bảo trì, cải thiện): 5-7 ngày\n\n8. KHÁC (KHAC):\n   - Dựa vào độ ưu tiên và mức độ ảnh hưởng\n   - CRITICAL: 1-2 ngày\n   - HIGH: 2-3 ngày\n   - MEDIUM: 3-5 ngày\n   - LOW: 5-7 ngày",
+    "type": "REGULATION",
+    "category": "processing-time-category",
+    "tags": [
+      "thời gian xử lý",
+      "loại sự cố",
+      "DIEN",
+      "NUOC",
+      "MANG",
+      "NOI_THAT",
+      "DIEU_HOA",
+      "VE_SINH",
+      "AN_NINH",
+      "KHAC",
+      "quy định"
+    ]
+  },
+  {
+    "title": "Công thức tính số ngày xử lý gợi ý",
+    "content": "Công thức tính số ngày xử lý gợi ý (processingDays) dựa trên loại sự cố và độ ưu tiên:\n\n1. Kết hợp Priority và Category:\n   - CRITICAL + bất kỳ loại nào: 1-2 ngày\n   - HIGH + ĐIỆN/NƯỚC/MẠNG: 2 ngày\n   - HIGH + các loại khác: 2-3 ngày\n   - MEDIUM + ĐIỆN/NƯỚC/MẠNG: 3 ngày\n   - MEDIUM + NỘI THẤT/ĐIỀU HÒA: 4-5 ngày\n   - MEDIUM + VỆ SINH/AN NINH: 3-4 ngày\n   - LOW + bất kỳ loại nào: 5-7 ngày\n\n2. Yếu tố bổ sung:\n   - Sự cố ảnh hưởng nhiều người: giảm 0.5-1 ngày\n   - Sự cố trong phòng học/lab: giảm 0.5-1 ngày\n   - Sự cố vào cuối tuần: có thể tăng 1 ngày\n   - Sự cố cần phụ tùng đặc biệt: có thể tăng 1-2 ngày\n\n3. Quy tắc làm tròn:\n   - Nếu tính được số lẻ (ví dụ 2.5 ngày): làm tròn lên 3 ngày\n   - Tối thiểu: 1 ngày\n   - Tối đa: 7 ngày (trừ trường hợp đặc biệt)",
+    "type": "REGULATION",
+    "category": "processing-time-calculation",
+    "tags": [
+      "công thức",
+      "tính toán",
+      "processingDays",
+      "số ngày xử lý",
+      "priority",
+      "category",
+      "quy tắc"
+    ]
+  },
+  {
+    "title": "Ví dụ cụ thể về thời gian xử lý",
+    "content": "Ví dụ cụ thể về thời gian xử lý các sự cố thường gặp:\n\n1. \"Mất điện toàn bộ tầng 3\" - DIEN, CRITICAL → 1 ngày\n2. \"Chập điện phòng học A101\" - DIEN, HIGH → 2 ngày\n3. \"Bóng đèn hỏng hành lang\" - DIEN, MEDIUM → 3 ngày\n4. \"Thay bóng đèn phòng vệ sinh\" - DIEN, LOW → 5 ngày\n\n5. \"Vỡ ống nước tầng 1\" - NUOC, CRITICAL → 1 ngày\n6. \"Rò rỉ nước phòng học\" - NUOC, HIGH → 2 ngày\n7. \"Vòi nước hỏng\" - NUOC, MEDIUM → 3-4 ngày\n8. \"Thông tắc cống nhỏ\" - NUOC, LOW → 5-7 ngày\n\n9. \"Mất mạng toàn bộ tòa nhà\" - MANG, CRITICAL → 1 ngày\n10. \"WiFi không hoạt động khu vực A\" - MANG, HIGH → 2 ngày\n11. \"WiFi yếu phòng học\" - MANG, MEDIUM → 3-4 ngày\n12. \"Cải thiện tín hiệu WiFi\" - MANG, LOW → 5-7 ngày\n\n13. \"Cửa phòng học khóa không mở được\" - NOI_THAT, CRITICAL → 1-2 ngày\n14. \"Bàn ghế hỏng ảnh hưởng học tập\" - NOI_THAT, HIGH → 2-3 ngày\n15. \"Ghế hỏng phòng học\" - NOI_THAT, MEDIUM → 4-5 ngày\n16. \"Sửa tủ nhỏ\" - NOI_THAT, LOW → 5-7 ngày\n\n17. \"Điều hòa không hoạt động mùa nóng\" - DIEU_HOA, CRITICAL → 2 ngày\n18. \"Điều hòa không lạnh\" - DIEU_HOA, HIGH → 3 ngày\n19. \"Điều hòa lạnh yếu\" - DIEU_HOA, MEDIUM → 4-5 ngày\n20. \"Vệ sinh điều hòa\" - DIEU_HOA, LOW → 7 ngày",
+    "type": "GENERAL",
+    "category": "processing-time-examples",
+    "tags": [
+      "ví dụ",
+      "thời gian xử lý",
+      "sự cố",
+      "processingDays",
+      "case study"
+    ]
+  },
+  {
+    "title": "Lưu ý về thời gian xử lý",
+    "content": "Các lưu ý quan trọng về thời gian xử lý sự cố:\n\n1. Thời gian tính bằng ngày làm việc (không tính thứ 7, chủ nhật và ngày lễ)\n2. Thời gian bắt đầu tính từ ngày report được phê duyệt (APPROVED)\n3. Thời gian xử lý có thể kéo dài hơn nếu:\n   - Cần phụ tùng đặc biệt phải đặt hàng\n   - Cần nhà thầu bên ngoài\n   - Sự cố phức tạp cần thời gian khảo sát\n   - Thời tiết xấu ảnh hưởng\n\n4. Thời gian có thể rút ngắn nếu:\n   - Sự cố đơn giản, có sẵn phụ tùng\n   - Nhân viên kỹ thuật sẵn sàng\n   - Sự cố ảnh hưởng nghiêm trọng, ưu tiên cao\n\n5. Đối với sự cố CRITICAL, luôn ưu tiên xử lý trong ngày hoặc ngày hôm sau\n6. Đối với sự cố LOW, có thể linh hoạt trong khoảng 5-7 ngày\n7. Thời gian gợi ý từ AI là tham khảo, có thể điều chỉnh theo tình hình thực tế",
+    "type": "GENERAL",
+    "category": "processing-time-notes",
+    "tags": [
+      "lưu ý",
+      "thời gian xử lý",
+      "quy định",
+      "ngày làm việc",
+      "điều chỉnh"
+    ]
+  }
+]

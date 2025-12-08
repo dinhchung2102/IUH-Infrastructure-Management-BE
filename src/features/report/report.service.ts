@@ -125,22 +125,34 @@ export class ReportService {
       throw new NotFoundException('Asset không tồn tại');
     }
 
-    // Auto-classify priority using AI if not provided
+    // Auto-classify priority and processing days using AI if not provided
     let priority = createReportDto.priority;
-    if (!priority && this.classificationService) {
+    let suggestedProcessingDays: number | undefined;
+    
+    if (this.classificationService) {
       try {
-        this.logger.log('AI auto-classifying report priority...');
+        this.logger.log('AI auto-classifying report priority and processing days...');
         const classification = await this.classificationService.classifyReport(
           createReportDto.description,
           asset.name as string, // Use asset name as location context
         );
-        priority = classification.priority as any;
-        this.logger.log(`AI classified priority: ${priority}`);
+        
+        if (!priority) {
+          priority = classification.priority as any;
+          this.logger.log(`AI classified priority: ${priority}`);
+        }
+        
+        // Luôn lấy suggestedProcessingDays từ AI
+        suggestedProcessingDays = classification.processingDays;
+        this.logger.log(`AI suggested processing days: ${suggestedProcessingDays} days`);
       } catch (error) {
         this.logger.warn(
-          `Failed to auto-classify priority: ${error.message}. Using default MEDIUM`,
+          `Failed to auto-classify: ${error.message}. Using defaults`,
         );
-        priority = 'MEDIUM' as any;
+        if (!priority) {
+          priority = 'MEDIUM' as any;
+        }
+        suggestedProcessingDays = 3; // Default 3 ngày
       }
     }
 
@@ -215,6 +227,7 @@ export class ReportService {
       createdBy: createdById,
       status: ReportStatus.PENDING,
       priority: priority,
+      suggestedProcessingDays: suggestedProcessingDays,
     });
 
     const savedReport = await newReport.save();
@@ -820,9 +833,19 @@ export class ReportService {
         images: auditImages,
       };
 
-      // Thêm expiresAt nếu có
+      // Tính expiresAt: ưu tiên từ DTO, nếu không có thì dùng suggestedProcessingDays từ report
       if (expiresAt) {
+        // Nếu có expiresAt từ DTO, dùng nó
         auditLogData.expiresAt = new Date(expiresAt);
+      } else if (report.suggestedProcessingDays) {
+        // Nếu không có từ DTO, tự động tính từ suggestedProcessingDays
+        const approvalDate = new Date();
+        const expirationDate = new Date(approvalDate);
+        expirationDate.setDate(expirationDate.getDate() + report.suggestedProcessingDays);
+        auditLogData.expiresAt = expirationDate;
+        this.logger.log(
+          `Auto-calculated expiresAt: ${expirationDate.toISOString()} (${report.suggestedProcessingDays} days from approval)`,
+        );
       }
 
       const newAuditLog = new this.auditLogModel(auditLogData);
