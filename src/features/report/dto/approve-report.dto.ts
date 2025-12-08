@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsDateString,
   IsMongoId,
   IsNotEmpty,
   IsOptional,
@@ -28,4 +29,8 @@ export class ApproveReportDto {
   @IsArray({ message: 'Danh sách hình ảnh phải là mảng' })
   @IsString({ each: true, message: 'URL hình ảnh phải là chuỗi' })
   images?: string[];
+
+  @IsOptional()
+  @IsDateString({}, { message: 'Ngày hết hạn phải là định dạng ngày hợp lệ' })
+  expiresAt?: string;
 }

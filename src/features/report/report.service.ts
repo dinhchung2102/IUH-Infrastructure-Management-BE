@@ -716,7 +716,7 @@ export class ReportService {
       auditLog: any;
     };
   }> {
-    const { reportId, staffIds, subject, description, images } =
+    const { reportId, staffIds, subject, description, images, expiresAt } =
       approveReportDto;
 
     // Validate report ID
@@ -811,14 +811,21 @@ export class ReportService {
         .populate('createdBy', 'fullName email');
 
       // 6. Tạo audit log mới
-      const newAuditLog = new this.auditLogModel({
+      const auditLogData: any = {
         report: new Types.ObjectId(reportId),
         status: AuditStatus.PENDING,
         subject,
         description,
         staffs: staffObjectIds,
         images: auditImages,
-      });
+      };
+
+      // Thêm expiresAt nếu có
+      if (expiresAt) {
+        auditLogData.expiresAt = new Date(expiresAt);
+      }
+
+      const newAuditLog = new this.auditLogModel(auditLogData);
 
       const savedAuditLog = await newAuditLog.save({ session });
       await savedAuditLog.populate([
