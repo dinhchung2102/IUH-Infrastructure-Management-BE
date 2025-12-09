@@ -374,8 +374,20 @@ export class AuthService {
         select: '-accounts',
         populate: [
           {
-            path: 'campus',
-            select: '',
+            path: 'building',
+            select: 'name campus',
+            populate: {
+              path: 'campus',
+              select: 'name address',
+            },
+          },
+          {
+            path: 'area',
+            select: 'name campus',
+            populate: {
+              path: 'campus',
+              select: 'name address',
+            },
           },
         ],
       })
