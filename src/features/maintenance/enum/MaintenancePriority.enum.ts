@@ -4,4 +4,3 @@ export enum MaintenancePriority {
   HIGH = 'HIGH',
   CRITICAL = 'CRITICAL',
 }
-

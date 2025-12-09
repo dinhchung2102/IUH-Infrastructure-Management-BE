@@ -10,7 +10,10 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { NewsService } from './news.service';
 import {
   CreateNewsCategoryDto,
@@ -29,8 +32,12 @@ export class NewsCategoryController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:CREATE', 'NEWS:ADMIN_ACTION'])
   @Post()
-  async create(@Body() createNewsCategoryDto: CreateNewsCategoryDto) {
-    return this.newsService.createCategory(createNewsCategoryDto);
+  @UseInterceptors(FileInterceptor('image'))
+  async create(
+    @Body() createNewsCategoryDto: CreateNewsCategoryDto,
+    @UploadedFile() imageFile?: Express.Multer.File,
+  ) {
+    return this.newsService.createCategory(createNewsCategoryDto, imageFile);
   }
 
   @Public()
@@ -54,11 +61,17 @@ export class NewsCategoryController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['NEWS:UPDATE', 'NEWS:ADMIN_ACTION'])
   @Patch(':id')
+  @UseInterceptors(FileInterceptor('image'))
   async update(
     @Param('id') id: string,
     @Body() updateNewsCategoryDto: UpdateNewsCategoryDto,
+    @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    return this.newsService.updateCategory(id, updateNewsCategoryDto);
+    return this.newsService.updateCategory(
+      id,
+      updateNewsCategoryDto,
+      imageFile,
+    );
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

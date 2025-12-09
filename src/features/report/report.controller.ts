@@ -81,6 +81,62 @@ export class ReportController {
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
+  @Get('statistics/time-series')
+  async getTimeSeriesStatistics(
+    @Query('type') type: 'daily' | 'weekly' | 'monthly',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.reportService.getTimeSeriesStatistics(
+      type,
+      startDate,
+      endDate,
+      status,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
+  @Get('statistics/by-location')
+  async getStatisticsByLocation(
+    @Query('groupBy') groupBy: 'campus' | 'building' | 'area' | 'zone',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.reportService.getStatisticsByLocation(
+      groupBy,
+      startDate,
+      endDate,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
+  @Get('statistics/top-assets')
+  async getTopAssets(
+    @Query('limit') limit?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.reportService.getTopAssets(limitNum, startDate, endDate);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
+  @Get('statistics/top-reporters')
+  async getTopReporters(
+    @Query('limit') limit?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.reportService.getTopReporters(limitNum, startDate, endDate);
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['REPORT:READ'])
   @Get(':id')
   async findOneReport(@Param('id') id: string) {
     return this.reportService.findOneReport(id);
@@ -94,8 +150,9 @@ export class ReportController {
   async updateReportStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: UpdateReportStatusDto,
+    @CurrentUser() user: JwtPayload | undefined,
   ) {
-    return this.reportService.updateReportStatus(id, updateStatusDto);
+    return this.reportService.updateReportStatus(id, updateStatusDto, user);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

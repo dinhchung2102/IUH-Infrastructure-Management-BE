@@ -62,11 +62,13 @@ export class AssetsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ASSET_CATEGORY:UPDATE'])
   @Patch('categories/:id')
+  @UseInterceptors(AnyFilesInterceptor())
   async updateCategory(
     @Param('id') id: string,
     @Body() dto: UpdateAssetCategoryDto,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
-    return this.assetsService.updateCategory(id, dto);
+    return this.assetsService.updateCategory(id, dto, files);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

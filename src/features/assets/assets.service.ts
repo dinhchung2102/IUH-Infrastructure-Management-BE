@@ -124,12 +124,23 @@ export class AssetsService {
   async updateCategory(
     id: string,
     dto: UpdateAssetCategoryDto,
+    files?: Express.Multer.File[],
   ): Promise<{
     message: string;
     data: any;
   }> {
     if (!Types.ObjectId.isValid(id))
       throw new BadRequestException('ID không hợp lệ');
+
+    // Xử lý upload file nếu có
+    if (files && files.length > 0) {
+      const imageFile = files.find((file) => file.fieldname === 'image');
+      if (imageFile) {
+        const imageUrl = await this.uploadService.uploadFile(imageFile);
+        dto.image = imageUrl;
+      }
+    }
+
     if (dto.name) {
       const dup = await this.assetCategoryModel.findOne({
         name: dto.name,

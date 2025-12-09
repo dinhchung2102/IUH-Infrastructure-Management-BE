@@ -289,7 +289,10 @@ export class NewsService {
 
   // ========== NEWS CATEGORY METHODS ==========
 
-  async createCategory(createNewsCategoryDto: CreateNewsCategoryDto) {
+  async createCategory(
+    createNewsCategoryDto: CreateNewsCategoryDto,
+    imageFile?: Express.Multer.File,
+  ) {
     // Kiểm tra tên danh mục đã tồn tại chưa
     const existingCategory = await this.newsCategoryModel.findOne({
       name: createNewsCategoryDto.name,
@@ -297,6 +300,12 @@ export class NewsService {
 
     if (existingCategory) {
       throw new ConflictException('Tên danh mục đã tồn tại');
+    }
+
+    // Xử lý upload image nếu có file
+    if (imageFile) {
+      const imageUrl = await this.uploadService.uploadFile(imageFile);
+      createNewsCategoryDto.image = imageUrl;
     }
 
     const newCategory = new this.newsCategoryModel(createNewsCategoryDto);
@@ -414,9 +423,16 @@ export class NewsService {
   async updateCategory(
     id: string,
     updateNewsCategoryDto: UpdateNewsCategoryDto,
+    imageFile?: Express.Multer.File,
   ) {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID danh mục không hợp lệ');
+    }
+
+    // Xử lý upload image nếu có file
+    if (imageFile) {
+      const imageUrl = await this.uploadService.uploadFile(imageFile);
+      updateNewsCategoryDto.image = imageUrl;
     }
 
     const existingCategory = await this.newsCategoryModel.findById(id);

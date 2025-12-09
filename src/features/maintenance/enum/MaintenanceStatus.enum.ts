@@ -5,4 +5,3 @@ export enum MaintenanceStatus {
   CANCELLED = 'CANCELLED',
   OVERDUE = 'OVERDUE',
 }
-

@@ -43,6 +43,15 @@ export class Report {
 
   @Prop({ required: false, type: Number })
   suggestedProcessingDays?: number; // Số ngày xử lý gợi ý từ AI (từ lúc được phê duyệt)
+
+  @Prop({ required: false })
+  rejectReason?: string; // Lý do từ chối báo cáo
+
+  @Prop({ required: false, type: Types.ObjectId, ref: Account.name })
+  rejectedBy?: AccountDocument; // Người từ chối
+
+  @Prop({ required: false, type: Date })
+  rejectedAt?: Date; // Thời điểm từ chối
 }
 
 export const ReportSchema = SchemaFactory.createForClass(Report);

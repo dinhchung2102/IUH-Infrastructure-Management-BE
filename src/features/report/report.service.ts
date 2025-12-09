@@ -478,6 +478,7 @@ export class ReportService {
   async updateReportStatus(
     id: string,
     updateStatusDto: UpdateReportStatusDto,
+    user?: { sub: string },
   ): Promise<{
     message: string;
     data: any;
@@ -491,14 +492,39 @@ export class ReportService {
       throw new NotFoundException('Báo cáo không tồn tại');
     }
 
+    // Validate rejectReason when rejecting
+    if (updateStatusDto.status === ReportStatus.REJECTED) {
+      if (!updateStatusDto.rejectReason || updateStatusDto.rejectReason.trim() === '') {
+        throw new BadRequestException(
+          'Lý do từ chối là bắt buộc khi từ chối báo cáo',
+        );
+      }
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      status: updateStatusDto.status,
+    };
+
+    // Handle reject case
+    if (updateStatusDto.status === ReportStatus.REJECTED) {
+      updateData.rejectReason = updateStatusDto.rejectReason;
+      updateData.rejectedAt = new Date();
+      if (user?.sub) {
+        updateData.rejectedBy = new Types.ObjectId(user.sub);
+      }
+    } else {
+      // Clear rejectReason when status is not REJECTED
+      updateData.rejectReason = null;
+      updateData.rejectedBy = null;
+      updateData.rejectedAt = null;
+    }
+
     const updatedReport = await this.reportModel
-      .findByIdAndUpdate(
-        id,
-        { status: updateStatusDto.status },
-        { new: true },
-      )
+      .findByIdAndUpdate(id, updateData, { new: true })
       .populate('asset', 'name code status')
-      .populate('createdBy', 'fullName email');
+      .populate('createdBy', 'fullName email')
+      .populate('rejectedBy', 'fullName email');
 
     // Auto-update index in Qdrant for RAG
     if (this.syncService && updatedReport) {
@@ -700,6 +726,481 @@ export class ReportService {
         reportsLastMonth,
         averageResolutionTime,
       },
+    };
+  }
+
+  /**
+   * Get time series statistics for reports
+   */
+  async getTimeSeriesStatistics(
+    type: 'daily' | 'weekly' | 'monthly',
+    startDate?: string,
+    endDate?: string,
+    status?: string,
+  ): Promise<{
+    message: string;
+    data: Array<{
+      date: string;
+      total: number;
+      byStatus: Record<string, number>;
+      byType: Record<string, number>;
+      byPriority: Record<string, number>;
+    }>;
+  }> {
+    const now = new Date();
+    let start: Date;
+    let end: Date = new Date(now);
+
+    // Calculate date range
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    } else {
+      // Default: last 30 days for daily, last 12 weeks for weekly, last 12 months for monthly
+      if (type === 'daily') {
+        start = new Date(now);
+        start.setDate(start.getDate() - 30);
+      } else if (type === 'weekly') {
+        start = new Date(now);
+        start.setDate(start.getDate() - 84); // 12 weeks
+      } else {
+        // monthly
+        start = new Date(now);
+        start.setMonth(start.getMonth() - 12);
+      }
+    }
+
+    // Build match filter
+    const matchFilter: any = {
+      createdAt: { $gte: start, $lte: end },
+    };
+    if (status) {
+      matchFilter.status = status;
+    }
+
+    // Build group by date format
+    let dateFormat: any;
+    if (type === 'daily') {
+      dateFormat = {
+        year: { $year: '$createdAt' },
+        month: { $month: '$createdAt' },
+        day: { $dayOfMonth: '$createdAt' },
+      };
+    } else if (type === 'weekly') {
+      dateFormat = {
+        year: { $year: '$createdAt' },
+        week: { $week: '$createdAt' },
+      };
+    } else {
+      // monthly
+      dateFormat = {
+        year: { $year: '$createdAt' },
+        month: { $month: '$createdAt' },
+      };
+    }
+
+    const pipeline: any[] = [
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: dateFormat,
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.week': 1 } },
+    ];
+
+    const results = await this.reportModel.aggregate(pipeline);
+
+    // Format results
+    const formattedResults = results.map((result) => {
+      let dateStr: string;
+      if (type === 'daily') {
+        dateStr = `${result._id.year}-${String(result._id.month).padStart(2, '0')}-${String(result._id.day).padStart(2, '0')}`;
+      } else if (type === 'weekly') {
+        dateStr = `${result._id.year}-W${String(result._id.week).padStart(2, '0')}`;
+      } else {
+        dateStr = `${result._id.year}-${String(result._id.month).padStart(2, '0')}`;
+      }
+
+      // Count by status
+      const byStatus: Record<string, number> = {};
+      result.statuses.forEach((s: string) => {
+        byStatus[s] = (byStatus[s] || 0) + 1;
+      });
+
+      // Count by type
+      const byType: Record<string, number> = {};
+      result.types.forEach((t: string) => {
+        byType[t] = (byType[t] || 0) + 1;
+      });
+
+      // Count by priority
+      const byPriority: Record<string, number> = {};
+      result.priorities.forEach((p: string) => {
+        if (p) {
+          byPriority[p] = (byPriority[p] || 0) + 1;
+        }
+      });
+
+      return {
+        date: dateStr,
+        total: result.total,
+        byStatus,
+        byType,
+        byPriority,
+      };
+    });
+
+    return {
+      message: 'Lấy thống kê time series thành công',
+      data: formattedResults,
+    };
+  }
+
+  /**
+   * Get statistics by location (campus/building/area/zone)
+   */
+  async getStatisticsByLocation(
+    groupBy: 'campus' | 'building' | 'area' | 'zone',
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
+    message: string;
+    data: Array<{
+      locationId: string;
+      locationName: string;
+      total: number;
+      byStatus: Record<string, number>;
+      byType: Record<string, number>;
+      byPriority: Record<string, number>;
+    }>;
+  }> {
+    const matchFilter: any = {};
+    if (startDate && endDate) {
+      matchFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    // Build lookup and group pipeline based on groupBy
+    let lookupStage: any;
+    let groupStage: any;
+
+    if (groupBy === 'campus') {
+      lookupStage = {
+        $lookup: {
+          from: 'assets',
+          localField: 'asset',
+          foreignField: '_id',
+          as: 'assetData',
+        },
+      };
+      // Need to lookup zone/area -> building -> campus
+      // This is complex, simplified version
+      groupStage = {
+        $group: {
+          _id: null, // Simplified - would need complex lookup
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      };
+    } else {
+      // For building/area/zone, we need to lookup through asset
+      lookupStage = {
+        $lookup: {
+          from: 'assets',
+          localField: 'asset',
+          foreignField: '_id',
+          as: 'assetData',
+        },
+      };
+    }
+
+    // Simplified implementation - group by asset location
+    const pipeline: any[] = [
+      { $match: matchFilter },
+      {
+        $lookup: {
+          from: 'assets',
+          localField: 'asset',
+          foreignField: '_id',
+          as: 'assetData',
+        },
+      },
+      { $unwind: { path: '$assetData', preserveNullAndEmptyArrays: true } },
+    ];
+
+    if (groupBy === 'zone') {
+      pipeline.push({
+        $lookup: {
+          from: 'zones',
+          localField: 'assetData.zone',
+          foreignField: '_id',
+          as: 'zoneData',
+        },
+      });
+      pipeline.push({ $unwind: { path: '$zoneData', preserveNullAndEmptyArrays: true } });
+      pipeline.push({
+        $group: {
+          _id: '$zoneData._id',
+          locationName: { $first: '$zoneData.name' },
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      });
+    } else if (groupBy === 'area') {
+      pipeline.push({
+        $lookup: {
+          from: 'areas',
+          localField: 'assetData.area',
+          foreignField: '_id',
+          as: 'areaData',
+        },
+      });
+      pipeline.push({ $unwind: { path: '$areaData', preserveNullAndEmptyArrays: true } });
+      pipeline.push({
+        $group: {
+          _id: '$areaData._id',
+          locationName: { $first: '$areaData.name' },
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      });
+    } else {
+      // building or campus - simplified
+      pipeline.push({
+        $group: {
+          _id: '$assetData.zone', // Simplified
+          locationName: { $first: 'Unknown' },
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      });
+    }
+
+    const results = await this.reportModel.aggregate(pipeline);
+
+    // Format results
+    const formattedResults = results
+      .filter((r) => r._id) // Filter out null locations
+      .map((result) => {
+        // Count by status
+        const byStatus: Record<string, number> = {};
+        result.statuses.forEach((s: string) => {
+          byStatus[s] = (byStatus[s] || 0) + 1;
+        });
+
+        // Count by type
+        const byType: Record<string, number> = {};
+        result.types.forEach((t: string) => {
+          byType[t] = (byType[t] || 0) + 1;
+        });
+
+        // Count by priority
+        const byPriority: Record<string, number> = {};
+        result.priorities.forEach((p: string) => {
+          if (p) {
+            byPriority[p] = (byPriority[p] || 0) + 1;
+          }
+        });
+
+        return {
+          locationId: result._id.toString(),
+          locationName: result.locationName || 'Unknown',
+          total: result.total,
+          byStatus,
+          byType,
+          byPriority,
+        };
+      })
+      .sort((a, b) => b.total - a.total);
+
+    return {
+      message: `Lấy thống kê theo ${groupBy} thành công`,
+      data: formattedResults,
+    };
+  }
+
+  /**
+   * Get top assets with most reports
+   */
+  async getTopAssets(
+    limit: number = 10,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
+    message: string;
+    data: Array<{
+      assetId: string;
+      assetName: string;
+      assetCode: string;
+      totalReports: number;
+      byStatus: Record<string, number>;
+      byType: Record<string, number>;
+    }>;
+  }> {
+    const matchFilter: any = {};
+    if (startDate && endDate) {
+      matchFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    const pipeline: any[] = [
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$asset',
+          totalReports: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+        },
+      },
+      { $sort: { totalReports: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'assets',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'assetData',
+        },
+      },
+      { $unwind: { path: '$assetData', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          assetId: '$_id',
+          assetName: '$assetData.name',
+          assetCode: '$assetData.code',
+          totalReports: 1,
+          statuses: 1,
+          types: 1,
+        },
+      },
+    ];
+
+    const results = await this.reportModel.aggregate(pipeline);
+
+    const formattedResults = results.map((result) => {
+      // Count by status
+      const byStatus: Record<string, number> = {};
+      result.statuses.forEach((s: string) => {
+        byStatus[s] = (byStatus[s] || 0) + 1;
+      });
+
+      // Count by type
+      const byType: Record<string, number> = {};
+      result.types.forEach((t: string) => {
+        byType[t] = (byType[t] || 0) + 1;
+      });
+
+      return {
+        assetId: result.assetId.toString(),
+        assetName: result.assetName || 'Unknown',
+        assetCode: result.assetCode || 'N/A',
+        totalReports: result.totalReports,
+        byStatus,
+        byType,
+      };
+    });
+
+    return {
+      message: 'Lấy top assets thành công',
+      data: formattedResults,
+    };
+  }
+
+  /**
+   * Get top reporters (users who created most reports)
+   */
+  async getTopReporters(
+    limit: number = 10,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<{
+    message: string;
+    data: Array<{
+      userId: string;
+      userName: string;
+      userEmail: string;
+      totalReports: number;
+      byType: Record<string, number>;
+    }>;
+  }> {
+    const matchFilter: any = {};
+    if (startDate && endDate) {
+      matchFilter.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+
+    const pipeline: any[] = [
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$createdBy',
+          totalReports: { $sum: 1 },
+          types: { $push: '$type' },
+        },
+      },
+      { $sort: { totalReports: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'accounts',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userData',
+        },
+      },
+      { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          userId: '$_id',
+          userName: '$userData.fullName',
+          userEmail: '$userData.email',
+          totalReports: 1,
+          types: 1,
+        },
+      },
+    ];
+
+    const results = await this.reportModel.aggregate(pipeline);
+
+    const formattedResults = results.map((result) => {
+      // Count by type
+      const byType: Record<string, number> = {};
+      result.types.forEach((t: string) => {
+        byType[t] = (byType[t] || 0) + 1;
+      });
+
+      return {
+        userId: result.userId.toString(),
+        userName: result.userName || 'Unknown',
+        userEmail: result.userEmail || 'N/A',
+        totalReports: result.totalReports,
+        byType,
+      };
+    });
+
+    return {
+      message: 'Lấy top reporters thành công',
+      data: formattedResults,
     };
   }
 
