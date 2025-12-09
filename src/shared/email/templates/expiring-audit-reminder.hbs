@@ -1,0 +1,76 @@
+<html>
+  <head>
+    <meta charset='UTF-8' />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .header {
+        background-color: #f39c12;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 5px 5px 0 0;
+      }
+      .content {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border: 1px solid #ddd;
+      }
+      .alert {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 15px 0;
+      }
+      .info-box {
+        background-color: white;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 15px 0;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        padding: 20px;
+        color: #7f8c8d;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class='header'>
+      <h1>Nhắc Nhở: Nhiệm vụ Sắp Hết Hạn</h1>
+    </div>
+
+    <div class='content'>
+      <div class='alert'>
+        <strong>Lưu ý:</strong>
+        Bạn có nhiệm vụ sắp hết hạn trong
+        <strong>{{daysRemaining}} ngày</strong>!
+      </div>
+
+      <div class='info-box'>
+        <h3>Thông tin nhiệm vụ:</h3>
+        <p><strong>ID:</strong> {{auditId}}</p>
+        <p><strong>Tiêu đề:</strong> {{subject}}</p>
+        <p><strong>Mô tả:</strong> {{description}}</p>
+        <p><strong>Hạn xử lý:</strong> {{expiresAt}}</p>
+        <p><strong>Còn lại:</strong>
+          <span style='color: #f39c12;'>{{daysRemaining}} ngày</span></p>
+        <p><strong>Báo cáo liên quan:</strong> {{reportDescription}}</p>
+      </div>
+
+      <p>Vui lòng hoàn thành nhiệm vụ này trước khi hết hạn.</p>
+    </div>
+
+    <div class='footer'>
+      <p>Email tự động từ IUH Infrastructure Management System</p>
+    </div>
+  </body>
+</html>
