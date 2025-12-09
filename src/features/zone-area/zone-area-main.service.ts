@@ -1047,11 +1047,7 @@ export class ZoneAreaMainService {
   // ==================== STATISTICS METHODS ====================
 
   async getBuildingStats() {
-    // Tính ngày đầu tiên của tháng hiện tại
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const [totalBuildings, activeBuildings, inactiveBuildings, newThisMonth] =
+    const [totalBuildings, activeBuildings, inactiveBuildings, underMaintenanceBuildings] =
       await Promise.all([
         // Tổng tòa nhà
         this.buildingModel.countDocuments(),
@@ -1059,29 +1055,23 @@ export class ZoneAreaMainService {
         this.buildingModel.countDocuments({ status: 'ACTIVE' }),
         // Ngừng hoạt động
         this.buildingModel.countDocuments({ status: 'INACTIVE' }),
-        // Mới được thêm tháng này
-        this.buildingModel.countDocuments({
-          createdAt: { $gte: firstDayOfMonth },
-        }),
+        // Đang bảo trì
+        this.buildingModel.countDocuments({ status: 'UNDERMAINTENANCE' }),
       ]);
 
     return {
       message: 'Lấy thống kê tòa nhà thành công',
-      stats: {
+      data: {
         total: totalBuildings,
         active: activeBuildings,
         inactive: inactiveBuildings,
-        newThisMonth: newThisMonth,
+        underMaintenance: underMaintenanceBuildings,
       },
     };
   }
 
   async getAreaStats() {
-    // Tính ngày đầu tiên của tháng hiện tại
-    const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const [totalAreas, activeAreas, inactiveAreas, newThisMonth] =
+    const [totalAreas, activeAreas, inactiveAreas, underMaintenanceAreas] =
       await Promise.all([
         // Tổng khu vực
         this.areaModel.countDocuments(),
@@ -1089,20 +1079,110 @@ export class ZoneAreaMainService {
         this.areaModel.countDocuments({ status: 'ACTIVE' }),
         // Ngừng hoạt động
         this.areaModel.countDocuments({ status: 'INACTIVE' }),
-        // Mới được thêm tháng này
-        this.areaModel.countDocuments({
-          createdAt: { $gte: firstDayOfMonth },
-        }),
+        // Đang bảo trì
+        this.areaModel.countDocuments({ status: 'UNDERMAINTENANCE' }),
       ]);
 
     return {
       message: 'Lấy thống kê khu vực thành công',
-      stats: {
+      data: {
         total: totalAreas,
         active: activeAreas,
         inactive: inactiveAreas,
-        newThisMonth: newThisMonth,
+        underMaintenance: underMaintenanceAreas,
       },
+    };
+  }
+
+  async getBuildingStatsByCampus() {
+    // Lấy tất cả campus
+    const campuses = await this.campusModel.find().lean();
+
+    // Tính thống kê cho từng campus
+    const statsPromises = campuses.map(async (campus) => {
+      const campusObjectId = new Types.ObjectId(campus._id);
+      const [totalBuildings, activeBuildings, inactiveBuildings, underMaintenanceBuildings] =
+        await Promise.all([
+          // Tổng tòa nhà theo campus
+          this.buildingModel.countDocuments({ campus: campusObjectId }),
+          // Đang hoạt động
+          this.buildingModel.countDocuments({
+            campus: campusObjectId,
+            status: 'ACTIVE',
+          }),
+          // Ngừng hoạt động
+          this.buildingModel.countDocuments({
+            campus: campusObjectId,
+            status: 'INACTIVE',
+          }),
+          // Đang bảo trì
+          this.buildingModel.countDocuments({
+            campus: campusObjectId,
+            status: 'UNDERMAINTENANCE',
+          }),
+        ]);
+
+      return {
+        campusId: campus._id.toString(),
+        campusName: campus.name,
+        total: totalBuildings,
+        active: activeBuildings,
+        inactive: inactiveBuildings,
+        underMaintenance: underMaintenanceBuildings,
+      };
+    });
+
+    const stats = await Promise.all(statsPromises);
+
+    return {
+      message: 'Lấy thống kê tòa nhà theo campus thành công',
+      data: stats,
+    };
+  }
+
+  async getAreaStatsByCampus() {
+    // Lấy tất cả campus
+    const campuses = await this.campusModel.find().lean();
+
+    // Tính thống kê cho từng campus
+    const statsPromises = campuses.map(async (campus) => {
+      const campusObjectId = new Types.ObjectId(campus._id);
+      const [totalAreas, activeAreas, inactiveAreas, underMaintenanceAreas] =
+        await Promise.all([
+          // Tổng khu vực theo campus
+          this.areaModel.countDocuments({ campus: campusObjectId }),
+          // Đang hoạt động
+          this.areaModel.countDocuments({
+            campus: campusObjectId,
+            status: 'ACTIVE',
+          }),
+          // Ngừng hoạt động
+          this.areaModel.countDocuments({
+            campus: campusObjectId,
+            status: 'INACTIVE',
+          }),
+          // Đang bảo trì
+          this.areaModel.countDocuments({
+            campus: campusObjectId,
+            status: 'UNDERMAINTENANCE',
+          }),
+        ]);
+
+      return {
+        campusId: campus._id.toString(),
+        campusName: campus.name,
+        total: totalAreas,
+        active: activeAreas,
+        inactive: inactiveAreas,
+        underMaintenance: underMaintenanceAreas,
+      };
+    });
+
+    const stats = await Promise.all(statsPromises);
+
+    return {
+      message: 'Lấy thống kê khu vực theo campus thành công',
+      data: stats,
     };
   }
 

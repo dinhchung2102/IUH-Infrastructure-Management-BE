@@ -201,4 +201,16 @@ export class ZoneAreaController {
   async getZoneStats() {
     return this.zoneAreaService.getZoneStats();
   }
+
+  @Public()
+  @Get('buildings-stats-by-campus')
+  async getBuildingStatsByCampus() {
+    return this.zoneAreaService.getBuildingStatsByCampus();
+  }
+
+  @Public()
+  @Get('areas-stats-by-campus')
+  async getAreaStatsByCampus() {
+    return this.zoneAreaService.getAreaStatsByCampus();
+  }
 }

@@ -115,4 +115,12 @@ export class ZoneAreaService {
   async getZoneStats() {
     return this.mainService.getZoneStats();
   }
+
+  async getBuildingStatsByCampus() {
+    return this.mainService.getBuildingStatsByCampus();
+  }
+
+  async getAreaStatsByCampus() {
+    return this.mainService.getAreaStatsByCampus();
+  }
 }
