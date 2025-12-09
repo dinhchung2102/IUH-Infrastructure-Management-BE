@@ -1,15 +1,19 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QdrantClient } from '@qdrant/js-client-rest';
+import type { AIService } from '../interfaces/ai-service.interface';
 
 @Injectable()
 export class QdrantService implements OnModuleInit {
   private readonly logger = new Logger(QdrantService.name);
   private client: QdrantClient;
-  private readonly collectionName = 'iuh_csvc_knowledge';
-  private readonly vectorSize = 768; // Gemini embedding dimension
+  private collectionName = 'iuh_csvc_knowledge'; // Will be updated based on vector size
+  private vectorSize: number | null = null; // Will be detected from AI service
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    @Inject('AIService') private aiService: AIService,
+  ) {
     const qdrantUrl =
       this.configService.get<string>('QDRANT_URL') || 'http://localhost:6333';
     this.client = new QdrantClient({
@@ -21,6 +25,8 @@ export class QdrantService implements OnModuleInit {
 
   async onModuleInit() {
     try {
+      // Detect vector size from AI service
+      await this.detectVectorSize();
       await this.ensureCollection();
     } catch (error: unknown) {
       this.logger.error(
@@ -36,10 +42,55 @@ export class QdrantService implements OnModuleInit {
   }
 
   /**
+   * Detect vector size from AI service by generating a test embedding
+   */
+  private async detectVectorSize(): Promise<void> {
+    try {
+      this.logger.log('Detecting vector dimension from AI service...');
+      const testEmbedding = await this.aiService.generateEmbedding('test');
+      this.vectorSize = testEmbedding.length;
+
+      // Update collection name based on vector size to avoid conflicts
+      if (this.vectorSize === 1536) {
+        this.collectionName = 'iuh_csvc_knowledge_openai'; // OpenAI collection
+      } else if (this.vectorSize === 768) {
+        this.collectionName = 'iuh_csvc_knowledge'; // Gemini collection (default)
+      } else {
+        this.collectionName = `iuh_csvc_knowledge_${this.vectorSize}`; // Other dimensions
+      }
+
+      const providerName =
+        this.vectorSize === 768
+          ? 'Gemini'
+          : this.vectorSize === 1536
+            ? 'OpenAI'
+            : 'Unknown';
+      this.logger.log(
+        `Detected vector dimension: ${this.vectorSize} (${providerName})`,
+      );
+      this.logger.log(
+        `Using collection: '${this.collectionName}' for ${providerName} embeddings`,
+      );
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to detect vector size, using default 768: ${errorMessage}`,
+      );
+      this.vectorSize = 768; // Fallback to Gemini dimension
+      this.collectionName = 'iuh_csvc_knowledge'; // Default collection name
+    }
+  }
+
+  /**
    * Tạo collection nếu chưa tồn tại
    */
   async ensureCollection(): Promise<void> {
     try {
+      if (this.vectorSize === null) {
+        await this.detectVectorSize();
+      }
+
       const exists = await this.collectionExists();
 
       if (!exists) {
@@ -49,7 +100,7 @@ export class QdrantService implements OnModuleInit {
 
         await this.client.createCollection(this.collectionName, {
           vectors: {
-            size: this.vectorSize,
+            size: this.vectorSize!,
             distance: 'Cosine',
           },
           optimizers_config: {
@@ -62,7 +113,23 @@ export class QdrantService implements OnModuleInit {
           `✓ Collection '${this.collectionName}' created successfully`,
         );
       } else {
-        this.logger.log(`✓ Collection '${this.collectionName}' already exists`);
+        // Check if existing collection has correct dimension
+        const collectionInfo = (await this.getCollectionInfo()) as {
+          config?: { params?: { vectors?: { size?: number } } };
+        };
+        const existingSize =
+          collectionInfo?.config?.params?.vectors?.size || 768;
+
+        if (existingSize !== this.vectorSize) {
+          this.logger.warn(
+            `⚠ Collection '${this.collectionName}' exists with dimension ${existingSize}, but current AI service uses ${this.vectorSize}. ` +
+              `This may cause errors. Consider recreating the collection or using the matching AI provider.`,
+          );
+        } else {
+          this.logger.log(
+            `✓ Collection '${this.collectionName}' already exists with correct dimension ${this.vectorSize}`,
+          );
+        }
       }
     } catch (error) {
       const errorMessage =
@@ -112,8 +179,13 @@ export class QdrantService implements OnModuleInit {
     payload: Record<string, any>,
   ): Promise<void> {
     try {
+      // Detect vector size if not already detected
+      if (this.vectorSize === null) {
+        await this.detectVectorSize();
+      }
+
       // Validate vector dimension
-      if (vector.length !== this.vectorSize) {
+      if (this.vectorSize !== null && vector.length !== this.vectorSize) {
         throw new Error(
           `Vector dimension mismatch: expected ${this.vectorSize}, got ${vector.length}`,
         );
@@ -152,7 +224,7 @@ export class QdrantService implements OnModuleInit {
         errorStack,
       );
       this.logger.error(
-        `Details - Vector size: ${vector.length}, Expected: ${this.vectorSize}, Payload keys: ${Object.keys(payload).join(', ')}`,
+        `Details - Vector size: ${vector.length}, Expected: ${this.vectorSize || 'unknown'}, Payload keys: ${Object.keys(payload).join(', ')}`,
       );
       throw error;
     }
@@ -207,6 +279,27 @@ export class QdrantService implements OnModuleInit {
     } = {},
   ): Promise<Array<{ id: string; score: number; payload: any }>> {
     try {
+      // Detect vector size if not already detected
+      if (this.vectorSize === null) {
+        await this.detectVectorSize();
+      }
+
+      // Validate vector dimension before searching
+      if (this.vectorSize !== null && queryVector.length !== this.vectorSize) {
+        const collectionInfo = (await this.getCollectionInfo()) as {
+          config?: { params?: { vectors?: { size?: number } } };
+        };
+        const existingSize =
+          collectionInfo?.config?.params?.vectors?.size || 768;
+
+        throw new Error(
+          `Vector dimension mismatch: Query vector has ${queryVector.length} dimensions, ` +
+            `but collection '${this.collectionName}' expects ${existingSize} dimensions. ` +
+            `Current AI service uses ${this.vectorSize} dimensions. ` +
+            `Please recreate the collection or switch to the matching AI provider.`,
+        );
+      }
+
       const searchResult = await this.client.search(this.collectionName, {
         vector: queryVector,
         limit: options.limit || 10,
@@ -224,6 +317,21 @@ export class QdrantService implements OnModuleInit {
         error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Error searching: ${errorMessage}`, errorStack);
+
+      // Provide helpful error message for dimension mismatch
+      if (
+        errorMessage.includes('Bad Request') ||
+        errorMessage.includes('dimension')
+      ) {
+        this.logger.error(
+          `\n⚠️  VECTOR DIMENSION MISMATCH DETECTED ⚠️\n` +
+            `The collection may have been created with a different AI provider.\n` +
+            `Current AI provider uses ${this.vectorSize || queryVector.length} dimensions.\n` +
+            `Solution: Delete the collection '${this.collectionName}' and let the system recreate it, ` +
+            `or switch back to the original AI provider.\n`,
+        );
+      }
+
       throw error;
     }
   }

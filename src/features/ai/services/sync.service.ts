@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { QdrantService } from './qdrant.service';
-import { GeminiService } from './gemini.service';
+// SyncService không cần AI service trực tiếp
 import { IndexedDocument } from '../schemas/indexed-document.schema';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -16,7 +16,6 @@ export class SyncService {
 
   constructor(
     private readonly qdrantService: QdrantService,
-    private readonly geminiService: GeminiService,
     @InjectModel(IndexedDocument.name)
     private indexedDocModel: Model<IndexedDocument>,
     @InjectQueue('ai-indexing') private indexingQueue: Queue,

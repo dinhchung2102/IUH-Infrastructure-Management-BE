@@ -5,10 +5,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 // Services
 import { GeminiService } from './services/gemini.service';
+import { OpenAIService } from './services/openai.service';
 import { QdrantService } from './services/qdrant.service';
 import { RAGService } from './services/rag.service';
 import { ClassificationService } from './services/classification.service';
 import { SyncService } from './services/sync.service';
+
+// Providers
+import { AIServiceProvider } from './providers/ai-service.provider';
 
 // Controllers
 import { AIChatController } from './controllers/ai-chat.controller';
@@ -53,6 +57,8 @@ import { AuthModule } from '../auth/auth.module';
   ],
   providers: [
     GeminiService,
+    OpenAIService,
+    AIServiceProvider,
     QdrantService,
     RAGService,
     ClassificationService,
@@ -62,6 +68,8 @@ import { AuthModule } from '../auth/auth.module';
   controllers: [AIChatController, AIClassificationController, AISyncController],
   exports: [
     GeminiService,
+    OpenAIService,
+    'AIService',
     QdrantService,
     RAGService,
     ClassificationService,

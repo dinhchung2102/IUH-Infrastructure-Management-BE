@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { GeminiService } from './gemini.service';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import type { AIService } from '../interfaces/ai-service.interface';
 import { QdrantService } from './qdrant.service';
 
 export interface RAGSearchResult {
@@ -18,7 +18,7 @@ export class RAGService {
   private readonly logger = new Logger(RAGService.name);
 
   constructor(
-    private geminiService: GeminiService,
+    @Inject('AIService') private aiService: AIService,
     private qdrantService: QdrantService,
   ) {}
 
@@ -40,7 +40,7 @@ export class RAGService {
       this.logger.log(`RAG Query: "${query}"`);
 
       // 1. Generate query embedding
-      const queryVector = await this.geminiService.generateEmbedding(query);
+      const queryVector = await this.aiService.generateEmbedding(query);
 
       // 2. Search Qdrant
       const filter = options?.sourceTypes
@@ -87,9 +87,9 @@ export class RAGService {
       // 3. Assemble context
       const context = this.assembleContext(searchResults);
 
-      // 4. Generate answer với Gemini
+      // 4. Generate answer với AI service
       const systemPrompt = this.getSystemPrompt();
-      const { answer, usage } = await this.geminiService.chatWithContext(
+      const { answer, usage } = await this.aiService.chatWithContext(
         query,
         context,
         systemPrompt,

@@ -1,9 +1,9 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Inject } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { GeminiService } from '../services/gemini.service';
+import type { AIService } from '../interfaces/ai-service.interface';
 import { QdrantService } from '../services/qdrant.service';
 import { IndexedDocument } from '../schemas/indexed-document.schema';
 
@@ -12,7 +12,7 @@ export class IndexingProcessor extends WorkerHost {
   private readonly logger = new Logger(IndexingProcessor.name);
 
   constructor(
-    private geminiService: GeminiService,
+    @Inject('AIService') private aiService: AIService,
     private qdrantService: QdrantService,
     @InjectModel(IndexedDocument.name)
     private indexedDocModel: Model<IndexedDocument>,
@@ -42,7 +42,7 @@ export class IndexingProcessor extends WorkerHost {
 
       // 1. Generate embedding
       await job.updateProgress(30);
-      const embedding = await this.geminiService.generateEmbedding(text);
+      const embedding = await this.aiService.generateEmbedding(text);
 
       // 2. Upsert to Qdrant (sanitize metadata)
       await job.updateProgress(60);
@@ -108,7 +108,7 @@ export class IndexingProcessor extends WorkerHost {
       await job.updateProgress(30);
       const texts = documents.map((d: any) => d.text);
       const embeddings =
-        await this.geminiService.batchGenerateEmbeddings(texts);
+        await this.aiService.batchGenerateEmbeddings(texts);
 
       // 2. Batch upsert to Qdrant
       await job.updateProgress(60);

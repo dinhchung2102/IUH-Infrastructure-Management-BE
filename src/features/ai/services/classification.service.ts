@@ -1,6 +1,6 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { GeminiService } from './gemini.service';
 import { RAGService } from './rag.service';
+import type { AIService } from '../interfaces/ai-service.interface';
 
 export interface ClassificationResult {
   category: string;
@@ -17,7 +17,7 @@ export class ClassificationService {
   private readonly logger = new Logger(ClassificationService.name);
 
   constructor(
-    private geminiService: GeminiService,
+    @Inject('AIService') private aiService: AIService,
     @Inject(forwardRef(() => RAGService))
     private ragService?: RAGService,
   ) {}
@@ -107,7 +107,7 @@ export class ClassificationService {
         processingTimeContext,
       );
 
-      const response = await this.geminiService.chatCompletion(
+      const response = await this.aiService.chatCompletion(
         [{ role: 'user', content: prompt }],
         { temperature: 0.2, maxTokens: 500 },
       );

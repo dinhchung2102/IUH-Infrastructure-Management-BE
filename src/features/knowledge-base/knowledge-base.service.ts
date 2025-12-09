@@ -18,8 +18,9 @@ import {
   QueryKnowledgeDto,
 } from './dto';
 import { SyncService } from '../ai/services/sync.service';
-import { GeminiService } from '../ai/services/gemini.service';
-import mammoth = require('mammoth');
+import type { AIService } from '../ai/interfaces/ai-service.interface';
+import mammoth from 'mammoth';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 
 @Injectable()
@@ -31,8 +32,8 @@ export class KnowledgeBaseService {
     private knowledgeModel: Model<KnowledgeBaseDocument>,
     @Inject(forwardRef(() => SyncService))
     private syncService?: SyncService,
-    @Inject(forwardRef(() => GeminiService))
-    private geminiService?: GeminiService,
+    @Inject('AIService')
+    private aiService?: AIService,
   ) {}
 
   // Create knowledge
@@ -386,7 +387,7 @@ HƯỚNG DẪN:
 CHỈ TRẢ VỀ JSON, KHÔNG THÊM TEXT KHÁC.
       `.trim();
 
-      const response = await this.geminiService?.chatCompletion(
+      const response = await this.aiService?.chatCompletion(
         [{ role: 'user', content: prompt }],
         { temperature: 0.2, maxTokens: 300 },
       );

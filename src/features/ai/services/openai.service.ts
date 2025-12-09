@@ -1,38 +1,40 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import { AIService } from '../interfaces/ai-service.interface';
 
 @Injectable()
-export class GeminiService implements AIService {
-  private readonly logger = new Logger(GeminiService.name);
-  private genAI: GoogleGenerativeAI;
-  private readonly embeddingModel = 'text-embedding-004';
-  private chatModel: string;
+export class OpenAIService implements AIService {
+  private readonly logger = new Logger(OpenAIService.name);
+  private openai: OpenAI;
+  private readonly chatModel: string;
+  private readonly embeddingModel = 'text-embedding-3-small'; // 1536 dimensions
 
   constructor(private configService: ConfigService) {
-    this.chatModel =
-      this.configService.get<string>('GEMINI_CHAT_MODEL') || 'gemini-2.0-flash';
-    const apiKey = this.configService.get<string>('GEMINI_KEY');
+    const apiKey = this.configService.get<string>('OPENAI_KEY');
     if (!apiKey) {
-      throw new Error('GEMINI_KEY is not configured in environment variables');
+      throw new Error('OPENAI_KEY is not configured in environment variables');
     }
-    this.genAI = new GoogleGenerativeAI(apiKey);
+
+    this.chatModel =
+      this.configService.get<string>('OPENAI_MODEL') || 'gpt-4o-mini';
+    this.openai = new OpenAI({ apiKey });
+    this.logger.log(`Initialized OpenAI with model: ${this.chatModel}`);
   }
 
   /**
    * Generate embedding cho single text
    * @param text Text cần embed
-   * @returns Vector embedding 768 dimensions
+   * @returns Vector embedding 1536 dimensions
    */
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      const model = this.genAI.getGenerativeModel({
+      const response = await this.openai.embeddings.create({
         model: this.embeddingModel,
+        input: text,
       });
 
-      const result = await model.embedContent(text);
-      return result.embedding.values;
+      return response.data[0].embedding;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -52,15 +54,18 @@ export class GeminiService implements AIService {
    */
   async batchGenerateEmbeddings(texts: string[]): Promise<number[][]> {
     try {
-      // Batch embed với chunks để tránh timeout
-      const batchSize = 50;
+      // OpenAI supports batch embeddings natively
+      const batchSize = 100; // OpenAI limit
       const results: number[][] = [];
 
       for (let i = 0; i < texts.length; i += batchSize) {
         const batch = texts.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map((text) => this.generateEmbedding(text)),
-        );
+        const response = await this.openai.embeddings.create({
+          model: this.embeddingModel,
+          input: batch,
+        });
+
+        const batchResults = response.data.map((item) => item.embedding);
         results.push(...batchResults);
 
         this.logger.debug(
@@ -82,7 +87,7 @@ export class GeminiService implements AIService {
   }
 
   /**
-   * Chat completion với Gemini
+   * Chat completion với OpenAI
    * @param messages Array of messages
    * @param options Temperature, maxTokens
    * @returns Response content and usage
@@ -95,33 +100,33 @@ export class GeminiService implements AIService {
     usage: { promptTokens: number; completionTokens: number };
   }> {
     try {
-      const model = this.genAI.getGenerativeModel({
-        model: this.chatModel,
-        generationConfig: {
-          temperature: options?.temperature ?? 0.7,
-          maxOutputTokens: options?.maxTokens ?? 2048,
-        },
-      });
-
-      // Convert messages format to Gemini format
-      const contents = messages.map((msg) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
+      // Convert messages format to OpenAI format
+      const openAIMessages = messages.map((msg) => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
+        content: msg.content,
       }));
 
-      const chat = model.startChat({
-        history: contents.slice(0, -1),
+      const response = await this.openai.chat.completions.create({
+        model: this.chatModel,
+        messages: openAIMessages as Array<
+          | { role: 'user'; content: string }
+          | { role: 'assistant'; content: string }
+          | { role: 'system'; content: string }
+        >,
+        temperature: options?.temperature ?? 0.7,
+        max_tokens: options?.maxTokens ?? 2048,
       });
 
-      const lastMessage = messages[messages.length - 1];
-      const result = await chat.sendMessage(lastMessage.content);
-      const response = result.response;
+      const choice = response.choices[0];
+      if (!choice || !choice.message) {
+        throw new Error('No response from OpenAI');
+      }
 
       return {
-        content: response.text(),
+        content: choice.message.content || '',
         usage: {
-          promptTokens: response.usageMetadata?.promptTokenCount || 0,
-          completionTokens: response.usageMetadata?.candidatesTokenCount || 0,
+          promptTokens: response.usage?.prompt_tokens || 0,
+          completionTokens: response.usage?.completion_tokens || 0,
         },
       };
     } catch (error) {
@@ -150,20 +155,18 @@ export class GeminiService implements AIService {
     systemPrompt: string,
   ): Promise<{ answer: string; usage: any }> {
     try {
-      const prompt = `${systemPrompt}
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}\n\nANSWER:`,
+        },
+      ];
 
-CONTEXT:
-${context}
-
-QUESTION:
-${query}
-
-ANSWER:`;
-
-      const result = await this.chatCompletion(
-        [{ role: 'user', content: prompt }],
-        { temperature: 0.3, maxTokens: 1024 },
-      );
+      const result = await this.chatCompletion(messages, {
+        temperature: 0.3,
+        maxTokens: 1024,
+      });
 
       return {
         answer: result.content,
@@ -179,33 +182,5 @@ ANSWER:`;
       );
       throw error;
     }
-  }
-
-  /**
-   * Retry với exponential backoff
-   * @param fn Function to retry
-   * @param maxRetries Max retry attempts
-   * @returns Result of function
-   */
-  private async retryWithBackoff<T>(
-    fn: () => Promise<T>,
-    maxRetries = 3,
-  ): Promise<T> {
-    let lastError: Error = new Error('Unknown error');
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-        this.logger.warn(
-          `Attempt ${attempt + 1} failed, retrying in ${delay}ms...`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-
-    throw lastError;
   }
 }
