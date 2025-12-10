@@ -43,12 +43,14 @@ import {
   RemoveLocationDto,
 } from './dto/assign-location.dto';
 import { ConfigService } from '@nestjs/config';
+import { RedisService } from '../../shared/redis/redis.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -389,8 +391,11 @@ export class AuthController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ACCOUNT:ADMIN_ACTION', 'ACCOUNT:ALL'], 'OR')
   @Get('accounts/stats')
-  async getAccountStats(@Query() statsDto: AccountStatsDto) {
-    return this.authService.getAccountStats(statsDto);
+  async getAccountStats(@Query() statsDto: AccountStatsDto, @Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, statsDto)
+      : undefined;
+    return this.authService.getAccountStats(statsDto, cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -425,8 +430,11 @@ export class AuthController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Get('accounts/staff-only/stats')
-  async getStaffStats() {
-    return this.authService.getStaffStats();
+  async getStaffStats(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.authService.getStaffStats(cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

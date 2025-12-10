@@ -7,6 +7,7 @@ import { Report } from '../report/schema/report.schema';
 import { AuditLog } from '../audit/schema/auditlog.schema';
 import { ReportStatus } from '../report/enum/ReportStatus.enum';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
+import { RedisService } from '../../shared/redis/redis.service';
 
 @Injectable()
 export class DashboardService {
@@ -15,6 +16,7 @@ export class DashboardService {
     @InjectModel(Account.name) private accountModel: Model<Account>,
     @InjectModel(Report.name) private reportModel: Model<Report>,
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLog>,
+    private readonly redisService: RedisService,
   ) {}
 
   async getDashboardStats(): Promise<{
@@ -27,6 +29,14 @@ export class DashboardService {
     };
     recentReports: any[];
   }> {
+    const cacheKey = this.redisService.buildCacheKey('/api/dashboard/stats');
+    
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     // Get stats in parallel for better performance
     const [
       totalAssets,
@@ -88,7 +98,7 @@ export class DashboardService {
         .lean(),
     ]);
 
-    return {
+    const result = {
       message: 'Lấy thống kê dashboard thành công',
       stats: {
         totalAssets,
@@ -98,5 +108,10 @@ export class DashboardService {
       },
       recentReports,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(cacheKey, result, 15 * 60 * 1000);
+
+    return result;
   }
 }

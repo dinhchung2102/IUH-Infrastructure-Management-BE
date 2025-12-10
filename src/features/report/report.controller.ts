@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   UnauthorizedException,
+  Req,
 } from '@nestjs/common';
 import {
   FilesInterceptor,
@@ -31,12 +32,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UploadService } from '../../shared/upload/upload.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { RedisService } from '../../shared/redis/redis.service';
 
 @Controller('report')
 export class ReportController {
   constructor(
     private readonly reportService: ReportService,
     private readonly uploadService: UploadService,
+    private readonly redisService: RedisService,
   ) {}
 
   @Public()
@@ -82,15 +85,21 @@ export class ReportController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get('stats')
-  async getReportStatistics() {
-    return this.reportService.getReportStatistics();
+  async getReportStatistics(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.reportService.getReportStatistics(cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get('statistics/dashboard')
-  async getReportStatisticsDashboard() {
-    return this.reportService.getReportStatistics();
+  async getReportStatisticsDashboard(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.reportService.getReportStatistics(cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -101,12 +110,22 @@ export class ReportController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('status') status?: string,
+    @Req() req?: any,
   ) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, {
+          type,
+          startDate,
+          endDate,
+          status,
+        })
+      : undefined;
     return this.reportService.getTimeSeriesStatistics(
       type,
       startDate,
       endDate,
       status,
+      cacheKey,
     );
   }
 
@@ -117,11 +136,20 @@ export class ReportController {
     @Query('groupBy') groupBy: 'campus' | 'building' | 'area' | 'zone',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Req() req?: any,
   ) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, {
+          groupBy,
+          startDate,
+          endDate,
+        })
+      : undefined;
     return this.reportService.getStatisticsByLocation(
       groupBy,
       startDate,
       endDate,
+      cacheKey,
     );
   }
 
@@ -132,9 +160,17 @@ export class ReportController {
     @Query('limit') limit?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Req() req?: any,
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.reportService.getTopAssets(limitNum, startDate, endDate);
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, {
+          limit: limitNum,
+          startDate,
+          endDate,
+        })
+      : undefined;
+    return this.reportService.getTopAssets(limitNum, startDate, endDate, cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -144,9 +180,17 @@ export class ReportController {
     @Query('limit') limit?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Req() req?: any,
   ) {
     const limitNum = limit ? parseInt(limit, 10) : 10;
-    return this.reportService.getTopReporters(limitNum, startDate, endDate);
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, {
+          limit: limitNum,
+          startDate,
+          endDate,
+        })
+      : undefined;
+    return this.reportService.getTopReporters(limitNum, startDate, endDate, cacheKey);
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)

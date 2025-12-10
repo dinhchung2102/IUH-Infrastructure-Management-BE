@@ -11,6 +11,7 @@ import { Area, AreaSchema } from '../zone-area/schema/area.schema';
 import { Zone, ZoneSchema } from '../zone-area/schema/zone.schema';
 import { Account, AccountSchema } from '../auth/schema/account.schema';
 import { AuthModule } from '../auth/auth.module';
+import { RedisModule } from '../../shared/redis/redis.module';
 
 @Module({
   imports: [
@@ -25,10 +26,10 @@ import { AuthModule } from '../auth/auth.module';
       { name: Account.name, schema: AccountSchema },
     ]),
     AuthModule,
+    RedisModule,
   ],
   controllers: [StatisticsController],
   providers: [StatisticsService],
   exports: [StatisticsService],
 })
 export class StatisticsModule {}
-

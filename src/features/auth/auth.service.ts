@@ -872,7 +872,7 @@ export class AuthService {
     };
   }
 
-  async getStaffStats(): Promise<{
+  async getStaffStats(cacheKey?: string): Promise<{
     message: string;
     stats: {
       total: number;
@@ -881,6 +881,16 @@ export class AuthService {
       newThisMonth: number;
     };
   }> {
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/auth/accounts/staff-only/stats');
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
     // Lấy IDs của roles cần loại trừ (GUEST, STUDENT, LECTURER)
     const excludedRoles = await this.roleModel
       .find({
@@ -922,7 +932,7 @@ export class AuthService {
       }),
     ]);
 
-    return {
+    const result = {
       message: 'Lấy thống kê nhân sự thành công',
       stats: {
         total,
@@ -931,6 +941,11 @@ export class AuthService {
         newThisMonth,
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   async findStaffAccounts(queryDto: QueryAccountsDto): Promise<{
@@ -1205,7 +1220,10 @@ export class AuthService {
     };
   }
 
-  async getAccountStats(statsDto: AccountStatsDto): Promise<{
+  async getAccountStats(
+    statsDto: AccountStatsDto,
+    cacheKey?: string,
+  ): Promise<{
     message: string;
     totalAccounts: number;
     activeAccounts: number;
@@ -1215,6 +1233,19 @@ export class AuthService {
     accountsByRole: RoleStats[];
   }> {
     const { type, startDate, endDate } = statsDto;
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/auth/accounts/stats', {
+        type,
+        startDate,
+        endDate,
+      });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
 
     // 1. Tổng số tài khoản
     const totalAccounts = await this.accountModel.countDocuments();
@@ -1274,7 +1305,7 @@ export class AuthService {
       );
     }
 
-    return {
+    const result = {
       message: 'Lấy thống kê tài khoản thành công',
       totalAccounts,
       activeAccounts,
@@ -1283,6 +1314,11 @@ export class AuthService {
       ...(timeSeries && { timeSeries }),
       accountsByRole: roleStats,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   private async getTimeSeriesStats(

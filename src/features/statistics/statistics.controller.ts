@@ -1,13 +1,17 @@
-import { Controller, Get, Query, UseGuards, Param } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Param, Req } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import { QueryStatisticsDto, TimePeriod } from './dto/query-statistics.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
+import { RedisService } from '../../shared/redis/redis.service';
 
 @Controller('statistics')
 export class StatisticsController {
-  constructor(private readonly statisticsService: StatisticsService) {}
+  constructor(
+    private readonly statisticsService: StatisticsService,
+    private readonly redisService: RedisService,
+  ) {}
 
   /**
    * 1. Thống kê số lượng báo cáo theo tháng/tuần/năm (biểu đồ cột)
@@ -15,11 +19,22 @@ export class StatisticsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get('reports/by-period')
-  async getReportCountByPeriod(@Query() query: QueryStatisticsDto) {
+  async getReportCountByPeriod(
+    @Query() query: QueryStatisticsDto,
+    @Req() req?: any,
+  ) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, {
+          period: query.period || TimePeriod.MONTH,
+          startDate: query.startDate,
+          endDate: query.endDate,
+        })
+      : undefined;
     return this.statisticsService.getReportCountByPeriod(
       query.period || TimePeriod.MONTH,
       query.startDate,
       query.endDate,
+      cacheKey,
     );
   }
 
@@ -29,8 +44,11 @@ export class StatisticsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get('reports/by-type')
-  async getReportByType() {
-    return this.statisticsService.getReportByType();
+  async getReportByType(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.statisticsService.getReportByType(cacheKey);
   }
 
   /**
@@ -39,8 +57,11 @@ export class StatisticsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['AUDIT:READ'])
   @Get('audits/by-staff')
-  async getAuditByStaff() {
-    return this.statisticsService.getAuditByStaff();
+  async getAuditByStaff(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.statisticsService.getAuditByStaff(cacheKey);
   }
 
   /**
@@ -49,8 +70,11 @@ export class StatisticsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ', 'ASSET:READ', 'AUDIT:READ'], 'OR')
   @Get('overall')
-  async getOverallStats() {
-    return this.statisticsService.getOverallStats();
+  async getOverallStats(@Req() req?: any) {
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path)
+      : undefined;
+    return this.statisticsService.getOverallStats(cacheKey);
   }
 
   /**
@@ -59,10 +83,16 @@ export class StatisticsController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
   @Get('reports/by-location/:type')
-  async getReportByLocation(@Param('type') type: 'area' | 'building' | 'zone') {
+  async getReportByLocation(
+    @Param('type') type: 'area' | 'building' | 'zone',
+    @Req() req?: any,
+  ) {
     if (!['area', 'building', 'zone'].includes(type)) {
       throw new Error('Type phải là area, building hoặc zone');
     }
-    return this.statisticsService.getReportByLocation(type);
+    const cacheKey = req
+      ? this.redisService.buildCacheKey(req.path, { type })
+      : undefined;
+    return this.statisticsService.getReportByLocation(type, cacheKey);
   }
 }

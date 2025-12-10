@@ -57,4 +57,54 @@ export class RedisService {
   private buildKey(domain: string, id: string | number): string {
     return `${domain}:${id}`;
   }
+
+  /**
+   * Build cache key from endpoint path and query params
+   */
+  buildCacheKey(endpoint: string, params?: Record<string, any>): string {
+    const baseKey = `cache:${endpoint.replace(/^\//, '').replace(/\//g, ':')}`;
+    if (!params || Object.keys(params).length === 0) {
+      return baseKey;
+    }
+
+    // Sort params to ensure consistent key generation
+    const sortedParams = Object.keys(params)
+      .sort()
+      .map((key) => {
+        const value = params[key];
+        if (value === undefined || value === null) {
+          return null;
+        }
+        return `${key}=${value}`;
+      })
+      .filter((item) => item !== null)
+      .join('&');
+
+    return sortedParams ? `${baseKey}:${sortedParams}` : baseKey;
+  }
+
+  /**
+   * Get cached data
+   */
+  async getCached<T>(key: string): Promise<T | undefined> {
+    return this.get<T>(key);
+  }
+
+  /**
+   * Set cached data with TTL (default 15 minutes)
+   */
+  async setCached<T>(
+    key: string,
+    value: T,
+    ttlMs: number = 15 * 60 * 1000,
+  ): Promise<void> {
+    await this.set(key, value, ttlMs);
+  }
+
+  /**
+   * Delete cached data
+   */
+  async deleteCached(key: string): Promise<void> {
+    await this.delete(key);
+  }
 }

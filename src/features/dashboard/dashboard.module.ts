@@ -7,6 +7,7 @@ import { Account, AccountSchema } from '../auth/schema/account.schema';
 import { Report, ReportSchema } from '../report/schema/report.schema';
 import { AuditLog, AuditLogSchema } from '../audit/schema/auditlog.schema';
 import { AuthModule } from '../auth/auth.module';
+import { RedisModule } from '../../shared/redis/redis.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AuthModule } from '../auth/auth.module';
       { name: AuditLog.name, schema: AuditLogSchema },
     ]),
     AuthModule,
+    RedisModule,
   ],
   providers: [DashboardService],
   controllers: [DashboardController],

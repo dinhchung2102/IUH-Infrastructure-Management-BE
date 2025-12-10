@@ -799,7 +799,7 @@ export class ReportService {
     };
   }
 
-  async getReportStatistics(): Promise<{
+  async getReportStatistics(cacheKey?: string): Promise<{
     message: string;
     data: {
       totalReports: number;
@@ -826,6 +826,14 @@ export class ReportService {
       averageResolutionTime: number; // in days
     };
   }> {
+    const key = cacheKey || this.redisService.buildCacheKey('/api/report/stats');
+    
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
     // Tổng số báo cáo
     const totalReports = await this.reportModel.countDocuments();
 
@@ -944,7 +952,7 @@ export class ReportService {
     const averageResolutionTime =
       resolvedCount > 0 ? Math.round(totalResolutionTime / resolvedCount) : 0;
 
-    return {
+    const result = {
       message: 'Lấy thống kê báo cáo thành công',
       data: {
         totalReports,
@@ -957,6 +965,11 @@ export class ReportService {
         averageResolutionTime,
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
@@ -967,6 +980,7 @@ export class ReportService {
     startDate?: string,
     endDate?: string,
     status?: string,
+    cacheKey?: string,
   ): Promise<{
     message: string;
     data: Array<{
@@ -1085,10 +1099,28 @@ export class ReportService {
       };
     });
 
-    return {
+    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/time-series', {
+      type,
+      startDate,
+      endDate,
+      status,
+    });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
+    const result = {
       message: 'Lấy thống kê time series thành công',
       data: formattedResults,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
@@ -1098,6 +1130,7 @@ export class ReportService {
     groupBy: 'campus' | 'building' | 'area' | 'zone',
     startDate?: string,
     endDate?: string,
+    cacheKey?: string,
   ): Promise<{
     message: string;
     data: Array<{
@@ -1262,10 +1295,27 @@ export class ReportService {
       })
       .sort((a, b) => b.total - a.total);
 
-    return {
+    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/by-location', {
+      groupBy,
+      startDate,
+      endDate,
+    });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
+    const result = {
       message: `Lấy thống kê theo ${groupBy} thành công`,
       data: formattedResults,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
@@ -1275,6 +1325,7 @@ export class ReportService {
     limit: number = 10,
     startDate?: string,
     endDate?: string,
+    cacheKey?: string,
   ): Promise<{
     message: string;
     data: Array<{
@@ -1352,10 +1403,27 @@ export class ReportService {
       };
     });
 
-    return {
+    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/top-assets', {
+      limit,
+      startDate,
+      endDate,
+    });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
+    const result = {
       message: 'Lấy top assets thành công',
       data: formattedResults,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
@@ -1365,6 +1433,7 @@ export class ReportService {
     limit: number = 10,
     startDate?: string,
     endDate?: string,
+    cacheKey?: string,
   ): Promise<{
     message: string;
     data: Array<{
@@ -1432,10 +1501,27 @@ export class ReportService {
       };
     });
 
-    return {
+    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/top-reporters', {
+      limit,
+      startDate,
+      endDate,
+    });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
+
+    const result = {
       message: 'Lấy top reporters thành công',
       data: formattedResults,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**

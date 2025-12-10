@@ -18,6 +18,7 @@ import { Account, type AccountDocument } from '../auth/schema/account.schema';
 import { ReportStatus } from '../report/enum/ReportStatus.enum';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
 import { TimePeriod } from './dto/query-statistics.dto';
+import { RedisService } from '../../shared/redis/redis.service';
 
 @Injectable()
 export class StatisticsService {
@@ -38,6 +39,7 @@ export class StatisticsService {
     private readonly zoneModel: Model<ZoneDocument>,
     @InjectModel(Account.name)
     private readonly accountModel: Model<AccountDocument>,
+    private readonly redisService: RedisService,
   ) {}
 
   /**
@@ -47,7 +49,21 @@ export class StatisticsService {
     period: TimePeriod = TimePeriod.MONTH,
     startDate?: string,
     endDate?: string,
+    cacheKey?: string,
   ) {
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/statistics/reports/by-period', {
+        period,
+        startDate,
+        endDate,
+      });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
     const start = startDate ? new Date(startDate) : new Date();
     const end = endDate ? new Date(endDate) : new Date();
 
@@ -114,7 +130,7 @@ export class StatisticsService {
       };
     });
 
-    return {
+    const result = {
       message: 'Lấy thống kê báo cáo theo thời gian thành công',
       data: {
         period,
@@ -122,12 +138,26 @@ export class StatisticsService {
         total: results.reduce((sum, item) => sum + item.count, 0),
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
    * 2. Phân loại các loại báo cáo trong hệ thống (biểu đồ tròn)
    */
-  async getReportByType() {
+  async getReportByType(cacheKey?: string) {
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/statistics/reports/by-type');
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
     const results = await this.reportModel.aggregate([
       {
         $group: {
@@ -150,19 +180,33 @@ export class StatisticsService {
         total > 0 ? Math.round((item.count / total) * 100 * 10) / 10 : 0,
     }));
 
-    return {
+    const result = {
       message: 'Lấy thống kê báo cáo theo loại thành công',
       data: {
         chartData,
         total,
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
    * 3. Thống kê nhiệm vụ (audit) theo nhân viên (tỉ lệ hoàn thành)
    */
-  async getAuditByStaff() {
+  async getAuditByStaff(cacheKey?: string) {
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/statistics/audits/by-staff');
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
     const results = await this.auditLogModel.aggregate([
       {
         $unwind: '$staffs',
@@ -224,16 +268,29 @@ export class StatisticsService {
       },
     ]);
 
-    return {
+    const result = {
       message: 'Lấy thống kê nhiệm vụ theo nhân viên thành công',
       data: results,
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
    * 4. Stats tổng hợp: tổng số báo cáo, thiết bị, nhiệm vụ, tỷ lệ hoàn thành
    */
-  async getOverallStats() {
+  async getOverallStats(cacheKey?: string) {
+    const key =
+      cacheKey || this.redisService.buildCacheKey('/api/statistics/overall');
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
     const [
       totalReports,
       totalAssets,
@@ -262,7 +319,7 @@ export class StatisticsService {
         ? Math.round((approvedReports / totalReports) * 100 * 10) / 10
         : 0;
 
-    return {
+    const result = {
       message: 'Lấy thống kê tổng hợp thành công',
       data: {
         totalReports,
@@ -273,12 +330,31 @@ export class StatisticsService {
         resolutionRate,
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
    * 5. Thống kê khu vực có nhiều báo cáo sự cố: theo area, building, zone
    */
-  async getReportByLocation(type: 'area' | 'building' | 'zone' = 'zone') {
+  async getReportByLocation(
+    type: 'area' | 'building' | 'zone' = 'zone',
+    cacheKey?: string,
+  ) {
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/statistics/reports/by-location', {
+        type,
+      });
+
+    // Try to get from cache
+    const cached = await this.redisService.getCached<any>(key);
+    if (cached) {
+      return cached;
+    }
     let lookupStage: any;
     let groupField: string;
 
@@ -399,7 +475,7 @@ export class StatisticsService {
       },
     ]);
 
-    return {
+    const result = {
       message: `Lấy thống kê báo cáo theo ${type} thành công`,
       data: {
         type,
@@ -407,6 +483,11 @@ export class StatisticsService {
         total: results.reduce((sum, item) => sum + item.count, 0),
       },
     };
+
+    // Cache for 15 minutes
+    await this.redisService.setCached(key, result, 15 * 60 * 1000);
+
+    return result;
   }
 
   /**
