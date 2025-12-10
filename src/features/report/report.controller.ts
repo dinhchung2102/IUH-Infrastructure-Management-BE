@@ -12,6 +12,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   FilesInterceptor,
@@ -62,6 +63,19 @@ export class ReportController {
   @Get()
   async findAllReports(@Query() queryDto: QueryReportDto) {
     return this.reportService.findAllReports(queryDto);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('my-reports')
+  @HttpCode(HttpStatus.OK)
+  async getMyReports(
+    @CurrentUser() user: JwtPayload,
+    @Query() queryDto: Partial<QueryReportDto>,
+  ) {
+    if (!user?.sub) {
+      throw new UnauthorizedException('User không hợp lệ');
+    }
+    return this.reportService.getMyReports(user.sub, queryDto);
   }
 
   // ====== Statistics (phải đặt trước các dynamic routes) ======

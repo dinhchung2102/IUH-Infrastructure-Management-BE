@@ -375,6 +375,161 @@ export class ReportService {
     };
   }
 
+  async getMyReports(
+    userId: string,
+    queryDto: Partial<QueryReportDto>,
+  ): Promise<{
+    message: string;
+    reports: any[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+    summary: {
+      total: number;
+      byStatus: Record<string, number>;
+      byType: Record<string, number>;
+    };
+  }> {
+    const {
+      search,
+      asset,
+      type,
+      status,
+      fromDate,
+      toDate,
+      page = '1',
+      limit = '10',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = queryDto;
+
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Always filter by current user
+    const filter: Record<string, any> = {
+      createdBy: new Types.ObjectId(userId),
+    };
+
+    // Tìm kiếm theo mô tả
+    if (search) {
+      filter.description = { $regex: search, $options: 'i' };
+    }
+
+    if (asset) {
+      filter.asset = new Types.ObjectId(asset);
+    }
+    if (type) {
+      filter.type = type;
+    }
+    if (status) {
+      filter.status = status;
+    }
+
+    // Date range filter
+    if (fromDate || toDate) {
+      const dateFilter: any = {};
+      if (fromDate) {
+        dateFilter.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDateTime = new Date(toDate);
+        endDateTime.setHours(23, 59, 59, 999); // End of day
+        dateFilter.$lte = endDateTime;
+      }
+      filter.createdAt = dateFilter;
+    }
+
+    const sort: Record<string, any> = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Get reports with pagination
+    const [reports, total, statusStats, typeStats] = await Promise.all([
+      this.reportModel
+        .find(filter)
+        .populate({
+          path: 'asset',
+          select: 'name code status zone area image',
+          populate: [
+            {
+              path: 'zone',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+            {
+              path: 'area',
+              select: '_id name building',
+              populate: {
+                path: 'building',
+                select: '_id name campus',
+                populate: {
+                  path: 'campus',
+                  select: '_id name',
+                },
+              },
+            },
+          ],
+        })
+        .populate('createdBy', 'fullName email')
+        .populate('rejectedBy', 'fullName email')
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      this.reportModel.countDocuments(filter),
+      // Get statistics by status
+      this.reportModel.aggregate([
+        { $match: { createdBy: new Types.ObjectId(userId) } },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+      // Get statistics by type
+      this.reportModel.aggregate([
+        { $match: { createdBy: new Types.ObjectId(userId) } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    // Format statistics
+    const byStatus: Record<string, number> = {};
+    statusStats.forEach((stat: any) => {
+      byStatus[stat._id] = stat.count;
+    });
+
+    const byType: Record<string, number> = {};
+    typeStats.forEach((stat: any) => {
+      byType[stat._id] = stat.count;
+    });
+
+    const totalPages = Math.ceil(total / limitNum);
+
+    return {
+      message: 'Lấy danh sách báo cáo của bạn thành công',
+      reports,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+      },
+      summary: {
+        total,
+        byStatus,
+        byType,
+      },
+    };
+  }
+
   async findOneReport(id: string): Promise<{
     message: string;
     data: any;
