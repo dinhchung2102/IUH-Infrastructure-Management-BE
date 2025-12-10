@@ -4,6 +4,11 @@ import { Model } from 'mongoose';
 import { Report, ReportDocument } from '../report/schema/report.schema';
 import { AuditLog, AuditLogDocument } from '../audit/schema/auditlog.schema';
 import { Account, AccountDocument } from '../auth/schema/account.schema';
+import { Role, RoleDocument } from '../auth/schema/role.schema';
+import {
+  StatisticsReportLog,
+  StatisticsReportLogDocument,
+} from './schema/statistics-report-log.schema';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ReportStatus } from '../report/enum/ReportStatus.enum';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
@@ -45,6 +50,9 @@ export class AutomationService {
     @InjectModel(AuditLog.name)
     private auditLogModel: Model<AuditLogDocument>,
     @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
+    @InjectModel(StatisticsReportLog.name)
+    private statisticsReportLogModel: Model<StatisticsReportLogDocument>,
     private readonly mailerService: MailerService,
   ) {}
 
@@ -156,10 +164,25 @@ export class AutomationService {
         endDate,
       );
 
+      // Get admin role IDs first
+      const adminRoles = await this.roleModel
+        .find({
+          roleName: { $in: [RoleName.ADMIN, RoleName.CAMPUS_ADMIN] },
+        })
+        .select('_id')
+        .lean();
+
+      if (adminRoles.length === 0) {
+        this.logger.warn('No admin roles found in database');
+        return { sent: 0, failed: 0 };
+      }
+
+      const adminRoleIds = adminRoles.map((role) => role._id);
+
       // Get all admin emails
       const admins = await this.accountModel
         .find({
-          role: { $in: [RoleName.ADMIN, RoleName.CAMPUS_ADMIN] },
+          role: { $in: adminRoleIds },
           isActive: true,
         })
         .populate('role', 'roleName')
@@ -188,9 +211,43 @@ export class AutomationService {
               adminName: admin.fullName || admin.email,
             },
           });
+
+          // Log successful email
+          await this.statisticsReportLogModel.create({
+            email: admin.email,
+            recipientName: admin.fullName || admin.email,
+            period,
+            startDate: report.startDate,
+            endDate: report.endDate,
+            status: 'success',
+            reportData: {
+              reports: report.reports,
+              audits: report.audits,
+              performance: report.performance,
+            },
+            isTest: false,
+          });
+
           sent++;
           this.logger.log(`Statistics report sent to admin: ${admin.email}`);
         } catch (error) {
+          // Log failed email
+          await this.statisticsReportLogModel.create({
+            email: admin.email,
+            recipientName: admin.fullName || admin.email,
+            period,
+            startDate: report.startDate,
+            endDate: report.endDate,
+            status: 'failed',
+            errorMessage: error.message,
+            reportData: {
+              reports: report.reports,
+              audits: report.audits,
+              performance: report.performance,
+            },
+            isTest: false,
+          });
+
           failed++;
           this.logger.error(
             `Failed to send report to ${admin.email}: ${error.message}`,
@@ -205,6 +262,94 @@ export class AutomationService {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Send statistics report to a specific email (for testing)
+   */
+  async sendStatisticsReportToEmail(
+    email: string,
+    period: 'month' | 'quarter' | 'year',
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const report = await this.generateStatisticsReport(
+        period,
+        startDate,
+        endDate,
+      );
+
+      await this.mailerService.sendMail({
+        to: email,
+        subject: `Báo cáo thống kê ${this.getPeriodLabel(period)} - IUH Infrastructure Management (Test)`,
+        template: 'statistics-report',
+        context: {
+          period: this.getPeriodLabel(period),
+          startDate: report.startDate.toLocaleDateString('vi-VN'),
+          endDate: report.endDate.toLocaleDateString('vi-VN'),
+          report: report,
+          adminName: email,
+        },
+      });
+
+      // Log successful test email
+      await this.statisticsReportLogModel.create({
+        email,
+        recipientName: email,
+        period,
+        startDate: report.startDate,
+        endDate: report.endDate,
+        status: 'success',
+        reportData: {
+          reports: report.reports,
+          audits: report.audits,
+          performance: report.performance,
+        },
+        isTest: true,
+      });
+
+      this.logger.log(`Test statistics report sent to: ${email}`);
+      return {
+        success: true,
+        message: `Report sent successfully to ${email}`,
+      };
+    } catch (error) {
+      // Log failed test email
+      try {
+        const report = await this.generateStatisticsReport(
+          period,
+          startDate,
+          endDate,
+        );
+        await this.statisticsReportLogModel.create({
+          email,
+          recipientName: email,
+          period,
+          startDate: report.startDate,
+          endDate: report.endDate,
+          status: 'failed',
+          errorMessage: error.message,
+          reportData: {
+            reports: report.reports,
+            audits: report.audits,
+            performance: report.performance,
+          },
+          isTest: true,
+        });
+      } catch (logError) {
+        this.logger.error(`Failed to log email error: ${logError.message}`);
+      }
+
+      this.logger.error(
+        `Error sending test report to ${email}: ${error.message}`,
+        error.stack,
+      );
+      return {
+        success: false,
+        message: `Failed to send report: ${error.message}`,
+      };
     }
   }
 
@@ -484,5 +629,67 @@ export class AutomationService {
       year: 'Năm',
     };
     return labels[period];
+  }
+
+  /**
+   * Get email report logs with pagination and filters
+   */
+  async getReportLogs(options: {
+    email?: string;
+    period?: 'month' | 'quarter' | 'year';
+    status?: 'success' | 'failed';
+    isTest?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    logs: StatisticsReportLogDocument[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+    };
+  }> {
+    const { email, period, status, isTest, page = 1, limit = 20 } = options;
+
+    const filter: Record<string, any> = {};
+
+    if (email) {
+      filter.email = { $regex: email, $options: 'i' };
+    }
+
+    if (period) {
+      filter.period = period;
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (isTest !== undefined) {
+      filter.isTest = isTest;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [logs, total] = await Promise.all([
+      this.statisticsReportLogModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.statisticsReportLogModel.countDocuments(filter),
+    ]);
+
+    return {
+      logs: logs as StatisticsReportLogDocument[],
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: limit,
+      },
+    };
   }
 }

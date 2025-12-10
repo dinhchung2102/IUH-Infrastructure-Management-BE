@@ -293,4 +293,91 @@ export class AutomationController {
       data: report,
     };
   }
+
+  /**
+   * Test endpoint: Send statistics report to specific email
+   */
+  @Post('webhook/test-send-report')
+  @Public()
+  @UseGuards(N8NWebhookGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'N8N Webhook: Test gửi báo cáo đến email cụ thể',
+    description:
+      'Webhook endpoint để test gửi báo cáo thống kê đến một email cụ thể (không cần admin account)',
+  })
+  @ApiHeader({
+    name: 'x-n8n-webhook-secret',
+    description: 'N8N Webhook Secret (from .env)',
+    required: false,
+  })
+  async testSendReport(
+    @Body()
+    body?: {
+      email: string;
+      period?: 'month' | 'quarter' | 'year';
+      startDate?: string;
+      endDate?: string;
+    },
+  ) {
+    if (!body?.email) {
+      return {
+        success: false,
+        message: 'Email is required',
+      };
+    }
+
+    const result = await this.automationService.sendStatisticsReportToEmail(
+      body.email,
+      body.period || 'month',
+      body.startDate ? new Date(body.startDate) : undefined,
+      body.endDate ? new Date(body.endDate) : undefined,
+    );
+
+    return {
+      success: true,
+      message: 'Test report sent',
+      data: result,
+    };
+  }
+
+  /**
+   * Get email report logs
+   */
+  @Get('report-logs')
+  @UseGuards(AuthGuard)
+  @RequirePermissions([`${Resource.REPORT}:${Action.READ}`])
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Lấy lịch sử gửi email báo cáo',
+    description: 'Lấy danh sách các email đã được gửi báo cáo thống kê',
+  })
+  @ApiQuery({ name: 'email', required: false, type: String })
+  @ApiQuery({ name: 'period', enum: ['month', 'quarter', 'year'], required: false })
+  @ApiQuery({ name: 'status', enum: ['success', 'failed'], required: false })
+  @ApiQuery({ name: 'isTest', required: false, type: Boolean })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getReportLogs(
+    @Query('email') email?: string,
+    @Query('period') period?: 'month' | 'quarter' | 'year',
+    @Query('status') status?: 'success' | 'failed',
+    @Query('isTest') isTest?: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+  ) {
+    const result = await this.automationService.getReportLogs({
+      email,
+      period,
+      status,
+      isTest: isTest === 'true',
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+
+    return {
+      message: 'Lấy lịch sử gửi email thành công',
+      data: result,
+    };
+  }
 }

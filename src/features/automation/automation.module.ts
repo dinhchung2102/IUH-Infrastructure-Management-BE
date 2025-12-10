@@ -11,6 +11,11 @@ import { DashboardModule } from '../dashboard/dashboard.module';
 import { Report, ReportSchema } from '../report/schema/report.schema';
 import { AuditLog, AuditLogSchema } from '../audit/schema/auditlog.schema';
 import { Account, AccountSchema } from '../auth/schema/account.schema';
+import { Role, RoleSchema } from '../auth/schema/role.schema';
+import {
+  StatisticsReportLog,
+  StatisticsReportLogSchema,
+} from './schema/statistics-report-log.schema';
 
 @Module({
   imports: [
@@ -18,6 +23,8 @@ import { Account, AccountSchema } from '../auth/schema/account.schema';
       { name: Report.name, schema: ReportSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: Account.name, schema: AccountSchema },
+      { name: Role.name, schema: RoleSchema },
+      { name: StatisticsReportLog.name, schema: StatisticsReportLogSchema },
     ]),
     ReportModule,
     AuditModule,
