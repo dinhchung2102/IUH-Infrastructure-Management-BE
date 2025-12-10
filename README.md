@@ -23,7 +23,24 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+IUH Infrastructure Management Backend - Hệ thống quản lý hạ tầng cơ sở vật chất cho Đại học Công nghiệp TP.HCM.
+
+## Docker Deployment
+
+Để build và chạy ứng dụng với Docker, xem [DOCKER_README.md](./DOCKER_README.md) để biết hướng dẫn chi tiết.
+
+**Quick Start:**
+```bash
+# 1. Tạo file .env với các biến môi trường cần thiết
+# 2. Tạo thư mục uploads và logs
+mkdir -p uploads logs && chmod 755 uploads logs
+
+# 3. Build và chạy
+docker-compose up -d --build
+
+# 4. Kiểm tra
+curl http://localhost:3000/api/health
+```
 
 ## Project setup
 
