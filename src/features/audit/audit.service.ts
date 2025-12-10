@@ -8,13 +8,17 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AuditLog, type AuditLogDocument } from './schema/auditlog.schema';
+import { Report, type ReportDocument } from '../report/schema/report.schema';
 import { CreateAuditLogDto } from './dto/create-auditlog.dto';
 import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { StaffAuditLogDto, TimeRange } from './dto/staff-auditlog.dto';
 import { UploadService } from '../../shared/upload/upload.service';
 import { AuditStatus } from './enum/AuditStatus.enum';
+import { ReportStatus } from '../report/enum/ReportStatus.enum';
 import { EventsService } from '../../shared/events/events.service';
+import { MailerService } from '@nestjs-modules/mailer';
+import { REPORT_TYPE_LABELS } from '../report/config/report-type-labels.config';
 
 @Injectable()
 export class AuditService {
@@ -22,8 +26,10 @@ export class AuditService {
 
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
+    @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     private readonly uploadService: UploadService,
     private readonly eventsService: EventsService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async createAuditLog(
@@ -974,14 +980,84 @@ export class AuditService {
       .populate({
         path: 'report',
         select: 'type status description asset images createdBy',
-        populate: {
-          path: 'asset',
-          select: 'name code status',
-        },
+        populate: [
+          {
+            path: 'asset',
+            select: 'name code status',
+          },
+          {
+            path: 'createdBy',
+            select: 'fullName email',
+          },
+        ],
       })
       .populate('staffs', 'fullName email')
       .populate('acceptedBy', 'fullName email')
       .populate('completedBy', 'fullName email');
+
+    // Auto-update report status to RESOLVED if audit is completed and report exists
+    if (updatedAuditLog?.report) {
+      const report = updatedAuditLog?.report as any;
+      const reportId = report._id || report;
+
+      try {
+        const updatedReport = await this.reportModel
+          .findByIdAndUpdate(
+            reportId,
+            { status: ReportStatus.RESOLVED },
+            { new: true },
+          )
+          .populate('asset', 'name code status')
+          .populate('createdBy', 'fullName email')
+          .populate('completedBy', 'fullName email');
+
+        if (updatedReport && updatedReport.createdBy) {
+          const reporter = updatedReport.createdBy as any;
+          const reporterEmail = reporter.email;
+          const reporterName = reporter.fullName || reporterEmail;
+          const completedBy = updatedAuditLog?.completedBy as any;
+          const completedByName =
+            completedBy?.fullName || completedBy?.email || 'Nhân viên';
+
+          if (reporterEmail) {
+            try {
+              // Send resolved email
+              await this.mailerService.sendMail({
+                to: reporterEmail,
+                subject:
+                  'Báo cáo đã được xử lý thành công - IUH Infrastructure Management',
+                template: 'report-resolved',
+                context: {
+                  reporterName,
+                  reportId: updatedReport._id.toString(),
+                  reportType:
+                    REPORT_TYPE_LABELS.find(
+                      (label) => label.value === updatedReport.type,
+                    )?.label || updatedReport.type,
+                  description: updatedReport.description,
+                  assetName: (updatedReport.asset as any)?.name,
+                  assetCode: (updatedReport.asset as any)?.code,
+                  resolvedAt: new Date().toLocaleString('vi-VN'),
+                  completedByName,
+                  auditNotes: notes || 'Đã hoàn thành kiểm tra và xử lý',
+                },
+              });
+              this.logger.log(
+                `Resolved email sent to ${reporterEmail} for report ${reportId}`,
+              );
+            } catch (error) {
+              this.logger.error(
+                `Failed to send resolved email to ${reporterEmail}: ${error.message}`,
+              );
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to update report status to RESOLVED: ${error.message}`,
+        );
+      }
+    }
 
     return {
       message: 'Hoàn thành bản ghi kiểm tra thành công',

@@ -128,23 +128,27 @@ export class ReportService {
     // Auto-classify priority and processing days using AI if not provided
     let priority = createReportDto.priority;
     let suggestedProcessingDays: number | undefined;
-    
+
     if (this.classificationService) {
       try {
-        this.logger.log('AI auto-classifying report priority and processing days...');
+        this.logger.log(
+          'AI auto-classifying report priority and processing days...',
+        );
         const classification = await this.classificationService.classifyReport(
           createReportDto.description,
           asset.name as string, // Use asset name as location context
         );
-        
+
         if (!priority) {
           priority = classification.priority as any;
           this.logger.log(`AI classified priority: ${priority}`);
         }
-        
+
         // Luôn lấy suggestedProcessingDays từ AI
         suggestedProcessingDays = classification.processingDays;
-        this.logger.log(`AI suggested processing days: ${suggestedProcessingDays} days`);
+        this.logger.log(
+          `AI suggested processing days: ${suggestedProcessingDays} days`,
+        );
       } catch (error) {
         this.logger.warn(
           `Failed to auto-classify: ${error.message}. Using defaults`,
@@ -494,7 +498,10 @@ export class ReportService {
 
     // Validate rejectReason when rejecting
     if (updateStatusDto.status === ReportStatus.REJECTED) {
-      if (!updateStatusDto.rejectReason || updateStatusDto.rejectReason.trim() === '') {
+      if (
+        !updateStatusDto.rejectReason ||
+        updateStatusDto.rejectReason.trim() === ''
+      ) {
         throw new BadRequestException(
           'Lý do từ chối là bắt buộc khi từ chối báo cáo',
         );
@@ -533,6 +540,74 @@ export class ReportService {
           `Failed to update index for report ${id}: ${error.message}`,
         );
       });
+    }
+
+    // Send email notification to reporter
+    if (updatedReport && updatedReport.createdBy) {
+      const reporter = updatedReport.createdBy as any;
+      const reporterEmail = reporter.email;
+      const reporterName = reporter.fullName || reporterEmail;
+
+      if (reporterEmail) {
+        try {
+          if (updateStatusDto.status === ReportStatus.APPROVED) {
+            // Send approved email
+            await this.mailerService.sendMail({
+              to: reporterEmail,
+              subject:
+                'Báo cáo đã được phê duyệt - IUH Infrastructure Management',
+              template: 'report-approved',
+              context: {
+                reporterName,
+                reportId: updatedReport._id.toString(),
+                reportType:
+                  REPORT_TYPE_LABELS.find(
+                    (label) => label.value === updatedReport.type,
+                  )?.label || updatedReport.type,
+                description: updatedReport.description,
+                assetName: (updatedReport.asset as any)?.name,
+                assetCode: (updatedReport.asset as any)?.code,
+                approvedAt: new Date().toLocaleString('vi-VN'),
+              },
+            });
+            this.logger.log(
+              `Approved email sent to ${reporterEmail} for report ${id}`,
+            );
+          } else if (updateStatusDto.status === ReportStatus.REJECTED) {
+            // Send rejected email
+            const rejectedBy = updatedReport.rejectedBy as any;
+            await this.mailerService.sendMail({
+              to: reporterEmail,
+              subject: 'Báo cáo bị từ chối - IUH Infrastructure Management',
+              template: 'report-rejected',
+              context: {
+                reporterName,
+                reportId: updatedReport._id.toString(),
+                reportType:
+                  REPORT_TYPE_LABELS.find(
+                    (label) => label.value === updatedReport.type,
+                  )?.label || updatedReport.type,
+                description: updatedReport.description,
+                assetName: (updatedReport.asset as any)?.name,
+                assetCode: (updatedReport.asset as any)?.code,
+                rejectReason:
+                  updateStatusDto.rejectReason || 'Không có lý do cụ thể',
+                rejectedAt: new Date().toLocaleString('vi-VN'),
+                rejectedByName:
+                  rejectedBy?.fullName || rejectedBy?.email || 'Hệ thống',
+              },
+            });
+            this.logger.log(
+              `Rejected email sent to ${reporterEmail} for report ${id}`,
+            );
+          }
+        } catch (error: any) {
+          this.logger.error(
+            `Failed to send email notification to ${reporterEmail}: ${error.message}`,
+          );
+          // Don't throw error, just log it
+        }
+      }
     }
 
     return {
@@ -946,7 +1021,9 @@ export class ReportService {
           as: 'zoneData',
         },
       });
-      pipeline.push({ $unwind: { path: '$zoneData', preserveNullAndEmptyArrays: true } });
+      pipeline.push({
+        $unwind: { path: '$zoneData', preserveNullAndEmptyArrays: true },
+      });
       pipeline.push({
         $group: {
           _id: '$zoneData._id',
@@ -966,7 +1043,9 @@ export class ReportService {
           as: 'areaData',
         },
       });
-      pipeline.push({ $unwind: { path: '$areaData', preserveNullAndEmptyArrays: true } });
+      pipeline.push({
+        $unwind: { path: '$areaData', preserveNullAndEmptyArrays: true },
+      });
       pipeline.push({
         $group: {
           _id: '$areaData._id',
@@ -1342,7 +1421,9 @@ export class ReportService {
         // Nếu không có từ DTO, tự động tính từ suggestedProcessingDays
         const approvalDate = new Date();
         const expirationDate = new Date(approvalDate);
-        expirationDate.setDate(expirationDate.getDate() + report.suggestedProcessingDays);
+        expirationDate.setDate(
+          expirationDate.getDate() + report.suggestedProcessingDays,
+        );
         auditLogData.expiresAt = expirationDate;
         this.logger.log(
           `Auto-calculated expiresAt: ${expirationDate.toISOString()} (${report.suggestedProcessingDays} days from approval)`,
