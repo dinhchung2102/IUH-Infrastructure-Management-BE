@@ -1423,6 +1423,12 @@ export class ReportService {
         },
       },
       { $unwind: { path: '$assetData', preserveNullAndEmptyArrays: true } },
+      // Filter out reports without asset
+      {
+        $match: {
+          assetData: { $exists: true, $ne: null },
+        },
+      },
     ];
 
     if (groupBy === 'zone') {
@@ -1469,12 +1475,129 @@ export class ReportService {
           priorities: { $push: '$priority' },
         },
       });
-    } else {
-      // building or campus - simplified
+    } else if (groupBy === 'campus') {
+      // Lookup zone -> building -> campus for assets with zone
+      pipeline.push({
+        $lookup: {
+          from: 'zones',
+          localField: 'assetData.zone',
+          foreignField: '_id',
+          as: 'zoneData',
+        },
+      });
+      pipeline.push({
+        $unwind: { path: '$zoneData', preserveNullAndEmptyArrays: true },
+      });
+      pipeline.push({
+        $lookup: {
+          from: 'buildings',
+          localField: 'zoneData.building',
+          foreignField: '_id',
+          as: 'buildingData',
+        },
+      });
+      pipeline.push({
+        $unwind: { path: '$buildingData', preserveNullAndEmptyArrays: true },
+      });
+      pipeline.push({
+        $lookup: {
+          from: 'campus',
+          localField: 'buildingData.campus',
+          foreignField: '_id',
+          as: 'campusDataFromZone',
+        },
+      });
+      pipeline.push({
+        $unwind: {
+          path: '$campusDataFromZone',
+          preserveNullAndEmptyArrays: true,
+        },
+      });
+      // Lookup area -> campus for assets with area
+      pipeline.push({
+        $lookup: {
+          from: 'areas',
+          localField: 'assetData.area',
+          foreignField: '_id',
+          as: 'areaData',
+        },
+      });
+      pipeline.push({
+        $unwind: { path: '$areaData', preserveNullAndEmptyArrays: true },
+      });
+      pipeline.push({
+        $lookup: {
+          from: 'campus',
+          localField: 'areaData.campus',
+          foreignField: '_id',
+          as: 'campusDataFromArea',
+        },
+      });
+      pipeline.push({
+        $unwind: {
+          path: '$campusDataFromArea',
+          preserveNullAndEmptyArrays: true,
+        },
+      });
+      // Determine campus from zone path or area path
+      pipeline.push({
+        $project: {
+          status: 1,
+          type: 1,
+          priority: 1,
+          campusId: {
+            $ifNull: ['$campusDataFromZone._id', '$campusDataFromArea._id'],
+          },
+          campusName: {
+            $ifNull: ['$campusDataFromZone.name', '$campusDataFromArea.name'],
+          },
+        },
+      });
+      // Filter out documents without campus
+      pipeline.push({
+        $match: {
+          campusId: { $exists: true, $ne: null },
+          campusName: { $exists: true, $ne: null },
+        },
+      });
       pipeline.push({
         $group: {
-          _id: '$assetData.zone', // Simplified
-          locationName: { $first: 'Unknown' },
+          _id: '$campusId',
+          locationName: { $first: '$campusName' },
+          total: { $sum: 1 },
+          statuses: { $push: '$status' },
+          types: { $push: '$type' },
+          priorities: { $push: '$priority' },
+        },
+      });
+    } else if (groupBy === 'building') {
+      // Lookup zone -> building
+      pipeline.push({
+        $lookup: {
+          from: 'zones',
+          localField: 'assetData.zone',
+          foreignField: '_id',
+          as: 'zoneData',
+        },
+      });
+      pipeline.push({
+        $unwind: { path: '$zoneData', preserveNullAndEmptyArrays: true },
+      });
+      pipeline.push({
+        $lookup: {
+          from: 'buildings',
+          localField: 'zoneData.building',
+          foreignField: '_id',
+          as: 'buildingData',
+        },
+      });
+      pipeline.push({
+        $unwind: { path: '$buildingData', preserveNullAndEmptyArrays: true },
+      });
+      pipeline.push({
+        $group: {
+          _id: '$buildingData._id',
+          locationName: { $first: '$buildingData.name' },
           total: { $sum: 1 },
           statuses: { $push: '$status' },
           types: { $push: '$type' },
