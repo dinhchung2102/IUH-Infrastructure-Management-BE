@@ -228,6 +228,33 @@ export class ReportService {
       }
     }
 
+    // Check if user is GUEST or first-time reporter - cannot use CRITICAL priority
+    const accountInfo = await this.accountModel
+      .findById(createdById)
+      .populate('role', 'roleName')
+      .select('role')
+      .lean();
+
+    const userRole = (accountInfo?.role as any)?.roleName;
+    const isGuest = userRole === RoleName.GUEST;
+
+    // Count previous reports by this user
+    const previousReportsCount = await this.reportModel.countDocuments({
+      createdBy: createdById,
+    });
+    const isFirstTimeReporter = previousReportsCount === 0;
+
+    // If user is GUEST or first-time reporter, downgrade CRITICAL to HIGH
+    if (
+      priority === ReportPriority.CRITICAL &&
+      (isGuest || isFirstTimeReporter)
+    ) {
+      this.logger.log(
+        `User ${createdById} (role: ${userRole}, first-time: ${isFirstTimeReporter}) attempted to create CRITICAL report. Downgrading to HIGH.`,
+      );
+      priority = ReportPriority.HIGH as any;
+    }
+
     const newReport = new this.reportModel({
       asset: new Types.ObjectId(createReportDto.asset),
       type: createReportDto.type,
