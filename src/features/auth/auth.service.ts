@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -61,6 +62,7 @@ interface AggregateResult {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly SALT_ROUNDS = AUTH_CONFIG.SALT_ROUNDS;
 
   constructor(
@@ -1144,72 +1146,116 @@ export class AuthService {
     message: string;
     updatedAccount: any;
   }> {
+    this.logger.log(`[updateAccount] Starting update for account ID: ${id}`);
+    this.logger.debug(
+      `[updateAccount] Input data: ${JSON.stringify(updateAccountDto)}`,
+    );
+
     if (!Types.ObjectId.isValid(id)) {
+      this.logger.warn(`[updateAccount] Invalid account ID: ${id}`);
       throw new NotFoundException('ID tài khoản không hợp lệ');
     }
 
     const existingAccount = await this.accountModel.findById(id);
     if (!existingAccount) {
+      this.logger.warn(`[updateAccount] Account not found: ${id}`);
       throw new NotFoundException('Tài khoản không tồn tại');
     }
 
+    this.logger.debug(
+      `[updateAccount] Existing account: ${JSON.stringify({
+        email: existingAccount.email,
+        fullName: existingAccount.fullName,
+        phoneNumber: existingAccount.phoneNumber,
+        role: existingAccount.role,
+        gender: existingAccount.gender,
+        dateOfBirth: existingAccount.dateOfBirth,
+      })}`,
+    );
+
+    // Convert to plain object for easier access
+    const updateData = updateAccountDto as Record<string, any>;
+    this.logger.debug(
+      `[updateAccount] Converted updateData: ${JSON.stringify(updateData)}`,
+    );
+
     // Kiểm tra email đã tồn tại chưa (nếu có thay đổi)
-    if (
-      updateAccountDto.email &&
-      updateAccountDto.email !== existingAccount.email
-    ) {
+    if (updateData.email && updateData.email !== existingAccount.email) {
+      this.logger.log(
+        `[updateAccount] Checking email duplicate: ${updateData.email}`,
+      );
       const duplicateEmail = await this.accountModel.findOne({
-        email: updateAccountDto.email,
+        email: updateData.email,
         _id: { $ne: id },
       });
 
       if (duplicateEmail) {
+        this.logger.warn(
+          `[updateAccount] Email already exists: ${updateData.email}`,
+        );
         throw new ConflictException('Email đã tồn tại');
       }
+      this.logger.log(
+        `[updateAccount] Email is available: ${updateData.email}`,
+      );
     }
 
     // Kiểm tra phoneNumber đã tồn tại chưa (nếu có thay đổi)
     if (
-      updateAccountDto.phoneNumber &&
-      updateAccountDto.phoneNumber !== existingAccount.phoneNumber
+      updateData.phoneNumber &&
+      updateData.phoneNumber !== existingAccount.phoneNumber
     ) {
+      this.logger.log(
+        `[updateAccount] Checking phoneNumber duplicate: ${updateData.phoneNumber}`,
+      );
       const duplicatePhone = await this.accountModel.findOne({
-        phoneNumber: updateAccountDto.phoneNumber,
+        phoneNumber: updateData.phoneNumber,
         _id: { $ne: id },
       });
 
       if (duplicatePhone) {
+        this.logger.warn(
+          `[updateAccount] PhoneNumber already exists: ${updateData.phoneNumber}`,
+        );
         throw new ConflictException('Số điện thoại đã được sử dụng');
       }
+      this.logger.log(
+        `[updateAccount] PhoneNumber is available: ${updateData.phoneNumber}`,
+      );
     }
 
     // Kiểm tra role có tồn tại không (nếu có thay đổi)
-    if (updateAccountDto.role) {
-      const role = await this.roleModel.findById(updateAccountDto.role);
+    if (updateData.role) {
+      this.logger.log(`[updateAccount] Validating role: ${updateData.role}`);
+      const role = await this.roleModel.findById(updateData.role);
       if (!role) {
+        this.logger.warn(`[updateAccount] Role not found: ${updateData.role}`);
         throw new NotFoundException('Role không tồn tại');
       }
+      updateData.role = new Types.ObjectId(updateData.role);
+      this.logger.log(
+        `[updateAccount] Role validated and converted: ${updateData.role}`,
+      );
     }
 
-    // Prepare update data - chỉ lấy các field được cung cấp
-    const updateData: Record<string, any> = {};
-    if (updateAccountDto.fullName !== undefined)
-      updateData.fullName = updateAccountDto.fullName;
-    if (updateAccountDto.email !== undefined)
-      updateData.email = updateAccountDto.email;
-    if (updateAccountDto.phoneNumber !== undefined)
-      updateData.phoneNumber = updateAccountDto.phoneNumber;
-    if (updateAccountDto.address !== undefined)
-      updateData.address = updateAccountDto.address;
-    if (updateAccountDto.avatar !== undefined)
-      updateData.avatar = updateAccountDto.avatar;
-    if (updateAccountDto.gender !== undefined)
-      updateData.gender = updateAccountDto.gender;
-    if (updateAccountDto.dateOfBirth !== undefined)
-      updateData.dateOfBirth = new Date(updateAccountDto.dateOfBirth);
-    if (updateAccountDto.role !== undefined) {
-      updateData.role = new Types.ObjectId(updateAccountDto.role);
+    // Convert dateOfBirth to Date if provided
+    if (updateData.dateOfBirth) {
+      updateData.dateOfBirth = new Date(updateData.dateOfBirth);
+      this.logger.log(
+        `[updateAccount] dateOfBirth converted: ${updateData.dateOfBirth}`,
+      );
     }
+
+    // Remove undefined fields
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    this.logger.log(
+      `[updateAccount] Final updateData to be saved: ${JSON.stringify(updateData)}`,
+    );
 
     const updatedAccount = await this.accountModel
       .findByIdAndUpdate(id, updateData, { new: true })
@@ -1219,6 +1265,16 @@ export class AuthService {
       .populate('buildingsManaged', '_id name')
       .populate('campusManaged', '_id name')
       .select('-password -refreshToken');
+
+    this.logger.log(`[updateAccount] Account updated successfully: ${id}`);
+    this.logger.debug(
+      `[updateAccount] Updated account: ${JSON.stringify({
+        email: updatedAccount?.email,
+        fullName: updatedAccount?.fullName,
+        phoneNumber: updatedAccount?.phoneNumber,
+        role: updatedAccount?.role,
+      })}`,
+    );
 
     return {
       message: 'Cập nhật tài khoản thành công',

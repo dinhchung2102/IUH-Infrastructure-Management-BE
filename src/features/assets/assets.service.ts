@@ -22,6 +22,7 @@ import { CreateAssetDto } from './dto/asset/create-asset.dto';
 import { QueryAssetDto } from './dto/asset/query-asset.dto';
 import { UpdateAssetDto } from './dto/asset/update-asset.dto';
 import { UploadService } from '../../shared/upload/upload.service';
+import { AssetStatus } from './enum/AssetStatus.enum';
 
 @Injectable()
 export class AssetsService {
@@ -647,11 +648,51 @@ export class AssetsService {
 
   async removeAsset(id: string): Promise<{
     message: string;
+    data: any;
   }> {
     if (!Types.ObjectId.isValid(id))
       throw new BadRequestException('ID không hợp lệ');
-    await this.assetModel.findByIdAndDelete(id);
-    return { message: 'Xóa tài sản thành công' };
+
+    const asset = await this.assetModel.findById(id);
+    if (!asset) {
+      throw new NotFoundException('Tài sản không tồn tại');
+    }
+
+    // Check if asset is already disposed
+    if (asset.status === AssetStatus.DISPOSED) {
+      throw new ConflictException('Tài sản đã được thanh lý');
+    }
+
+    // Update status to DISPOSED instead of deleting
+    const updatedAsset = await this.assetModel
+      .findByIdAndUpdate(id, { status: AssetStatus.DISPOSED }, { new: true })
+      .populate('assetType', 'name')
+      .populate('assetCategory', 'name')
+      .populate({
+        path: 'zone',
+        select: 'name floorLocation zoneType',
+        populate: {
+          path: 'building',
+          select: 'name floor campus',
+          populate: {
+            path: 'campus',
+            select: 'name',
+          },
+        },
+      })
+      .populate({
+        path: 'area',
+        select: 'name zoneType',
+        populate: {
+          path: 'campus',
+          select: 'name',
+        },
+      });
+
+    return {
+      message: 'Thanh lý tài sản thành công',
+      data: updatedAsset,
+    };
   }
 
   async getAssetStatistics(): Promise<{
