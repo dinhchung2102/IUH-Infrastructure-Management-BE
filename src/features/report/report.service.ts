@@ -18,6 +18,7 @@ import {
   type ReportTypeLabel,
 } from './config/report-type-labels.config';
 import { ReportStatus } from './enum/ReportStatus.enum';
+import { ReportPriority } from './enum/ReportPriority.enum';
 import { RedisService } from '../../shared/redis/redis.service';
 import { MailerService } from '@nestjs-modules/mailer';
 import { RoleName } from '../auth/enum/role.enum';
@@ -25,6 +26,8 @@ import {
   AuditLog,
   type AuditLogDocument,
 } from '../audit/schema/auditlog.schema';
+import { Account, type AccountDocument } from '../auth/schema/account.schema';
+import { Role, type RoleDocument } from '../auth/schema/role.schema';
 import { AuditStatus } from '../audit/enum/AuditStatus.enum';
 import { EventsService } from '../../shared/events/events.service';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
@@ -38,6 +41,8 @@ export class ReportService {
   constructor(
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
+    @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
     private readonly uploadService: UploadService,
     private readonly redisService: RedisService,
     private readonly mailerService: MailerService,
@@ -249,10 +254,117 @@ export class ReportService {
       });
     }
 
+    // Send socket notification if report is CRITICAL priority
+    if (priority === ReportPriority.CRITICAL) {
+      this.notifyCriticalReportToStaffAndAdmins(savedReport).catch((error) => {
+        this.logger.error(
+          `Failed to send critical report notification: ${error.message}`,
+        );
+      });
+    }
+
     return {
       message: 'Tạo báo cáo thành công',
       data: savedReport,
     };
+  }
+
+  /**
+   * Notify all staff and admins via socket when a critical report is created
+   */
+  private async notifyCriticalReportToStaffAndAdmins(
+    report: ReportDocument,
+  ): Promise<void> {
+    try {
+      const reportId = String((report as any).id || (report as any)._id);
+      this.logger.log(
+        `[notifyCriticalReport] Sending critical report notification for report: ${reportId}`,
+      );
+
+      // Get staff and admin role IDs
+      const staffAndAdminRoles = await this.roleModel
+        .find({
+          roleName: {
+            $in: [RoleName.ADMIN, RoleName.CAMPUS_ADMIN, RoleName.STAFF],
+          },
+        })
+        .select('_id')
+        .lean();
+
+      if (staffAndAdminRoles.length === 0) {
+        this.logger.warn(
+          '[notifyCriticalReport] No staff/admin roles found in database',
+        );
+        return;
+      }
+
+      const roleIds = staffAndAdminRoles.map((role) => role._id);
+
+      // Get all staff and admin accounts
+      const staffAndAdmins = await this.accountModel
+        .find({
+          role: { $in: roleIds },
+          isActive: true,
+        })
+        .select('_id email fullName')
+        .lean();
+
+      if (staffAndAdmins.length === 0) {
+        this.logger.warn(
+          '[notifyCriticalReport] No active staff/admin accounts found',
+        );
+        return;
+      }
+
+      // Prepare notification payload
+      const createdAt = (report as any).createdAt || new Date();
+      const notification = {
+        type: 'error' as const, // Use 'error' type for critical reports
+        title: 'Báo cáo khẩn cấp mới',
+        message: `Có báo cáo khẩn cấp mới được tạo: ${report.description?.substring(0, 100)}...`,
+        data: {
+          reportId,
+          assetId: (report.asset as any)?._id
+            ? String((report.asset as any)._id)
+            : undefined,
+          assetName: (report.asset as any)?.name,
+          priority: report.priority,
+          reportType: report.type,
+          description: report.description,
+          createdAt,
+          createdBy: (report.createdBy as any)?._id
+            ? String((report.createdBy as any)._id)
+            : undefined,
+          createdByName: (report.createdBy as any)?.fullName,
+        },
+        timestamp: new Date(),
+      };
+
+      // Send notification to each staff/admin
+      let notifiedCount = 0;
+      for (const account of staffAndAdmins) {
+        try {
+          this.eventsService.sendNotificationToUser(
+            account._id.toString(),
+            notification,
+          );
+          notifiedCount++;
+        } catch (error) {
+          this.logger.warn(
+            `[notifyCriticalReport] Failed to notify user ${account._id}: ${error.message}`,
+          );
+        }
+      }
+
+      this.logger.log(
+        `[notifyCriticalReport] Sent critical report notification to ${notifiedCount}/${staffAndAdmins.length} staff/admin accounts`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[notifyCriticalReport] Error sending critical report notification: ${error.message}`,
+        error.stack,
+      );
+    }
   }
 
   async findAllReports(queryDto: QueryReportDto): Promise<{
