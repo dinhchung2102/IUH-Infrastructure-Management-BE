@@ -350,7 +350,33 @@ Nếu có câu hỏi hoặc gặp vấn đề:
 - ✅ Notification queue system (tự động gửi khi client connect)
 - ✅ Login success notification
 - ✅ Audit log assignment notification (cả từ `/api/audit` và `/api/report/approve`)
+- ✅ **Critical Report Notification** - Thông báo báo cáo khẩn cấp với thông tin vị trí đầy đủ
 - ✅ Real-time data updates
 - ✅ Room management
 - ✅ Client tracking
 - ✅ Auto-reconnection support
+
+## 📋 Changelog
+
+### Critical Report Notification với Location Information
+
+**Version:** 2025-01-15
+
+**Thay đổi:**
+- ✅ Thêm thông tin vị trí (location) vào notification payload cho báo cáo khẩn cấp
+- ✅ Location bao gồm: Campus (Cơ sở), Building (Tòa nhà), Zone/Area (Khu vực)
+- ✅ Thêm `fullPath` - đường dẫn đầy đủ dạng "Cơ sở > Tòa nhà > Khu vực"
+- ✅ Message notification tự động bao gồm vị trí để dễ nhận biết
+
+**Chi tiết:**
+- Khi báo cáo có priority `CRITICAL` được tạo, hệ thống sẽ:
+  1. Populate đầy đủ thông tin location từ asset (zone/area → building → campus)
+  2. Gửi socket notification cho tất cả staff và admin
+  3. Notification payload bao gồm object `location` với:
+     - `campus`: { id, name }
+     - `building`: { id, name }
+     - `zone` hoặc `area`: { id, name } (tùy asset thuộc zone hay area)
+     - `fullPath`: String đầy đủ để hiển thị
+
+**Tài liệu:**
+- Xem chi tiết tại: [CRITICAL_REPORT_NOTIFICATION.md](./CRITICAL_REPORT_NOTIFICATION.md)

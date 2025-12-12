@@ -58,17 +58,26 @@ notification
 interface CriticalReportNotification {
   type: 'error'; // Luôn là 'error' cho báo cáo khẩn cấp
   title: string; // "Báo cáo khẩn cấp mới"
-  message: string; // Mô tả ngắn gọn của báo cáo (100 ký tự đầu)
+  message: string; // Mô tả ngắn gọn của báo cáo (100 ký tự đầu) + vị trí
   data: {
     reportId: string; // ID của báo cáo
     assetId?: string; // ID của thiết bị (nếu có)
     assetName?: string; // Tên thiết bị
+    assetCode?: string; // Mã thiết bị
     priority: 'CRITICAL'; // Độ ưu tiên
     reportType: string; // Loại báo cáo: MAINTENANCE, DAMAGED, LOST, etc.
     description: string; // Mô tả đầy đủ của báo cáo
     createdAt: Date; // Thời gian tạo báo cáo
     createdBy?: string; // ID người tạo
     createdByName?: string; // Tên người tạo
+    location: {
+      // Thông tin vị trí (QUAN TRỌNG)
+      campus?: { id: string; name: string }; // Cơ sở
+      building?: { id: string; name: string }; // Tòa nhà
+      zone?: { id: string; name: string }; // Khu vực trong nhà
+      area?: { id: string; name: string }; // Khu vực ngoài trời
+      fullPath?: string; // Đường dẫn đầy đủ: "Cơ sở > Tòa nhà > Khu vực"
+    };
   };
   timestamp: Date; // Thời gian gửi notification
 }
@@ -80,17 +89,33 @@ interface CriticalReportNotification {
 {
   "type": "error",
   "title": "Báo cáo khẩn cấp mới",
-  "message": "Có báo cáo khẩn cấp mới được tạo: Máy lạnh phòng A101 bị hỏng, không hoạt động, nhiệt độ phòng tăng cao...",
+  "message": "Có báo cáo khẩn cấp mới được tạo tại Cơ sở Hồ Chí Minh > Tòa nhà A > Phòng A101: Máy lạnh phòng A101 bị hỏng, không hoạt động, nhiệt độ phòng tăng cao...",
   "data": {
     "reportId": "68a67f1a89ba03c434bc0364",
     "assetId": "6933aa3785705ceb03238654",
     "assetName": "Máy lạnh phòng A101",
+    "assetCode": "AC-A101-001",
     "priority": "CRITICAL",
     "reportType": "DAMAGED",
     "description": "Máy lạnh phòng A101 bị hỏng, không hoạt động, nhiệt độ phòng tăng cao, cần xử lý ngay",
     "createdAt": "2025-01-15T10:30:00.000Z",
     "createdBy": "693bc0b79512dd56dc47baf9",
-    "createdByName": "Nguyễn Văn A"
+    "createdByName": "Nguyễn Văn A",
+    "location": {
+      "campus": {
+        "id": "68a5b67f17d3b8631e23b3b1",
+        "name": "Cơ sở Hồ Chí Minh"
+      },
+      "building": {
+        "id": "68a5b67f17d3b8631e23b3b2",
+        "name": "Tòa nhà A"
+      },
+      "zone": {
+        "id": "6933aa3785705ceb03238654",
+        "name": "Phòng A101"
+      },
+      "fullPath": "Cơ sở Hồ Chí Minh > Tòa nhà A > Phòng A101"
+    }
   },
   "timestamp": "2025-01-15T10:30:05.123Z"
 }
@@ -112,12 +137,20 @@ interface CriticalReportNotification {
     reportId: string;
     assetId?: string;
     assetName?: string;
+    assetCode?: string;
     priority: 'CRITICAL';
     reportType: string;
     description: string;
     createdAt: Date;
     createdBy?: string;
     createdByName?: string;
+    location: {
+      campus?: { id: string; name: string };
+      building?: { id: string; name: string };
+      zone?: { id: string; name: string };
+      area?: { id: string; name: string };
+      fullPath?: string;
+    };
   };
   timestamp: Date;
 }
@@ -205,12 +238,20 @@ interface CriticalReportNotification {
     reportId: string;
     assetId?: string;
     assetName?: string;
+    assetCode?: string;
     priority: 'CRITICAL';
     reportType: string;
     description: string;
     createdAt: Date;
     createdBy?: string;
     createdByName?: string;
+    location: {
+      campus?: { id: string; name: string };
+      building?: { id: string; name: string };
+      zone?: { id: string; name: string };
+      area?: { id: string; name: string };
+      fullPath?: string;
+    };
   };
   timestamp: Date;
 }

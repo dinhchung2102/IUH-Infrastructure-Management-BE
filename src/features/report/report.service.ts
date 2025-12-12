@@ -256,6 +256,38 @@ export class ReportService {
 
     // Send socket notification if report is CRITICAL priority
     if (priority === ReportPriority.CRITICAL) {
+      // Populate location information before sending notification
+      await savedReport.populate({
+        path: 'asset',
+        select: 'name code status zone area',
+        populate: [
+          {
+            path: 'zone',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+          {
+            path: 'area',
+            select: '_id name building',
+            populate: {
+              path: 'building',
+              select: '_id name campus',
+              populate: {
+                path: 'campus',
+                select: '_id name',
+              },
+            },
+          },
+        ],
+      });
+
       this.notifyCriticalReportToStaffAndAdmins(savedReport).catch((error) => {
         this.logger.error(
           `Failed to send critical report notification: ${error.message}`,
@@ -316,18 +348,95 @@ export class ReportService {
         return;
       }
 
-      // Prepare notification payload
+      // Prepare notification payload with location information
       const createdAt = (report as any).createdAt || new Date();
+      const asset = report.asset as any;
+
+      // Extract location information
+      let location: {
+        campus?: { id: string; name: string };
+        building?: { id: string; name: string };
+        zone?: { id: string; name: string };
+        area?: { id: string; name: string };
+        fullPath?: string; // Full location path string
+      } = {};
+
+      // Asset can have either zone or area (or both)
+      if (asset?.zone) {
+        const zone = asset.zone;
+        const building = zone.building;
+        const campus = building?.campus;
+
+        location.zone = {
+          id: String(zone._id || zone.id),
+          name: zone.name,
+        };
+
+        if (building) {
+          location.building = {
+            id: String(building._id || building.id),
+            name: building.name,
+          };
+        }
+
+        if (campus) {
+          location.campus = {
+            id: String(campus._id || campus.id),
+            name: campus.name,
+          };
+        }
+
+        // Build full path: Campus > Building > Zone
+        const pathParts: string[] = [];
+        if (campus?.name) pathParts.push(campus.name);
+        if (building?.name) pathParts.push(building.name);
+        if (zone.name) pathParts.push(zone.name);
+        location.fullPath = pathParts.join(' > ');
+      }
+
+      if (asset?.area) {
+        const area = asset.area;
+        const building = area.building;
+        const campus = building?.campus;
+
+        location.area = {
+          id: String(area._id || area.id),
+          name: area.name,
+        };
+
+        if (building && !location.building) {
+          location.building = {
+            id: String(building._id || building.id),
+            name: building.name,
+          };
+        }
+
+        if (campus && !location.campus) {
+          location.campus = {
+            id: String(campus._id || campus.id),
+            name: campus.name,
+          };
+        }
+
+        // Build full path: Campus > Building > Area (or append to existing)
+        if (!location.fullPath) {
+          const pathParts: string[] = [];
+          if (campus?.name) pathParts.push(campus.name);
+          if (building?.name) pathParts.push(building.name);
+          if (area.name) pathParts.push(area.name);
+          location.fullPath = pathParts.join(' > ');
+        }
+      }
+
       const notification = {
         type: 'error' as const, // Use 'error' type for critical reports
         title: 'Báo cáo khẩn cấp mới',
-        message: `Có báo cáo khẩn cấp mới được tạo: ${report.description?.substring(0, 100)}...`,
+        message: `Sự cố khẩn cấp: ${location.fullPath ? ` tại ${location.fullPath}` : ''}: ${report.description?.substring(0, 100)}...`,
         data: {
           reportId,
-          assetId: (report.asset as any)?._id
-            ? String((report.asset as any)._id)
-            : undefined,
-          assetName: (report.asset as any)?.name,
+          assetId: asset?._id ? String(asset._id) : undefined,
+          assetName: asset?.name,
+          assetCode: asset?.code,
           priority: report.priority,
           reportType: report.type,
           description: report.description,
@@ -336,6 +445,7 @@ export class ReportService {
             ? String((report.createdBy as any)._id)
             : undefined,
           createdByName: (report.createdBy as any)?.fullName,
+          location, // Location information
         },
         timestamp: new Date(),
       };
