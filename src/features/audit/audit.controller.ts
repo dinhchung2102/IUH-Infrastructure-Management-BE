@@ -23,6 +23,7 @@ import { UpdateAuditLogDto } from './dto/update-auditlog.dto';
 import { QueryAuditLogDto } from './dto/query-auditlog.dto';
 import { StaffAuditLogDto } from './dto/staff-auditlog.dto';
 import { CompleteAuditLogDto } from './dto/complete-auditlog.dto';
+import { CancelAuditLogDto } from './dto/cancel-auditlog.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators';
@@ -149,6 +150,22 @@ export class AuditController {
       staffId,
       completeDto.notes,
       files,
+    );
+  }
+
+  @UseGuards(AuthGuard, PermissionsGuard)
+  @RequirePermissions(['AUDIT:UPDATE'])
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  async cancelAuditLog(
+    @Param('id') auditId: string,
+    @CurrentUser('sub') userId: string,
+    @Body() cancelDto: CancelAuditLogDto,
+  ) {
+    return this.auditService.cancelAuditLog(
+      auditId,
+      userId,
+      cancelDto.cancelReason,
     );
   }
 }

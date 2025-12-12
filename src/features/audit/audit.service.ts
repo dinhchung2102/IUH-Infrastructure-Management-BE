@@ -19,6 +19,9 @@ import { ReportStatus } from '../report/enum/ReportStatus.enum';
 import { EventsService } from '../../shared/events/events.service';
 import { MailerService } from '@nestjs-modules/mailer';
 import { REPORT_TYPE_LABELS } from '../report/config/report-type-labels.config';
+import { RoleName } from '../auth/enum/role.enum';
+import { Account, type AccountDocument } from '../auth/schema/account.schema';
+import { Role, type RoleDocument } from '../auth/schema/role.schema';
 
 @Injectable()
 export class AuditService {
@@ -27,6 +30,8 @@ export class AuditService {
   constructor(
     @InjectModel(AuditLog.name) private auditLogModel: Model<AuditLogDocument>,
     @InjectModel(Report.name) private reportModel: Model<ReportDocument>,
+    @InjectModel(Account.name) private accountModel: Model<AccountDocument>,
+    @InjectModel(Role.name) private roleModel: Model<RoleDocument>,
     private readonly uploadService: UploadService,
     private readonly eventsService: EventsService,
     private readonly mailerService: MailerService,
@@ -1175,6 +1180,212 @@ export class AuditService {
         auditsLastMonth,
         averageCompletionTime: averageCompletionTime as number,
       },
+    };
+  }
+
+  async cancelAuditLog(
+    auditId: string,
+    userId: string,
+    cancelReason: string,
+  ): Promise<{
+    message: string;
+    data: any;
+  }> {
+    // Validate auditId format
+    if (!Types.ObjectId.isValid(auditId)) {
+      throw new BadRequestException('ID bản ghi kiểm tra không hợp lệ');
+    }
+
+    // Validate userId format
+    if (!Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('ID người dùng không hợp lệ');
+    }
+
+    // Find audit log
+    const auditLog = await this.auditLogModel.findById(auditId).populate({
+      path: 'staffs',
+      select: '_id fullName email role',
+      populate: {
+        path: 'role',
+        select: 'roleName',
+      },
+    });
+
+    if (!auditLog) {
+      throw new NotFoundException('Bản ghi kiểm tra không tồn tại');
+    }
+
+    // Check if audit log can be cancelled (not already COMPLETED or CANCELLED)
+    if (auditLog.status === AuditStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Không thể hủy bản ghi kiểm tra đã hoàn thành',
+      );
+    }
+
+    if (auditLog.status === AuditStatus.CANCELLED) {
+      throw new BadRequestException('Bản ghi kiểm tra đã được hủy bỏ');
+    }
+
+    // Get user info to check role
+    const userObjectId = new Types.ObjectId(userId);
+    const user = await this.accountModel
+      .findById(userObjectId)
+      .populate('role', 'roleName')
+      .lean();
+
+    if (!user) {
+      throw new NotFoundException('Người dùng không tồn tại');
+    }
+
+    const userRole = (user.role as any)?.roleName;
+
+    // Check permission: Only admin or assigned staff can cancel
+    const isAdmin =
+      userRole === RoleName.ADMIN || userRole === RoleName.CAMPUS_ADMIN;
+
+    const isAssignedStaff = auditLog.staffs.some((staff: any) => {
+      const staffIdStr =
+        staff instanceof Types.ObjectId
+          ? staff.toString()
+          : (staff as any)._id?.toString() || String(staff);
+      return staffIdStr === userId;
+    });
+
+    if (!isAdmin && !isAssignedStaff) {
+      throw new ForbiddenException(
+        'Bạn không có quyền hủy bỏ bản ghi kiểm tra này',
+      );
+    }
+
+    // Update audit log status to CANCELLED
+    const updatedAuditLog = await this.auditLogModel
+      .findByIdAndUpdate(
+        auditId,
+        {
+          status: AuditStatus.CANCELLED,
+          cancelledBy: userObjectId,
+          cancelledAt: new Date(),
+          cancelReason,
+        },
+        { new: true },
+      )
+      .populate('staffs', 'fullName email role')
+      .populate('cancelledBy', 'fullName email role')
+      .populate({
+        path: 'report',
+        select: 'type status description asset createdBy',
+        populate: {
+          path: 'asset',
+          select: 'name code',
+        },
+      });
+
+    // Send socket notifications based on who cancelled
+    if (isAdmin) {
+      // Admin cancelled: notify all assigned staffs
+      const staffs = auditLog.staffs as any[];
+      for (const staff of staffs) {
+        const staffId =
+          staff instanceof Types.ObjectId
+            ? staff.toString()
+            : (staff as any)._id?.toString() || String(staff);
+
+        try {
+          this.eventsService.sendNotificationToUser(staffId, {
+            title: 'Nhiệm vụ kiểm tra đã bị hủy bỏ',
+            message: `Nhiệm vụ "${auditLog.subject}" đã bị hủy bỏ bởi quản trị viên`,
+            type: 'warning',
+            data: {
+              auditLogId: auditId,
+              subject: auditLog.subject,
+              cancelReason,
+              cancelledBy: user.fullName || user.email,
+              cancelledAt: new Date().toISOString(),
+            },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Failed to send cancellation notification to staff ${staffId}: ${error.message}`,
+          );
+        }
+      }
+      this.logger.log(
+        `Admin cancelled audit log ${auditId}, notified ${staffs.length} staff(s)`,
+      );
+    } else {
+      // Staff cancelled: notify all admins
+      try {
+        // Get admin role IDs
+        const adminRoles = await this.roleModel
+          .find({
+            roleName: { $in: [RoleName.ADMIN, RoleName.CAMPUS_ADMIN] },
+          })
+          .select('_id')
+          .lean();
+
+        if (adminRoles.length > 0) {
+          const adminRoleIds = adminRoles.map((role) => role._id);
+
+          // Get all admin accounts
+          const admins = await this.accountModel
+            .find({
+              role: { $in: adminRoleIds },
+              isActive: true,
+            })
+            .select('_id')
+            .lean();
+
+          for (const admin of admins) {
+            try {
+              this.eventsService.sendNotificationToUser(admin._id.toString(), {
+                title: 'Nhiệm vụ kiểm tra đã bị hủy bỏ',
+                message: `Nhân viên đã hủy bỏ nhiệm vụ: "${auditLog.subject}"`,
+                type: 'warning',
+                data: {
+                  auditLogId: auditId,
+                  subject: auditLog.subject,
+                  cancelReason,
+                  cancelledBy: user.fullName || user.email,
+                  cancelledAt: new Date().toISOString(),
+                  staffName: user.fullName || user.email,
+                },
+              });
+            } catch (error) {
+              this.logger.warn(
+                `Failed to send cancellation notification to admin ${String(admin._id)}: ${error.message}`,
+              );
+            }
+          }
+          this.logger.log(
+            `Staff cancelled audit log ${auditId}, notified ${admins.length} admin(s)`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to notify admins about cancellation: ${error.message}`,
+        );
+      }
+    }
+
+    if (!updatedAuditLog) {
+      throw new NotFoundException('Không thể cập nhật bản ghi kiểm tra');
+    }
+
+    // Emit update event to all clients
+    this.eventsService.emitCustomEvent({
+      event: 'auditlog:cancelled',
+      data: {
+        _id: updatedAuditLog._id,
+        subject: updatedAuditLog.subject,
+        status: updatedAuditLog.status,
+        cancelledBy: userId,
+        cancelReason,
+      },
+    });
+
+    return {
+      message: 'Hủy bỏ bản ghi kiểm tra thành công',
+      data: updatedAuditLog,
     };
   }
 }

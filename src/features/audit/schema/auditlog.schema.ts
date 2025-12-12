@@ -54,6 +54,15 @@ export class AuditLog {
 
   @Prop({ required: false, type: Date })
   expiresAt?: Date;
+
+  @Prop({ required: false, type: Types.ObjectId, ref: Account.name })
+  cancelledBy?: AccountDocument;
+
+  @Prop({ required: false })
+  cancelledAt?: Date;
+
+  @Prop({ required: false })
+  cancelReason?: string;
 }
 
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
