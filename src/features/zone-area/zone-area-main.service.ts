@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -24,6 +25,8 @@ import {
 
 @Injectable()
 export class ZoneAreaMainService {
+  private readonly logger = new Logger(ZoneAreaMainService.name);
+
   constructor(
     @InjectModel(Area.name) private areaModel: Model<AreaDocument>,
     @InjectModel(Building.name) private buildingModel: Model<BuildingDocument>,
@@ -467,7 +470,9 @@ export class ZoneAreaMainService {
 
     // Handle building case
     if (createZoneDto.building) {
-      const building = await this.buildingModel.findById(createZoneDto.building);
+      const building = await this.buildingModel.findById(
+        createZoneDto.building,
+      );
       if (!building) {
         throw new NotFoundException('Tòa nhà không tồn tại');
       }
@@ -595,33 +600,81 @@ export class ZoneAreaMainService {
     }
 
     if (campus) {
-      // Tìm zones thông qua building hoặc area
-      const [buildings, areas] = await Promise.all([
-        this.buildingModel.find({
-          campus: new Types.ObjectId(campus),
-        }),
-        this.areaModel.find({
-          campus: new Types.ObjectId(campus),
-        }),
-      ]);
-      
-      const buildingIds = buildings.map((b) => b._id);
-      const areaIds = areas.map((a) => a._id);
-      
-      // Zones can be in buildings OR areas of this campus
-      const campusConditions: any[] = [];
-      if (buildingIds.length > 0) {
-        campusConditions.push({ building: { $in: buildingIds } });
-      }
-      if (areaIds.length > 0) {
-        campusConditions.push({ area: { $in: areaIds } });
-      }
-      
-      if (campusConditions.length > 0) {
-        andConditions.push({ $or: campusConditions });
+      // Nếu đã có building filter, validate building thuộc campus
+      if (building) {
+        const buildingDoc = await this.buildingModel
+          .findById(building)
+          .select('campus')
+          .lean();
+        const buildingCampusId =
+          buildingDoc?.campus instanceof Types.ObjectId
+            ? buildingDoc.campus.toString()
+            : (buildingDoc?.campus as any)?._id?.toString() ||
+              buildingDoc?.campus?.toString();
+        if (!buildingDoc || buildingCampusId !== campus) {
+          // Building không thuộc campus này, return empty
+          andConditions.push({ _id: { $in: [] } });
+        }
+        // Nếu building thuộc campus, không cần query thêm
+      } else if (queryDto.area) {
+        // Nếu đã có area filter, validate area thuộc campus
+        const areaDoc = await this.areaModel
+          .findById(queryDto.area)
+          .select('campus')
+          .lean();
+        const areaCampusId =
+          areaDoc?.campus instanceof Types.ObjectId
+            ? areaDoc.campus.toString()
+            : (areaDoc?.campus as any)?._id?.toString() ||
+              areaDoc?.campus?.toString();
+        if (!areaDoc || areaCampusId !== campus) {
+          // Area không thuộc campus này, return empty
+          andConditions.push({ _id: { $in: [] } });
+        }
+        // Nếu area thuộc campus, không cần query thêm
       } else {
-        // No buildings or areas in this campus, return empty result
-        andConditions.push({ _id: { $in: [] } });
+        // Tìm zones thông qua building hoặc area của campus
+        // Chỉ select _id để tối ưu performance
+        const [buildings, areas] = await Promise.all([
+          this.buildingModel
+            .find({
+              campus: new Types.ObjectId(campus),
+            })
+            .select('_id')
+            .lean(),
+          this.areaModel
+            .find({
+              campus: new Types.ObjectId(campus),
+            })
+            .select('_id')
+            .lean(),
+        ]);
+
+        const buildingIds = buildings.map((b) => b._id);
+        const areaIds = areas.map((a) => a._id);
+
+        this.logger.debug(
+          `[findAllZones] Campus ${campus}: Found ${buildingIds.length} buildings, ${areaIds.length} areas`,
+        );
+
+        // Zones can be in buildings OR areas of this campus
+        const campusConditions: any[] = [];
+        if (buildingIds.length > 0) {
+          campusConditions.push({ building: { $in: buildingIds } });
+        }
+        if (areaIds.length > 0) {
+          campusConditions.push({ area: { $in: areaIds } });
+        }
+
+        if (campusConditions.length > 0) {
+          andConditions.push({ $or: campusConditions });
+        } else {
+          // No buildings or areas in this campus, return empty result
+          this.logger.warn(
+            `[findAllZones] Campus ${campus} has no buildings or areas`,
+          );
+          andConditions.push({ _id: { $in: [] } });
+        }
       }
     }
 
@@ -633,6 +686,11 @@ export class ZoneAreaMainService {
     if (andConditions.length > 0) {
       filter.$and = andConditions;
     }
+
+    // Log filter for debugging
+    this.logger.debug(
+      `[findAllZones] Filter: ${JSON.stringify(filter, null, 2)}`,
+    );
 
     // Xây dựng sort
     const sort: Record<string, any> = {};
@@ -668,6 +726,10 @@ export class ZoneAreaMainService {
     ]);
 
     const totalPages = Math.ceil(total / limitNum);
+
+    this.logger.debug(
+      `[findAllZones] Query result: ${zones.length} zones, total: ${total}, page: ${pageNum}/${totalPages}`,
+    );
 
     return {
       message: 'Lấy danh sách khu vực thành công',
@@ -1047,17 +1109,21 @@ export class ZoneAreaMainService {
   // ==================== STATISTICS METHODS ====================
 
   async getBuildingStats() {
-    const [totalBuildings, activeBuildings, inactiveBuildings, underMaintenanceBuildings] =
-      await Promise.all([
-        // Tổng tòa nhà
-        this.buildingModel.countDocuments(),
-        // Đang hoạt động
-        this.buildingModel.countDocuments({ status: 'ACTIVE' }),
-        // Ngừng hoạt động
-        this.buildingModel.countDocuments({ status: 'INACTIVE' }),
-        // Đang bảo trì
-        this.buildingModel.countDocuments({ status: 'UNDERMAINTENANCE' }),
-      ]);
+    const [
+      totalBuildings,
+      activeBuildings,
+      inactiveBuildings,
+      underMaintenanceBuildings,
+    ] = await Promise.all([
+      // Tổng tòa nhà
+      this.buildingModel.countDocuments(),
+      // Đang hoạt động
+      this.buildingModel.countDocuments({ status: 'ACTIVE' }),
+      // Ngừng hoạt động
+      this.buildingModel.countDocuments({ status: 'INACTIVE' }),
+      // Đang bảo trì
+      this.buildingModel.countDocuments({ status: 'UNDERMAINTENANCE' }),
+    ]);
 
     return {
       message: 'Lấy thống kê tòa nhà thành công',
@@ -1101,26 +1167,30 @@ export class ZoneAreaMainService {
     // Tính thống kê cho từng campus
     const statsPromises = campuses.map(async (campus) => {
       const campusObjectId = new Types.ObjectId(campus._id);
-      const [totalBuildings, activeBuildings, inactiveBuildings, underMaintenanceBuildings] =
-        await Promise.all([
-          // Tổng tòa nhà theo campus
-          this.buildingModel.countDocuments({ campus: campusObjectId }),
-          // Đang hoạt động
-          this.buildingModel.countDocuments({
-            campus: campusObjectId,
-            status: 'ACTIVE',
-          }),
-          // Ngừng hoạt động
-          this.buildingModel.countDocuments({
-            campus: campusObjectId,
-            status: 'INACTIVE',
-          }),
-          // Đang bảo trì
-          this.buildingModel.countDocuments({
-            campus: campusObjectId,
-            status: 'UNDERMAINTENANCE',
-          }),
-        ]);
+      const [
+        totalBuildings,
+        activeBuildings,
+        inactiveBuildings,
+        underMaintenanceBuildings,
+      ] = await Promise.all([
+        // Tổng tòa nhà theo campus
+        this.buildingModel.countDocuments({ campus: campusObjectId }),
+        // Đang hoạt động
+        this.buildingModel.countDocuments({
+          campus: campusObjectId,
+          status: 'ACTIVE',
+        }),
+        // Ngừng hoạt động
+        this.buildingModel.countDocuments({
+          campus: campusObjectId,
+          status: 'INACTIVE',
+        }),
+        // Đang bảo trì
+        this.buildingModel.countDocuments({
+          campus: campusObjectId,
+          status: 'UNDERMAINTENANCE',
+        }),
+      ]);
 
       return {
         campusId: campus._id.toString(),
