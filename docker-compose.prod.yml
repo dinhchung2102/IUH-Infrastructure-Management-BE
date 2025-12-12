@@ -84,7 +84,7 @@ services:
     restart: unless-stopped
     # Option 1: Chạy với user hiện tại (đảm bảo permissions trên host đã đúng)
     # Uncomment dòng dưới nếu muốn chạy với user cụ thể
-    # user: "${UID:-1000}:${GID:-1000}"
+    user: '${UID:-1000}:${GID:-1000}'
     # Option 2: Để entrypoint script tự fix permissions (mặc định)
     # Entrypoint script sẽ chạy với root để fix permissions, sau đó switch sang node user
     init: true
