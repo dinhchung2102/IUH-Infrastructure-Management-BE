@@ -826,8 +826,9 @@ export class ReportService {
       averageResolutionTime: number; // in days
     };
   }> {
-    const key = cacheKey || this.redisService.buildCacheKey('/api/report/stats');
-    
+    const key =
+      cacheKey || this.redisService.buildCacheKey('/api/report/stats');
+
     // Try to get from cache
     const cached = await this.redisService.getCached<any>(key);
     if (cached) {
@@ -1099,12 +1100,14 @@ export class ReportService {
       };
     });
 
-    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/time-series', {
-      type,
-      startDate,
-      endDate,
-      status,
-    });
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/report/statistics/time-series', {
+        type,
+        startDate,
+        endDate,
+        status,
+      });
 
     // Try to get from cache
     const cached = await this.redisService.getCached<any>(key);
@@ -1295,11 +1298,13 @@ export class ReportService {
       })
       .sort((a, b) => b.total - a.total);
 
-    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/by-location', {
-      groupBy,
-      startDate,
-      endDate,
-    });
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/report/statistics/by-location', {
+        groupBy,
+        startDate,
+        endDate,
+      });
 
     // Try to get from cache
     const cached = await this.redisService.getCached<any>(key);
@@ -1403,11 +1408,13 @@ export class ReportService {
       };
     });
 
-    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/top-assets', {
-      limit,
-      startDate,
-      endDate,
-    });
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/report/statistics/top-assets', {
+        limit,
+        startDate,
+        endDate,
+      });
 
     // Try to get from cache
     const cached = await this.redisService.getCached<any>(key);
@@ -1501,11 +1508,13 @@ export class ReportService {
       };
     });
 
-    const key = cacheKey || this.redisService.buildCacheKey('/api/report/statistics/top-reporters', {
-      limit,
-      startDate,
-      endDate,
-    });
+    const key =
+      cacheKey ||
+      this.redisService.buildCacheKey('/api/report/statistics/top-reporters', {
+        limit,
+        startDate,
+        endDate,
+      });
 
     // Try to get from cache
     const cached = await this.redisService.getCached<any>(key);

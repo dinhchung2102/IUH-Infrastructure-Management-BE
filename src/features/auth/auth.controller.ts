@@ -235,11 +235,12 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Get('check-permission')
-  getMyInfo(@CurrentUser() user: JwtPayload) {
+  getMyPermissions(@CurrentUser() user: JwtPayload) {
     return {
-      message: 'Thông tin user từ JWT',
+      message: 'Lấy danh sách quyền của user thành công',
       role: user.role,
       permissions: user.permissions,
+      total: user.permissions?.length || 0,
     };
   }
 
