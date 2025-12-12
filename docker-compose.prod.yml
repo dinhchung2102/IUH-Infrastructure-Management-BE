@@ -12,10 +12,11 @@ services:
     network_mode: host
     volumes:
       # Bind mount từ host để persist data (uploads và logs)
+      # Dùng absolute path vì files đã có sẵn trên host tại /var/www/uploads/iuh
       # Thư mục /var/www/uploads/iuh và /var/log/iuh đã được tạo trong Dockerfile với chown node:node
       # Entrypoint script sẽ đảm bảo permissions đúng khi container start
-      - ./uploads:/var/www/uploads/iuh:rw
-      - ./logs:/var/log/iuh:rw
+      - /var/www/uploads/iuh:/var/www/uploads/iuh:rw
+      - /var/log/iuh:/var/log/iuh:rw
       # Mount timezone để đồng bộ thời gian với host
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
