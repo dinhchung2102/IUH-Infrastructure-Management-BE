@@ -448,11 +448,16 @@ export class AuthController {
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['ACCOUNT:ADMIN_ACTION'])
   @Patch('accounts/:id')
+  @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(HttpStatus.OK)
   async updateAccount(
     @Param('id') id: string,
     @Body() updateAccountDto: UpdateAccountDto,
+    @Req() req: Request,
   ) {
+    // Log raw request body for debugging
+    console.log('[Controller] Raw request body:', req.body);
+    console.log('[Controller] Parsed DTO:', updateAccountDto);
     return this.authService.updateAccount(id, updateAccountDto);
   }
 

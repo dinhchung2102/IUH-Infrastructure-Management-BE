@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -1178,6 +1179,9 @@ export class AuthService {
     this.logger.debug(
       `[updateAccount] Converted updateData: ${JSON.stringify(updateData)}`,
     );
+    this.logger.log(
+      `[updateAccount] Role in updateData: ${updateData.role}, type: ${typeof updateData.role}`,
+    );
 
     // Kiểm tra email đã tồn tại chưa (nếu có thay đổi)
     if (updateData.email && updateData.email !== existingAccount.email) {
@@ -1225,16 +1229,38 @@ export class AuthService {
     }
 
     // Kiểm tra role có tồn tại không (nếu có thay đổi)
-    if (updateData.role) {
-      this.logger.log(`[updateAccount] Validating role: ${updateData.role}`);
-      const role = await this.roleModel.findById(updateData.role);
-      if (!role) {
-        this.logger.warn(`[updateAccount] Role not found: ${updateData.role}`);
-        throw new NotFoundException('Role không tồn tại');
-      }
-      updateData.role = new Types.ObjectId(updateData.role);
+    if (updateData.role !== undefined && updateData.role !== null) {
       this.logger.log(
-        `[updateAccount] Role validated and converted: ${updateData.role}`,
+        `[updateAccount] Validating role: ${updateData.role}, type: ${typeof updateData.role}`,
+      );
+
+      // Convert to string if needed
+      const roleIdString = String(updateData.role).trim();
+
+      // Validate ObjectId format first
+      if (!Types.ObjectId.isValid(roleIdString)) {
+        this.logger.warn(
+          `[updateAccount] Invalid role ID format: ${roleIdString}`,
+        );
+        throw new BadRequestException('ID role không hợp lệ');
+      }
+
+      const role = await this.roleModel.findById(roleIdString);
+      if (!role) {
+        this.logger.warn(`[updateAccount] Role not found: ${roleIdString}`);
+        throw new NotFoundException(
+          `Role với ID ${roleIdString} không tồn tại trong hệ thống`,
+        );
+      }
+
+      // Convert to ObjectId
+      updateData.role = new Types.ObjectId(roleIdString);
+      this.logger.log(
+        `[updateAccount] Role validated and converted: ${String(updateData.role)}, roleName: ${role.roleName}`,
+      );
+    } else {
+      this.logger.log(
+        `[updateAccount] No role provided in updateData. Role will not be updated.`,
       );
     }
 
