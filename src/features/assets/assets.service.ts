@@ -724,19 +724,348 @@ export class AssetsService {
       averageAssetAge: number; // Tuổi trung bình của tài sản (tính bằng tháng)
     };
   }> {
-    // Tổng số tài sản
-    const totalAssets = await this.assetModel.countDocuments();
+    // Prepare date ranges
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-    // Thống kê theo status
-    const assetsByStatus = await this.assetModel.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
+    // Execute all queries in parallel for better performance
+    const [
+      totalAssets,
+      assetsByStatus,
+      assetsByCategory,
+      assetsByType,
+      assetsInZones,
+      assetsInAreas,
+      assetsByCampus,
+      assetsThisMonth,
+      assetsLastMonth,
+      warrantyExpiringSoon,
+      warrantyExpired,
+      maintenanceOverdue,
+      averageAgeResult,
+    ] = await Promise.all([
+      // Total assets
+      this.assetModel.countDocuments(),
+
+      // Statistics by status - optimized to avoid $push
+      this.assetModel
+        .aggregate([
+          {
+            $group: {
+              _id: '$status',
+              count: { $sum: 1 },
+            },
+          },
+        ])
+        .allowDiskUse(true),
+
+      // Statistics by category - optimized to count directly instead of $push
+      this.assetModel
+        .aggregate([
+          {
+            $lookup: {
+              from: 'assetcategories',
+              localField: 'assetCategory',
+              foreignField: '_id',
+              as: 'category',
+            },
+          },
+          {
+            $unwind: {
+              path: '$category',
+              preserveNullAndEmptyArrays: false,
+            },
+          },
+          {
+            $group: {
+              _id: {
+                id: '$category._id',
+                name: '$category.name',
+              },
+              count: { $sum: 1 },
+              inUse: {
+                $sum: { $cond: [{ $eq: ['$status', 'IN_USE'] }, 1, 0] },
+              },
+              underMaintenance: {
+                $sum: {
+                  $cond: [{ $eq: ['$status', 'UNDER_MAINTENANCE'] }, 1, 0],
+                },
+              },
+              damaged: {
+                $sum: { $cond: [{ $eq: ['$status', 'DAMAGED'] }, 1, 0] },
+              },
+            },
+          },
+          {
+            $project: {
+              _id: '$_id.id',
+              name: '$_id.name',
+              count: 1,
+              inUse: 1,
+              underMaintenance: 1,
+              damaged: 1,
+            },
+          },
+          {
+            $sort: { count: -1 },
+          },
+        ])
+        .allowDiskUse(true),
+
+      // Statistics by type - optimized to count directly instead of $push
+      this.assetModel
+        .aggregate([
+          {
+            $lookup: {
+              from: 'assettypes',
+              localField: 'assetType',
+              foreignField: '_id',
+              as: 'type',
+            },
+          },
+          {
+            $unwind: {
+              path: '$type',
+              preserveNullAndEmptyArrays: false,
+            },
+          },
+          {
+            $group: {
+              _id: {
+                id: '$type._id',
+                name: '$type.name',
+              },
+              count: { $sum: 1 },
+              inUse: {
+                $sum: { $cond: [{ $eq: ['$status', 'IN_USE'] }, 1, 0] },
+              },
+              underMaintenance: {
+                $sum: {
+                  $cond: [{ $eq: ['$status', 'UNDER_MAINTENANCE'] }, 1, 0],
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              _id: '$_id.id',
+              name: '$_id.name',
+              count: 1,
+              inUse: 1,
+              underMaintenance: 1,
+            },
+          },
+          {
+            $sort: { count: -1 },
+          },
+          {
+            $limit: 10, // Top 10 asset types
+          },
+        ])
+        .allowDiskUse(true),
+
+      // Assets in zones
+      this.assetModel.countDocuments({
+        zone: { $exists: true, $ne: null },
+      }),
+
+      // Assets in areas
+      this.assetModel.countDocuments({
+        area: { $exists: true, $ne: null },
+      }),
+
+      // Statistics by campus - optimized with separate lookups and direct counting
+      this.assetModel
+        .aggregate([
+          {
+            $facet: {
+              // Assets with zone
+              zoneAssets: [
+                {
+                  $match: {
+                    zone: { $exists: true, $ne: null },
+                  },
+                },
+                {
+                  $lookup: {
+                    from: 'zones',
+                    localField: 'zone',
+                    foreignField: '_id',
+                    as: 'zoneData',
+                  },
+                },
+                {
+                  $unwind: '$zoneData',
+                },
+                {
+                  $lookup: {
+                    from: 'buildings',
+                    localField: 'zoneData.building',
+                    foreignField: '_id',
+                    as: 'buildingData',
+                  },
+                },
+                {
+                  $unwind: '$buildingData',
+                },
+                {
+                  $lookup: {
+                    from: 'campus',
+                    localField: 'buildingData.campus',
+                    foreignField: '_id',
+                    as: 'campusData',
+                  },
+                },
+                {
+                  $unwind: '$campusData',
+                },
+                {
+                  $group: {
+                    _id: '$campusData.name',
+                    count: { $sum: 1 },
+                    inUse: {
+                      $sum: { $cond: [{ $eq: ['$status', 'IN_USE'] }, 1, 0] },
+                    },
+                  },
+                },
+              ],
+              // Assets with area
+              areaAssets: [
+                {
+                  $match: {
+                    area: { $exists: true, $ne: null },
+                  },
+                },
+                {
+                  $lookup: {
+                    from: 'areas',
+                    localField: 'area',
+                    foreignField: '_id',
+                    as: 'areaData',
+                  },
+                },
+                {
+                  $unwind: '$areaData',
+                },
+                {
+                  $lookup: {
+                    from: 'campus',
+                    localField: 'areaData.campus',
+                    foreignField: '_id',
+                    as: 'campusData',
+                  },
+                },
+                {
+                  $unwind: '$campusData',
+                },
+                {
+                  $group: {
+                    _id: '$campusData.name',
+                    count: { $sum: 1 },
+                    inUse: {
+                      $sum: { $cond: [{ $eq: ['$status', 'IN_USE'] }, 1, 0] },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $project: {
+              allAssets: { $concatArrays: ['$zoneAssets', '$areaAssets'] },
+            },
+          },
+          {
+            $unwind: '$allAssets',
+          },
+          {
+            $group: {
+              _id: '$allAssets._id',
+              count: { $sum: '$allAssets.count' },
+              inUse: { $sum: '$allAssets.inUse' },
+            },
+          },
+          {
+            $project: {
+              name: '$_id',
+              count: 1,
+              inUse: 1,
+            },
+          },
+          {
+            $sort: { count: -1 },
+          },
+        ])
+        .allowDiskUse(true),
+
+      // Assets this month
+      this.assetModel.countDocuments({
+        createdAt: { $gte: thisMonthStart },
+      }),
+
+      // Assets last month
+      this.assetModel.countDocuments({
+        createdAt: {
+          $gte: lastMonthStart,
+          $lte: lastMonthEnd,
         },
-      },
+      }),
+
+      // Warranty expiring soon
+      this.assetModel.countDocuments({
+        warrantyEndDate: {
+          $gte: new Date(),
+          $lte: thirtyDaysFromNow,
+        },
+      }),
+
+      // Warranty expired
+      this.assetModel.countDocuments({
+        warrantyEndDate: {
+          $lt: new Date(),
+        },
+        status: { $nin: ['DISPOSED', 'LOST'] },
+      }),
+
+      // Maintenance overdue
+      this.assetModel.countDocuments({
+        $or: [
+          { lastMaintenanceDate: { $lt: sixMonthsAgo } },
+          { lastMaintenanceDate: { $exists: false } },
+        ],
+        status: { $nin: ['DISPOSED', 'LOST', 'NEW'] },
+      }),
+
+      // Average asset age
+      this.assetModel
+        .aggregate([
+          {
+            $project: {
+              ageInMonths: {
+                $divide: [
+                  { $subtract: [new Date(), '$createdAt'] },
+                  1000 * 60 * 60 * 24 * 30, // Convert milliseconds to months
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              averageAge: { $avg: '$ageInMonths' },
+            },
+          },
+        ])
+        .allowDiskUse(true),
     ]);
 
+    // Process status statistics
     const statusStats = {
       NEW: 0,
       IN_USE: 0,
@@ -755,292 +1084,13 @@ export class AssetsService {
       }
     });
 
-    // Thống kê theo category với thêm thông tin
-    const assetsByCategory = await this.assetModel.aggregate([
-      {
-        $lookup: {
-          from: 'assetcategories',
-          localField: 'assetCategory',
-          foreignField: '_id',
-          as: 'category',
-        },
-      },
-      {
-        $unwind: '$category',
-      },
-      {
-        $group: {
-          _id: {
-            id: '$category._id',
-            name: '$category.name',
-          },
-          count: { $sum: 1 },
-          statuses: {
-            $push: '$status',
-          },
-        },
-      },
-      {
-        $project: {
-          _id: '$_id.id',
-          name: '$_id.name',
-          count: 1,
-          inUse: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'IN_USE'] },
-              },
-            },
-          },
-          underMaintenance: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
-              },
-            },
-          },
-          damaged: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'DAMAGED'] },
-              },
-            },
-          },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-    ]);
-
-    // Thống kê theo type với thêm thông tin
-    const assetsByType = await this.assetModel.aggregate([
-      {
-        $lookup: {
-          from: 'assettypes',
-          localField: 'assetType',
-          foreignField: '_id',
-          as: 'type',
-        },
-      },
-      {
-        $unwind: '$type',
-      },
-      {
-        $group: {
-          _id: {
-            id: '$type._id',
-            name: '$type.name',
-          },
-          count: { $sum: 1 },
-          statuses: {
-            $push: '$status',
-          },
-        },
-      },
-      {
-        $project: {
-          _id: '$_id.id',
-          name: '$_id.name',
-          count: 1,
-          inUse: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'IN_USE'] },
-              },
-            },
-          },
-          underMaintenance: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'UNDER_MAINTENANCE'] },
-              },
-            },
-          },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-      {
-        $limit: 10, // Top 10 asset types
-      },
-    ]);
-
-    // Thống kê theo location
-    const assetsInZones = await this.assetModel.countDocuments({
-      zone: { $exists: true, $ne: null },
-    });
-
-    const assetsInAreas = await this.assetModel.countDocuments({
-      area: { $exists: true, $ne: null },
-    });
-
-    // Thống kê theo campus
-    const assetsByCampus = await this.assetModel.aggregate([
-      {
-        $lookup: {
-          from: 'zones',
-          localField: 'zone',
-          foreignField: '_id',
-          as: 'zoneData',
-        },
-      },
-      {
-        $lookup: {
-          from: 'buildings',
-          localField: 'zoneData.building',
-          foreignField: '_id',
-          as: 'buildingData',
-        },
-      },
-      {
-        $lookup: {
-          from: 'campus',
-          localField: 'buildingData.campus',
-          foreignField: '_id',
-          as: 'campusData',
-        },
-      },
-      {
-        $lookup: {
-          from: 'areas',
-          localField: 'area',
-          foreignField: '_id',
-          as: 'areaData',
-        },
-      },
-      {
-        $lookup: {
-          from: 'campus',
-          localField: 'areaData.campus',
-          foreignField: '_id',
-          as: 'areaCampusData',
-        },
-      },
-      {
-        $project: {
-          campus: {
-            $cond: {
-              if: { $gt: [{ $size: '$campusData' }, 0] },
-              then: { $arrayElemAt: ['$campusData.name', 0] },
-              else: { $arrayElemAt: ['$areaCampusData.name', 0] },
-            },
-          },
-          status: 1,
-        },
-      },
-      {
-        $group: {
-          _id: '$campus',
-          count: { $sum: 1 },
-          statuses: { $push: '$status' },
-        },
-      },
-      {
-        $project: {
-          name: '$_id',
-          count: 1,
-          inUse: {
-            $size: {
-              $filter: {
-                input: '$statuses',
-                as: 'status',
-                cond: { $eq: ['$$status', 'IN_USE'] },
-              },
-            },
-          },
-        },
-      },
-      {
-        $sort: { count: -1 },
-      },
-    ]);
-
-    // Thống kê tháng này và tháng trước
-    const now = new Date();
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-
-    const assetsThisMonth = await this.assetModel.countDocuments({
-      createdAt: { $gte: thisMonthStart },
-    });
-
-    const assetsLastMonth = await this.assetModel.countDocuments({
-      createdAt: {
-        $gte: lastMonthStart,
-        $lte: lastMonthEnd,
-      },
-    });
-
-    // Tính tỷ lệ tăng trưởng
+    // Calculate growth rate
     const growthRate =
       assetsLastMonth > 0
         ? ((assetsThisMonth - assetsLastMonth) / assetsLastMonth) * 100
         : 0;
 
-    // Tài sản hết bảo hành sớm (trong 30 ngày tới)
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
-    const warrantyExpiringSoon = await this.assetModel.countDocuments({
-      warrantyEndDate: {
-        $gte: new Date(),
-        $lte: thirtyDaysFromNow,
-      },
-    });
-
-    // Tài sản đã hết bảo hành
-    const warrantyExpired = await this.assetModel.countDocuments({
-      warrantyEndDate: {
-        $lt: new Date(),
-      },
-      status: { $nin: ['DISPOSED', 'LOST'] },
-    });
-
-    // Tài sản cần bảo trì (không được bảo trì trong 6 tháng qua)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    const maintenanceOverdue = await this.assetModel.countDocuments({
-      $or: [
-        { lastMaintenanceDate: { $lt: sixMonthsAgo } },
-        { lastMaintenanceDate: { $exists: false } },
-      ],
-      status: { $nin: ['DISPOSED', 'LOST', 'NEW'] },
-    });
-
-    // Tính tuổi trung bình của tài sản (tính bằng tháng)
-    const averageAgeResult = await this.assetModel.aggregate([
-      {
-        $project: {
-          ageInMonths: {
-            $divide: [
-              { $subtract: [new Date(), '$createdAt'] },
-              1000 * 60 * 60 * 24 * 30, // Convert milliseconds to months
-            ],
-          },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          averageAge: { $avg: '$ageInMonths' },
-        },
-      },
-    ]);
-
+    // Calculate average asset age
     const averageAssetAge =
       averageAgeResult.length > 0
         ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
