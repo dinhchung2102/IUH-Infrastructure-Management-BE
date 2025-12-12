@@ -9,12 +9,13 @@ import {
   MinLength,
 } from 'class-validator';
 import { RoleName } from '../enum/role.enum';
+import { Gender } from '../enum/gender.enum';
 
 export class UpdateAccountDto {
   @IsOptional()
   @IsString()
   @MinLength(2)
-  @MaxLength(50)
+  @MaxLength(100)
   fullName?: string;
 
   @IsOptional()
@@ -27,9 +28,21 @@ export class UpdateAccountDto {
 
   @IsOptional()
   @IsString()
-  phone?: string;
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
 
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsEnum(Gender, { message: 'Giới tính không hợp lệ' })
+  gender?: Gender;
+
+  @IsOptional()
+  @IsString()
+  dateOfBirth?: string;
 }

@@ -1168,6 +1168,21 @@ export class AuthService {
       }
     }
 
+    // Kiểm tra phoneNumber đã tồn tại chưa (nếu có thay đổi)
+    if (
+      updateAccountDto.phoneNumber &&
+      updateAccountDto.phoneNumber !== existingAccount.phoneNumber
+    ) {
+      const duplicatePhone = await this.accountModel.findOne({
+        phoneNumber: updateAccountDto.phoneNumber,
+        _id: { $ne: id },
+      });
+
+      if (duplicatePhone) {
+        throw new ConflictException('Số điện thoại đã được sử dụng');
+      }
+    }
+
     // Kiểm tra role có tồn tại không (nếu có thay đổi)
     if (updateAccountDto.role) {
       const role = await this.roleModel.findById(updateAccountDto.role);
@@ -1176,14 +1191,33 @@ export class AuthService {
       }
     }
 
-    const updateData: Record<string, any> = { ...updateAccountDto };
-    if (updateAccountDto.role) {
+    // Prepare update data - chỉ lấy các field được cung cấp
+    const updateData: Record<string, any> = {};
+    if (updateAccountDto.fullName !== undefined)
+      updateData.fullName = updateAccountDto.fullName;
+    if (updateAccountDto.email !== undefined)
+      updateData.email = updateAccountDto.email;
+    if (updateAccountDto.phoneNumber !== undefined)
+      updateData.phoneNumber = updateAccountDto.phoneNumber;
+    if (updateAccountDto.address !== undefined)
+      updateData.address = updateAccountDto.address;
+    if (updateAccountDto.avatar !== undefined)
+      updateData.avatar = updateAccountDto.avatar;
+    if (updateAccountDto.gender !== undefined)
+      updateData.gender = updateAccountDto.gender;
+    if (updateAccountDto.dateOfBirth !== undefined)
+      updateData.dateOfBirth = new Date(updateAccountDto.dateOfBirth);
+    if (updateAccountDto.role !== undefined) {
       updateData.role = new Types.ObjectId(updateAccountDto.role);
     }
 
     const updatedAccount = await this.accountModel
       .findByIdAndUpdate(id, updateData, { new: true })
       .populate('role', 'roleName')
+      .populate('areasManaged', '_id name')
+      .populate('zonesManaged', '_id name')
+      .populate('buildingsManaged', '_id name')
+      .populate('campusManaged', '_id name')
       .select('-password -refreshToken');
 
     return {
