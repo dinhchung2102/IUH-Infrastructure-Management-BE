@@ -1,39 +1,4 @@
 services:
-  # Qdrant Vector Database
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: iuh-qdrant
-    ports:
-      - '6333:6333' # REST API
-      - '6334:6334' # gRPC
-    volumes:
-      # Mount với named volume hoặc bind mount với permissions đúng
-      - qdrant_storage:/home/qdrant_data
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    restart: unless-stopped
-    networks:
-      - iuh-network-prod
-
-  # Redis Cache & OTP Storage
-  redis:
-    image: redis:7-alpine
-    container_name: iuh-redis
-    ports:
-      - '6380:6379' # External port 6380 để tránh conflict với Redis trên host
-    volumes:
-      # Mount với named volume để persist data
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    networks:
-      - iuh-network-prod
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # NestJS Application
   app:
     # Build từ Dockerfile local thay vì pull từ registry
@@ -43,47 +8,42 @@ services:
     # Optional: Tag image sau khi build (uncomment nếu muốn)
     # image: iuh-csvc:latest
     container_name: iuh-csvc-api
-    ports:
-      - '4890:3000' # External port 4890, internal port 3000
+    # Dùng host network để dễ kết nối với services trên host (MongoDB, Redis, Qdrant)
+    network_mode: host
     volumes:
       # Bind mount từ host để persist data (uploads và logs)
       # Thư mục /var/www/uploads/iuh và /var/log/iuh đã được tạo trong Dockerfile với chown node:node
       # Entrypoint script sẽ đảm bảo permissions đúng khi container start
       - ./uploads:/var/www/uploads/iuh:rw
       - ./logs:/var/log/iuh:rw
+      # Mount timezone để đồng bộ thời gian với host
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     environment:
       - NODE_ENV=production
-      # Qdrant - dùng service name trong Docker network
-      - QDRANT_URL=http://qdrant:6333
-      # Redis - dùng service name trong Docker network
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      # MongoDB - nếu chạy trên host Linux, dùng IP thực tế của host trong .env
-      # Lấy IP: ip addr show docker0 | grep "inet " | awk '{print $2}' | cut -d/ -f1
-      # Note: MONGO_URI sẽ được đọc từ .env, nên dùng IP thực tế (172.17.0.1) thay vì host.docker.internal
+      - PORT=4890
+      - TZ=Asia/Ho_Chi_Minh
+      # Qdrant - dùng localhost vì network_mode: host
+      - QDRANT_URL=${QDRANT_URL:-http://localhost:6333}
+      # Redis - dùng localhost vì network_mode: host
+      - REDIS_HOST=${REDIS_HOST:-localhost}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      # MongoDB - dùng localhost vì network_mode: host
+      # Note: MONGO_URI sẽ được đọc từ .env, nên dùng mongodb://localhost:27017/...
     env_file:
       - .env
-    # Map host.docker.internal để kết nối MongoDB trên host machine (Linux)
-    # Chỉ cần nếu MongoDB chạy trên host, không cần nếu MongoDB cũng trong Docker
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
     healthcheck:
       test:
         [
           'CMD',
           'node',
           '-e',
-          "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+          "require('http').get('http://localhost:4890/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
         ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    depends_on:
-      qdrant:
-        condition: service_started
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     # Option 1: Chạy với user hiện tại (đảm bảo permissions trên host đã đúng)
     # Uncomment dòng dưới nếu muốn chạy với user cụ thể
@@ -91,16 +51,4 @@ services:
     # Option 2: Để entrypoint script tự fix permissions (mặc định)
     # Entrypoint script sẽ chạy với root để fix permissions, sau đó switch sang node user
     init: true
-    networks:
-      - iuh-network-prod
-
-volumes:
-  # Named volumes để persist data cho Redis và Qdrant
-  qdrant_storage:
-    driver: local
-  redis_data:
-    driver: local
-
-networks:
-  iuh-network-prod:
-    driver: bridge
+# Redis và Qdrant chạy trên host, không cần trong Docker Compose

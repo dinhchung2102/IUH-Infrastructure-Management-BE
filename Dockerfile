@@ -52,8 +52,8 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Keep root user for entrypoint, will switch to node in script
 # USER node
 
-# Expose port
-EXPOSE 4890
+# Expose port (internal port, not external mapping)
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

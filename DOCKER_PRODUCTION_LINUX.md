@@ -14,20 +14,17 @@ Trên Linux, Docker có một số khác biệt so với Windows/Mac:
 
 **Trong `docker-compose.prod.yml`:**
 
-- **Redis**: Chạy trong Docker Compose, dùng service name `redis`
-- **Qdrant**: Chạy trong Docker Compose, dùng service name `qdrant`
-- **MongoDB**: Có thể chạy trên host hoặc trong Docker (tùy cấu hình)
+- **App**: Dùng `network_mode: host` để kết nối trực tiếp với services trên host
+- **Redis**: Chạy trong Docker, expose port `6379:6379` để app có thể kết nối qua `localhost:6379`
+- **Qdrant**: Chạy trong Docker, expose port `6333:6333` để app có thể kết nối qua `localhost:6333`
+- **MongoDB**: Chạy trên host, app kết nối qua `localhost:27017`
 
-#### Kết nối MongoDB trên Host
+**Lợi ích của `network_mode: host`:**
 
-Nếu MongoDB chạy trên host machine, file `docker-compose.prod.yml` đã được cấu hình với:
-
-```yaml
-extra_hosts:
-  - 'host.docker.internal:host-gateway'
-```
-
-Điều này tự động map `host.docker.internal` đến gateway của Docker bridge.
+- Không cần port mapping cho app (chạy trực tiếp trên port 4890 của host)
+- Dễ kết nối với services trên host (MongoDB, Redis, Qdrant)
+- Không cần `extra_hosts` hoặc IP mapping
+- Đơn giản hơn cho production trên Linux
 
 #### Cách 2: Dùng IP thực tế của host
 
@@ -169,18 +166,19 @@ nano .env
 Thêm các biến:
 
 ```env
-# MongoDB - nếu chạy trên host Linux, dùng IP thực tế của host
-# Lấy IP Docker bridge gateway: ip addr show docker0 | grep "inet " | awk '{print $2}' | cut -d/ -f1
-# Hoặc lấy IP host: hostname -I | awk '{print $1}'
-MONGO_URI=mongodb://172.17.0.1:27017/iuh-infrastructure
-# Hoặc nếu host.docker.internal hoạt động: mongodb://host.docker.internal:27017/iuh-infrastructure
-# Hoặc nếu MongoDB cũng trong Docker: mongodb://mongo:27017/iuh-infrastructure
+# MongoDB - dùng localhost vì network_mode: host
+MONGO_URI=mongodb://localhost:27017/iuh-infrastructure
 
-# Redis - chạy trong Docker Compose, KHÔNG cần set trong .env
-# REDIS_HOST và REDIS_PORT đã được set trong docker-compose.prod.yml (redis:6379)
+# Redis - dùng localhost vì network_mode: host
+# REDIS_HOST và REDIS_PORT đã được set trong docker-compose.prod.yml (localhost:6379)
+# Có thể override nếu cần:
+# REDIS_HOST=localhost
+# REDIS_PORT=6379
 
-# Qdrant - chạy trong Docker Compose, KHÔNG cần set trong .env
-# QDRANT_URL đã được set trong docker-compose.prod.yml (http://qdrant:6333)
+# Qdrant - dùng localhost vì network_mode: host
+# QDRANT_URL đã được set trong docker-compose.prod.yml (http://localhost:6333)
+# Có thể override nếu cần:
+# QDRANT_URL=http://localhost:6333
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key
@@ -268,28 +266,28 @@ docker-compose -f docker-compose.prod.yml logs app
 **Kiểm tra:**
 
 ```bash
-# Test từ container
+# Test từ container (với network_mode: host, app dùng network của host)
 docker-compose -f docker-compose.prod.yml exec app sh
 # Trong container:
-# Test Redis (trong Docker network)
-ping redis
-redis-cli -h redis ping
+# Test Redis (trên localhost)
+redis-cli -h localhost ping
 
-# Test Qdrant (trong Docker network)
-ping qdrant
-curl http://qdrant:6333/health
+# Test Qdrant (trên localhost)
+curl http://localhost:6333/health
 
-# Test MongoDB (nếu trên host)
-ping host.docker.internal
+# Test MongoDB (trên localhost)
+mongo mongodb://localhost:27017/iuh-infrastructure --eval "db.stats()"
 ```
 
 **Giải pháp:**
 
-- **Redis/Qdrant**: Đảm bảo services đang chạy: `docker-compose -f docker-compose.prod.yml ps`
+- **Redis/Qdrant**:
+  - Đảm bảo services đang chạy: `docker-compose -f docker-compose.prod.yml ps`
+  - Đảm bảo ports được expose: Redis `6379:6379`, Qdrant `6333:6333`
 - **MongoDB trên host**:
-  - Kiểm tra IP của host: `ip addr show docker0`
-  - Thay `host.docker.internal` bằng IP thực tế trong `.env` nếu cần
-  - Đảm bảo MongoDB bind đúng IP (0.0.0.0 hoặc IP Docker bridge)
+  - Đảm bảo MongoDB đang chạy: `sudo systemctl status mongod`
+  - Đảm bảo MongoDB bind đúng IP (0.0.0.0 hoặc 127.0.0.1)
+  - Test kết nối: `mongo mongodb://localhost:27017/iuh-infrastructure`
 
 ### 2. Permission denied cho uploads/logs
 
