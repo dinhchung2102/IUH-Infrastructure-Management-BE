@@ -102,7 +102,17 @@ sudo chown -R www-data:www-data uploads logs
 
 ### 3. Cấu hình MongoDB trên Host (nếu MongoDB chạy trên host)
 
-Đảm bảo MongoDB cho phép kết nối từ Docker:
+**Bước 1: Lấy IP của host để kết nối từ Docker**
+
+```bash
+# Lấy IP Docker bridge gateway (thường là 172.17.0.1)
+ip addr show docker0 | grep "inet " | awk '{print $2}' | cut -d/ -f1
+
+# Hoặc lấy IP của host trong network
+hostname -I | awk '{print $1}'
+```
+
+**Bước 2: Cấu hình MongoDB cho phép kết nối từ Docker**
 
 ```bash
 # Sửa /etc/mongod.conf
@@ -123,7 +133,17 @@ Restart MongoDB:
 sudo systemctl restart mongod
 ```
 
-**Lưu ý:** Redis và Qdrant đã chạy trong Docker Compose, không cần cấu hình trên host.
+**Bước 3: Cập nhật .env với IP thực tế**
+
+```env
+# Thay 172.17.0.1 bằng IP thực tế từ bước 1
+MONGO_URI=mongodb://172.17.0.1:27017/iuh-infrastructure
+```
+
+**Lưu ý:**
+
+- Redis và Qdrant đã chạy trong Docker Compose, không cần cấu hình trên host
+- Bind mounts cho uploads và logs được mount từ host để persist data
 
 ## Các bước Deploy
 
@@ -149,10 +169,12 @@ nano .env
 Thêm các biến:
 
 ```env
-# MongoDB - nếu chạy trên host, dùng host.docker.internal hoặc IP thực tế
-MONGO_URI=mongodb://host.docker.internal:27017/iuh-infrastructure
+# MongoDB - nếu chạy trên host Linux, dùng IP thực tế của host
+# Lấy IP Docker bridge gateway: ip addr show docker0 | grep "inet " | awk '{print $2}' | cut -d/ -f1
+# Hoặc lấy IP host: hostname -I | awk '{print $1}'
+MONGO_URI=mongodb://172.17.0.1:27017/iuh-infrastructure
+# Hoặc nếu host.docker.internal hoạt động: mongodb://host.docker.internal:27017/iuh-infrastructure
 # Hoặc nếu MongoDB cũng trong Docker: mongodb://mongo:27017/iuh-infrastructure
-# Hoặc: MONGO_URI=mongodb://172.17.0.1:27017/iuh-infrastructure
 
 # Redis - chạy trong Docker Compose, KHÔNG cần set trong .env
 # REDIS_HOST và REDIS_PORT đã được set trong docker-compose.prod.yml (redis:6379)

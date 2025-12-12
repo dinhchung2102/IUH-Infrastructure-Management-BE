@@ -46,7 +46,9 @@ services:
     ports:
       - '4890:3000' # External port 4890, internal port 3000
     volumes:
-      # Mount với quyền đúng cho Linux - bind mount từ host
+      # Bind mount từ host để persist data (uploads và logs)
+      # Thư mục /var/www/uploads/iuh và /var/log/iuh đã được tạo trong Dockerfile với chown node:node
+      # Entrypoint script sẽ đảm bảo permissions đúng khi container start
       - ./uploads:/var/www/uploads/iuh:rw
       - ./logs:/var/log/iuh:rw
     environment:
@@ -56,8 +58,9 @@ services:
       # Redis - dùng service name trong Docker network
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # MongoDB - nếu chạy trên host, dùng host IP
-      # Note: MONGO_URI sẽ được đọc từ .env, cần dùng host.docker.internal hoặc IP thực tế
+      # MongoDB - nếu chạy trên host Linux, dùng IP thực tế của host trong .env
+      # Lấy IP: ip addr show docker0 | grep "inet " | awk '{print $2}' | cut -d/ -f1
+      # Note: MONGO_URI sẽ được đọc từ .env, nên dùng IP thực tế (172.17.0.1) thay vì host.docker.internal
     env_file:
       - .env
     # Map host.docker.internal để kết nối MongoDB trên host machine (Linux)

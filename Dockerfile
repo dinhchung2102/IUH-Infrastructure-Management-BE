@@ -37,10 +37,13 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/shared/email/templates ./shared/email/templates
 
 # Create uploads and logs directories with proper permissions
-# Ensure directories exist and are writable by node user
-RUN mkdir -p uploads logs && \
-    chmod -R 755 uploads logs && \
-    chown -R node:node /app
+# Create both fallback paths (/app/uploads, /app/logs) and production paths
+RUN mkdir -p /app/uploads /app/logs && \
+    mkdir -p /var/www/uploads/iuh /var/log/iuh && \
+    chmod -R 755 /app/uploads /app/logs && \
+    chmod -R 755 /var/www/uploads/iuh /var/log/iuh && \
+    chown -R node:node /app && \
+    chown -R node:node /var/www/uploads/iuh /var/log/iuh
 
 # Copy entrypoint script (will run as root to fix permissions)
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -50,7 +53,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # USER node
 
 # Expose port
-EXPOSE 3000
+EXPOSE 4890
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
