@@ -1920,7 +1920,45 @@ export class ReportService {
       // 7. Commit transaction
       await session.commitTransaction();
 
-      // 8. Send WebSocket notifications to assigned staffs
+      // 8. Send email notification to reporter
+      if (updatedReport && updatedReport.createdBy) {
+        const reporter = updatedReport.createdBy as any;
+        const reporterEmail = reporter.email;
+        const reporterName = reporter.fullName || reporterEmail;
+
+        if (reporterEmail) {
+          try {
+            await this.mailerService.sendMail({
+              to: reporterEmail,
+              subject:
+                'Báo cáo đã được phê duyệt - IUH Infrastructure Management',
+              template: 'report-approved',
+              context: {
+                reporterName,
+                reportId: updatedReport._id.toString(),
+                reportType:
+                  REPORT_TYPE_LABELS.find(
+                    (label) => label.value === updatedReport.type,
+                  )?.label || updatedReport.type,
+                description: updatedReport.description,
+                assetName: (updatedReport.asset as any)?.name,
+                assetCode: (updatedReport.asset as any)?.code,
+                approvedAt: new Date().toLocaleString('vi-VN'),
+              },
+            });
+            this.logger.log(
+              `Approved email sent to ${reporterEmail} for report ${reportId}`,
+            );
+          } catch (error: any) {
+            this.logger.error(
+              `Failed to send approved email to ${reporterEmail}: ${error.message}`,
+            );
+            // Don't throw error, just log it
+          }
+        }
+      }
+
+      // 9. Send WebSocket notifications to assigned staffs
       for (const staffId of staffIds) {
         this.eventsService.sendNotificationToUser(staffId, {
           title: 'Nhiệm vụ kiểm tra mới',
@@ -1935,7 +1973,7 @@ export class ReportService {
         });
       }
 
-      // 9. Emit update event to all clients
+      // 10. Emit update event to all clients
       this.eventsService.emitUpdate({
         entity: 'auditlog',
         action: 'created',
