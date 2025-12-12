@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: iuh-qdrant
+    ports:
+      - '6333:6333' # REST API
+      - '6334:6334' # gRPC
+    volumes:
+      # Mount với named volume hoặc bind mount với permissions đúng
+      - qdrant_storage:/home/qdrant_data
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - iuh-network-prod
+
+  # Redis Cache & OTP Storage
+  redis:
+    image: redis:7-alpine
+    container_name: iuh-redis
+    ports:
+      - '6380:6379' # External port 6380 để tránh conflict với Redis trên host
+    volumes:
+      # Mount với named volume để persist data
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - iuh-network-prod
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # NestJS Application
+  app:
+    image: ghcr.io/dinhchung2102/iuh-infrastructure-management-be/iuh-csvc:latest
+    container_name: iuh-csvc-api
+    ports:
+      - '3000:3000'
+    volumes:
+      # Mount với quyền đúng cho Linux - bind mount từ host
+      - ./uploads:/var/www/uploads/iuh:rw
+      - ./logs:/var/log/iuh:rw
+    environment:
+      - NODE_ENV=production
+      # Qdrant - dùng service name trong Docker network
+      - QDRANT_URL=http://qdrant:6333
+      # Redis - dùng service name trong Docker network
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # MongoDB - nếu chạy trên host, dùng host IP
+      # Note: MONGO_URI sẽ được đọc từ .env, cần dùng host.docker.internal hoặc IP thực tế
+    env_file:
+      - .env
+    # Map host.docker.internal để kết nối MongoDB trên host machine (Linux)
+    # Chỉ cần nếu MongoDB chạy trên host, không cần nếu MongoDB cũng trong Docker
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    # Option 1: Chạy với user hiện tại (đảm bảo permissions trên host đã đúng)
+    # Uncomment dòng dưới nếu muốn chạy với user cụ thể
+    # user: "${UID:-1000}:${GID:-1000}"
+    # Option 2: Để entrypoint script tự fix permissions (mặc định)
+    # Entrypoint script sẽ chạy với root để fix permissions, sau đó switch sang node user
+    init: true
+    networks:
+      - iuh-network-prod
+
+volumes:
+  # Named volumes để persist data cho Redis và Qdrant
+  qdrant_storage:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  iuh-network-prod:
+    driver: bridge
