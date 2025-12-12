@@ -2128,4 +2128,201 @@ export class ReportService {
       await session.endSession();
     }
   }
+
+  /**
+   * Get suggested staffs for a report based on zone and building
+   */
+  async getSuggestedStaffs(reportId: string): Promise<{
+    message: string;
+    data: Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      phoneNumber?: string;
+      role?: string;
+      assignedTo: 'zone' | 'building' | 'zoneManaged' | 'buildingManaged';
+    }>;
+  }> {
+    if (!Types.ObjectId.isValid(reportId)) {
+      throw new NotFoundException('ID báo cáo không hợp lệ');
+    }
+
+    // Get report with asset and zone populated
+    const report = await this.reportModel
+      .findById(reportId)
+      .populate({
+        path: 'asset',
+        select: 'zone area',
+        populate: [
+          {
+            path: 'zone',
+            select: '_id name building accounts',
+            populate: {
+              path: 'building',
+              select: '_id name accounts',
+            },
+          },
+        ],
+      })
+      .lean();
+
+    if (!report) {
+      throw new NotFoundException('Báo cáo không tồn tại');
+    }
+
+    const asset = report.asset as any;
+    if (!asset || !asset.zone) {
+      return {
+        message: 'Asset không có zone, không thể gợi ý nhân viên',
+        data: [],
+      };
+    }
+
+    const zone = asset.zone;
+    const building = zone.building;
+    const zoneId = zone._id;
+    const buildingId = building?._id;
+
+    // Collect all staff IDs from different sources
+    const staffIds = new Set<string>();
+
+    // 1. Staffs assigned directly to zone
+    if (zone.accounts && Array.isArray(zone.accounts)) {
+      zone.accounts.forEach((accountId: any) => {
+        staffIds.add(accountId.toString());
+      });
+    }
+
+    // 2. Staffs assigned directly to building
+    if (building?.accounts && Array.isArray(building.accounts)) {
+      building.accounts.forEach((accountId: any) => {
+        staffIds.add(accountId.toString());
+      });
+    }
+
+    // 3. Staffs who manage this zone (zonesManaged)
+    const zoneManagers = await this.accountModel
+      .find({
+        zonesManaged: zoneId,
+        isActive: true,
+      })
+      .select('_id')
+      .lean();
+
+    zoneManagers.forEach((account: any) => {
+      staffIds.add(account._id.toString());
+    });
+
+    // 4. Staffs who manage this building (buildingsManaged)
+    let buildingManagers: any[] = [];
+    if (buildingId) {
+      buildingManagers = await this.accountModel
+        .find({
+          buildingsManaged: buildingId,
+          isActive: true,
+        })
+        .select('_id')
+        .lean();
+
+      buildingManagers.forEach((account: any) => {
+        staffIds.add(account._id.toString());
+      });
+    }
+
+    if (staffIds.size === 0) {
+      return {
+        message:
+          'Không tìm thấy nhân viên nào được gán cho zone hoặc building này',
+        data: [],
+      };
+    }
+
+    // Get full staff information
+    const staffObjectIds = Array.from(staffIds).map(
+      (id) => new Types.ObjectId(id),
+    );
+    const staffs = await this.accountModel
+      .find({
+        _id: { $in: staffObjectIds },
+        isActive: true,
+      })
+      .populate('role', 'roleName')
+      .select('_id fullName email phoneNumber role')
+      .lean();
+
+    // Map staffs with their assignment source
+    const staffMap = new Map<string, Set<string>>();
+    const staffDataMap = new Map<string, any>();
+
+    // Build map of staff to assignment sources
+    if (zone.accounts && Array.isArray(zone.accounts)) {
+      zone.accounts.forEach((accountId: any) => {
+        const id = accountId.toString();
+        if (!staffMap.has(id)) {
+          staffMap.set(id, new Set());
+        }
+        staffMap.get(id)?.add('zone');
+      });
+    }
+
+    if (building?.accounts && Array.isArray(building.accounts)) {
+      building.accounts.forEach((accountId: any) => {
+        const id = accountId.toString();
+        if (!staffMap.has(id)) {
+          staffMap.set(id, new Set());
+        }
+        staffMap.get(id)?.add('building');
+      });
+    }
+
+    zoneManagers.forEach((account: any) => {
+      const id = account._id.toString();
+      if (!staffMap.has(id)) {
+        staffMap.set(id, new Set());
+      }
+      staffMap.get(id)?.add('zoneManaged');
+    });
+
+    if (buildingId) {
+      buildingManagers.forEach((account: any) => {
+        const id = account._id.toString();
+        if (!staffMap.has(id)) {
+          staffMap.set(id, new Set());
+        }
+        staffMap.get(id)?.add('buildingManaged');
+      });
+    }
+
+    // Format results
+    const formattedStaffs = staffs.map((staff: any) => {
+      const id = staff._id.toString();
+      const sources = staffMap.get(id) || new Set();
+      // Priority: zone > building > zoneManaged > buildingManaged
+      let assignedTo: 'zone' | 'building' | 'zoneManaged' | 'buildingManaged' =
+        'zone';
+      if (sources.has('zone')) {
+        assignedTo = 'zone';
+      } else if (sources.has('building')) {
+        assignedTo = 'building';
+      } else if (sources.has('zoneManaged')) {
+        assignedTo = 'zoneManaged';
+      } else if (sources.has('buildingManaged')) {
+        assignedTo = 'buildingManaged';
+      }
+
+      return {
+        id,
+        fullName: staff.fullName,
+        email: staff.email,
+        phoneNumber: staff.phoneNumber,
+        role: (staff.role as any)?.roleName,
+        assignedTo,
+      };
+    });
+
+    return {
+      message: 'Lấy danh sách nhân viên gợi ý thành công',
+      data: formattedStaffs,
+    };
+  }
 }

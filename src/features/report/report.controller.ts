@@ -170,7 +170,12 @@ export class ReportController {
           endDate,
         })
       : undefined;
-    return this.reportService.getTopAssets(limitNum, startDate, endDate, cacheKey);
+    return this.reportService.getTopAssets(
+      limitNum,
+      startDate,
+      endDate,
+      cacheKey,
+    );
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
@@ -190,11 +195,21 @@ export class ReportController {
           endDate,
         })
       : undefined;
-    return this.reportService.getTopReporters(limitNum, startDate, endDate, cacheKey);
+    return this.reportService.getTopReporters(
+      limitNum,
+      startDate,
+      endDate,
+      cacheKey,
+    );
   }
 
   @UseGuards(AuthGuard, PermissionsGuard)
   @RequirePermissions(['REPORT:READ'])
+  @Get(':reportId/suggested-staffs')
+  async getSuggestedStaffs(@Param('reportId') reportId: string) {
+    return await this.reportService.getSuggestedStaffs(reportId);
+  }
+
   @Get(':id')
   async findOneReport(@Param('id') id: string) {
     return this.reportService.findOneReport(id);
