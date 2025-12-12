@@ -36,6 +36,9 @@ services:
 
   # NestJS Application
   app:
+    # Use existing image if available, otherwise build from Dockerfile
+    # To use existing image, uncomment the image line and comment out build section
+    image: ghcr.io/dinhchung2102/iuh-infrastructure-management-be/iuh-csvc:latest
     build:
       context: .
       dockerfile: Dockerfile
