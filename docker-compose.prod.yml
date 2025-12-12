@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Qdrant Vector Database
   qdrant:
@@ -38,10 +36,15 @@ services:
 
   # NestJS Application
   app:
-    image: ghcr.io/dinhchung2102/iuh-infrastructure-management-be/iuh-csvc:latest
+    # Build từ Dockerfile local thay vì pull từ registry
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Optional: Tag image sau khi build (uncomment nếu muốn)
+    # image: iuh-csvc:latest
     container_name: iuh-csvc-api
     ports:
-      - '3000:3000'
+      - '4890:3000' # External port 4890, internal port 3000
     volumes:
       # Mount với quyền đúng cho Linux - bind mount từ host
       - ./uploads:/var/www/uploads/iuh:rw

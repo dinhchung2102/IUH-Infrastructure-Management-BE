@@ -215,11 +215,12 @@ chmod -R 755 uploads logs
 export UID=$(id -u)
 export GID=$(id -g)
 
-# Pull image (nếu chưa có)
-docker-compose -f docker-compose.prod.yml pull
+# Build và chạy (build từ Dockerfile local)
+docker-compose -f docker-compose.prod.yml up -d --build
 
-# Chạy
-docker-compose -f docker-compose.prod.yml up -d
+# Hoặc build riêng trước, sau đó chạy
+# docker-compose -f docker-compose.prod.yml build
+# docker-compose -f docker-compose.prod.yml up -d
 
 # Xem logs
 docker-compose -f docker-compose.prod.yml logs -f app
@@ -317,11 +318,17 @@ docker-compose -f docker-compose.prod.yml exec app curl http://localhost:3000/ap
 ## Cập nhật
 
 ```bash
-# Pull image mới
-docker-compose -f docker-compose.prod.yml pull app
+# Pull code mới (nếu dùng git)
+git pull origin main
 
-# Restart
+# Rebuild image với code mới
+docker-compose -f docker-compose.prod.yml build --no-cache app
+
+# Restart với image mới
 docker-compose -f docker-compose.prod.yml up -d
+
+# Hoặc build và restart cùng lúc
+docker-compose -f docker-compose.prod.yml up -d --build
 
 # Xem logs
 docker-compose -f docker-compose.prod.yml logs -f app
