@@ -9,40 +9,30 @@ services:
       - '6333:6333' # REST API
       - '6334:6334' # gRPC
     volumes:
-      - qdrant_storage:/qdrant/storage
+      - qdrant_storage:/home/qdrant_data
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
     restart: unless-stopped
     networks:
       - iuh-network
 
-  # MongoDB (nếu chưa có)
-  # mongodb:
-  #   image: mongo:7
-  #   container_name: iuh-mongodb
-  #   ports:
-  #     - '27017:27017'
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #   environment:
-  #     - MONGO_INITDB_ROOT_USERNAME=admin
-  #     - MONGO_INITDB_ROOT_PASSWORD=your_password
-  #   restart: unless-stopped
-  #   networks:
-  #     - iuh-network
-
-  # Redis - Commented out because it's already available externally
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: iuh-redis
-  #   ports:
-  #     - '6379:6379'
-  #   volumes:
-  #     - redis_data:/data
-  #   command: redis-server --appendonly yes
-  #   restart: unless-stopped
-  #   networks:
-  #     - iuh-network
+  # Redis Cache & OTP Storage
+  redis:
+    image: redis:7-alpine
+    container_name: iuh-redis
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/var/lib/redis
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - iuh-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # NestJS Application
   app:
@@ -53,36 +43,32 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+      - ./uploads:/var/www/uploads/iuh
+      - ./logs:/var/log/iuh
     environment:
       - NODE_ENV=production
       # Override Qdrant URL to use service name in Docker network
       - QDRANT_URL=http://qdrant:6333
-      # Redis configuration - will be overridden by .env if set
-      # If Redis is in another container, use container name or IP
-      # If Redis is on host machine, use host.docker.internal (Linux/Mac) or host IP (Windows)
-      # - REDIS_HOST=redis  # Use if Redis container name is 'redis'
-      # - REDIS_HOST=host.docker.internal  # Use if Redis is on host machine
-      # - REDIS_PORT=6379
+      # Redis configuration - use service name in Docker network
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Note: REDIS_PASSWORD will be read from .env file if set
     env_file:
       - .env
     depends_on:
-      - qdrant
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - iuh-network
-      # Uncomment below if Redis is in another Docker network
-      # external_networks:
-      #   - redis-network
 
 volumes:
   qdrant_storage:
     driver: local
-  # redis_data:
-  #   driver: local
-  # mongodb_data:
-  #   driver: local
+  redis_data:
+    driver: local
 
 networks:
   iuh-network:
