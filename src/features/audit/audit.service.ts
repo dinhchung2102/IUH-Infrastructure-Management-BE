@@ -470,6 +470,7 @@ export class AuditService {
         .populate('staffs', 'fullName email')
         .populate('acceptedBy', 'fullName email')
         .populate('completedBy', 'fullName email')
+        .populate('cancelledBy', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -544,6 +545,7 @@ export class AuditService {
       .populate('staffs', 'fullName email')
       .populate('acceptedBy', 'fullName email')
       .populate('completedBy', 'fullName email')
+      .populate('cancelledBy', 'fullName email')
       .lean();
 
     if (!auditLog) {
@@ -622,7 +624,8 @@ export class AuditService {
       })
       .populate('staffs', 'fullName email')
       .populate('acceptedBy', 'fullName email')
-      .populate('completedBy', 'fullName email');
+      .populate('completedBy', 'fullName email')
+      .populate('cancelledBy', 'fullName email');
 
     return {
       message: 'Cập nhật bản ghi kiểm tra thành công',
@@ -812,6 +815,7 @@ export class AuditService {
         .populate('staffs', 'fullName email')
         .populate('acceptedBy', 'fullName email')
         .populate('completedBy', 'fullName email')
+        .populate('cancelledBy', 'fullName email')
         .sort(sort)
         .skip(skip)
         .limit(limitNum)
@@ -998,7 +1002,8 @@ export class AuditService {
       })
       .populate('staffs', 'fullName email')
       .populate('acceptedBy', 'fullName email')
-      .populate('completedBy', 'fullName email');
+      .populate('completedBy', 'fullName email')
+      .populate('cancelledBy', 'fullName email');
 
     // Auto-update report status to RESOLVED if audit is completed and report exists
     if (updatedAuditLog?.report) {
