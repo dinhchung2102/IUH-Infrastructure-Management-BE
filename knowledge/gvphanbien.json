@@ -1,0 +1,85 @@
+[
+  {
+    "title": "Thông tin chi tiết về Cô Nguyễn Thị Hạnh – Giảng viên IUH",
+    "content": "Cô Nguyễn Thị Hạnh là một giảng viên tận tâm tại Trường Đại học Công nghiệp TP.HCM (IUH), chuyên về lĩnh vực Công nghệ Phần mềm và Phát triển Ứng dụng. Cô phụ trách các môn cốt lõi và luôn được đánh giá cao về tính kỷ luật và sự tỉ mỉ trong quá trình giảng dạy. Nhiều khóa luận do cô hướng dẫn đã đạt điểm cao nhờ sự theo sát và yêu cầu chất lượng khắt khe từ cô.",
+    "type": "GENERAL",
+    "category": "mentor-info",
+    "tags": [
+      "giảng viên",
+      "nguyễn thị hạnh",
+      "iuh",
+      "công nghệ phần mềm",
+      "khóa luận",
+      "hướng dẫn"
+    ]
+  },
+  {
+    "title": "Lĩnh vực nghiên cứu chuyên sâu của Cô Nguyễn Thị Hạnh là gì?",
+    "content": "Cô Nguyễn Thị Hạnh có chuyên môn sâu trong các lĩnh vực: Phân tích và Thiết kế Hệ thống, Kỹ thuật Yêu cầu (Requirements Engineering), và Quản lý Dự án Phần mềm theo mô hình Agile. Sinh viên làm khóa luận với cô thường tập trung vào các dự án có tính ứng dụng thực tiễn cao, đòi hỏi quy trình phát triển chuyên nghiệp.",
+    "type": "GENERAL",
+    "category": "mentor-expertise",
+    "tags": [
+      "nguyễn thị hạnh",
+      "chuyên môn",
+      "agile",
+      "phân tích hệ thống",
+      "kỹ thuật yêu cầu"
+    ]
+  },
+  {
+    "title": "Cô Nguyễn Thị Hạnh có nghiêm khắc và khó tính không?",
+    "content": "Sinh viên thường nhận xét cô Hạnh là người nghiêm túc và kỹ tính, đặc biệt là trong việc chấm điểm và đánh giá chất lượng code/đồ án. Tuy nhiên, sự nghiêm khắc này đi kèm với sự tận tâm: cô luôn dành thời gian sửa lỗi chi tiết, phản hồi rõ ràng, giúp sinh viên cải thiện đáng kể kỹ năng chuyên môn. Nếu bạn làm bài tập và đồ án đầy đủ, đúng yêu cầu, cô rất dễ chịu.",
+    "type": "FAQ",
+    "category": "mentor-style",
+    "tags": ["nguyễn thị hạnh", "nghiêm khắc", "giảng viên", "faq", "kỹ tính"]
+  },
+  {
+    "title": "Thời gian và cách thức liên hệ (văn phòng/email) với Cô Hạnh?",
+    "content": "Sinh viên có thể liên hệ với cô Nguyễn Thị Hạnh qua email (thường là email @iuh.edu.vn) hoặc tìm gặp cô tại văn phòng khoa/bộ môn theo lịch trực đã được công bố. Cô ưu tiên giải đáp các vấn đề phức tạp qua trao đổi trực tiếp hơn là qua email. Nên gửi email lịch sự và nêu rõ vấn đề cần hỗ trợ.",
+    "type": "FAQ",
+    "category": "contact-info",
+    "tags": ["nguyễn thị hạnh", "email", "liên hệ", "faq"]
+  },
+  {
+    "title": "Thông tin chi tiết về Thầy Giảng Thanh Trọn – Giảng viên IUH",
+    "content": "Thầy Giảng Thanh Trọn là một giảng viên trẻ, năng động tại IUH, chuyên về các công nghệ mới nổi như Lập trình Web Full-stack (React/Vue và Node.js/Spring Boot) và Khoa học Dữ liệu. Thầy được sinh viên yêu thích vì phong cách giảng dạy thoải mái, nhiều ví dụ thực tế và luôn khuyến khích sinh viên tự tìm tòi, sáng tạo.",
+    "type": "GENERAL",
+    "category": "mentor-info",
+    "tags": [
+      "giảng viên",
+      "giảng thanh trọn",
+      "iuh",
+      "full-stack",
+      "khoa học dữ liệu",
+      "đồ án"
+    ]
+  },
+  {
+    "title": "Phương pháp giảng dạy của Thầy Giảng Thanh Trọn có gì đặc biệt?",
+    "content": "Thầy Trọn nổi tiếng với việc kết hợp lý thuyết và thực hành, thường xuyên sử dụng các dự án mini (mini-projects) trong quá trình học để sinh viên làm quen với môi trường làm việc thực tế. Thầy khuyến khích sử dụng các công cụ quản lý phiên bản (như Git) và CI/CD trong các đồ án của sinh viên. Các bài giảng của thầy luôn được cập nhật với xu hướng công nghệ mới nhất.",
+    "type": "GENERAL",
+    "category": "mentor-style",
+    "tags": ["giảng thanh trọn", "phương pháp dạy", "git", "ci/cd", "thực hành"]
+  },
+  {
+    "title": "Thầy Giảng Thanh Trọn có dễ nói chuyện và thân thiện không?",
+    "content": "Thầy Trọn được đánh giá là một trong những giảng viên thân thiện và dễ gần nhất. Thầy luôn sẵn sàng lắng nghe ý kiến sinh viên, ngay cả những ý tưởng độc đáo, và tạo điều kiện cho sinh viên thử nghiệm các giải pháp mới trong đồ án. Nhiều sinh viên cảm thấy thoải mái khi hỏi những câu hỏi cơ bản hoặc xin lời khuyên về định hướng nghề nghiệp từ thầy.",
+    "type": "FAQ",
+    "category": "mentor-appearance",
+    "tags": ["giảng thanh trọn", "thân thiện", "vui tính", "giảng viên", "faq"]
+  },
+  {
+    "title": "Thầy Giảng Thanh Trọn có hướng dẫn đề tài về Trí tuệ Nhân tạo/Học máy không?",
+    "content": "Do chuyên môn của thầy Giảng Thanh Trọn có liên quan đến Khoa học Dữ liệu, thầy thường chấp nhận hướng dẫn các đề tài có ứng dụng AI/Machine Learning cơ bản, đặc biệt là các dự án kết hợp với phát triển web (ví dụ: xây dựng API dự đoán, tích hợp mô hình vào ứng dụng). Bạn nên trình bày ý tưởng đề tài cụ thể để thầy xem xét.",
+    "type": "FAQ",
+    "category": "mentor-expertise",
+    "tags": [
+      "giảng thanh trọn",
+      "ai",
+      "học máy",
+      "machine learning",
+      "đồ án",
+      "faq"
+    ]
+  }
+]

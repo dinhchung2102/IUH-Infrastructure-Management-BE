@@ -36,11 +36,13 @@ export interface AIService {
    * @param query User query
    * @param context Retrieved context
    * @param systemPrompt System instructions
+   * @param conversationHistory Optional conversation history
    * @returns Answer and usage stats
    */
   chatWithContext(
     query: string,
     context: string,
     systemPrompt: string,
+    conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string; timestamp?: Date }>,
   ): Promise<{ answer: string; usage: any }>;
 }

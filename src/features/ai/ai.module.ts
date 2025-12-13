@@ -32,6 +32,9 @@ import { Report, ReportSchema } from '../report/schema/report.schema';
 // Auth Module
 import { AuthModule } from '../auth/auth.module';
 
+// Redis Module
+import { RedisModule } from '../../shared/redis/redis.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
@@ -54,6 +57,7 @@ import { AuthModule } from '../auth/auth.module';
       inject: [ConfigService],
     }),
     AuthModule,
+    RedisModule,
   ],
   providers: [
     GeminiService,

@@ -1,6 +1,7 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import type { AIService } from '../interfaces/ai-service.interface';
 import { QdrantService } from './qdrant.service';
+import { RedisService } from '../../../shared/redis/redis.service';
 
 export interface RAGSearchResult {
   answer: string;
@@ -13,19 +14,36 @@ export interface RAGSearchResult {
   usage: any;
 }
 
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+export interface ConversationHistory {
+  userId: string;
+  messages: ConversationMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 @Injectable()
 export class RAGService {
   private readonly logger = new Logger(RAGService.name);
+  private readonly CONVERSATION_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly MAX_HISTORY_MESSAGES = 10; // Keep last 10 messages
 
   constructor(
     @Inject('AIService') private aiService: AIService,
     private qdrantService: QdrantService,
+    private redisService: RedisService,
   ) {}
 
   /**
    * Main RAG query method
    * @param query User query
    * @param options Search options
+   * @param userId User ID from token for conversation history
    * @returns Answer with sources
    */
   async query(
@@ -35,9 +53,22 @@ export class RAGService {
       topK?: number;
       minScore?: number;
     },
+    userId?: string,
   ): Promise<RAGSearchResult> {
     try {
       this.logger.log(`RAG Query: "${query}"`);
+
+      // Load conversation history by user ID
+      const conversationHistory = userId
+        ? await this.getConversationHistory(userId)
+        : null;
+      const historyMessages = conversationHistory?.messages || [];
+
+      if (userId) {
+        this.logger.log(
+          `User ID: ${userId}, History messages: ${historyMessages.length}`,
+        );
+      }
 
       // 1. Generate query embedding
       const queryVector = await this.aiService.generateEmbedding(query);
@@ -87,13 +118,20 @@ export class RAGService {
       // 3. Assemble context
       const context = this.assembleContext(searchResults);
 
-      // 4. Generate answer với AI service
+      // 4. Generate answer với AI service (include conversation history)
       const systemPrompt = this.getSystemPrompt();
       const { answer, usage } = await this.aiService.chatWithContext(
         query,
         context,
         systemPrompt,
+        historyMessages,
       );
+
+      // 5. Save conversation history (only if userId provided)
+      if (userId) {
+        await this.saveConversationMessage(userId, 'user', query);
+        await this.saveConversationMessage(userId, 'assistant', answer);
+      }
 
       const result: RAGSearchResult = {
         answer,
@@ -196,6 +234,7 @@ NHIỆM VỤ:
 - Giữ giọng điệu thân thiện, chuyên nghiệp
 - Trả lời bằng tiếng Việt
 - KHÔNG trích dẫn nguồn dạng "Theo tài liệu [1]..." - trả lời trực tiếp
+- Nếu có lịch sử cuộc trò chuyện, hãy tham khảo để hiểu ngữ cảnh
 
 CHÚ Ý QUAN TRỌNG:
 - KHÔNG bịa đặt thông tin không có trong CONTEXT
@@ -203,5 +242,68 @@ CHÚ Ý QUAN TRỌNG:
 - Ưu tiên độ chính xác hơn là trả lời đầy đủ
 - Trả lời ngắn gọn, KHÔNG dài dòng
     `.trim();
+  }
+
+  /**
+   * Get conversation history from Redis by user ID
+   */
+  private async getConversationHistory(
+    userId: string,
+  ): Promise<ConversationHistory | null> {
+    try {
+      const key = `conversation:user:${userId}`;
+      const history = await this.redisService.get<ConversationHistory>(key);
+      return history || null;
+    } catch (error) {
+      this.logger.warn(`Failed to get conversation history: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Save conversation message to Redis by user ID
+   */
+  private async saveConversationMessage(
+    userId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<void> {
+    try {
+      const key = `conversation:user:${userId}`;
+      let history = await this.getConversationHistory(userId);
+
+      if (!history) {
+        history = {
+          userId,
+          messages: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      }
+
+      // Add new message
+      history.messages.push({
+        role,
+        content,
+        timestamp: new Date(),
+      });
+
+      // Keep only last N messages to avoid token limit
+      if (history.messages.length > this.MAX_HISTORY_MESSAGES) {
+        history.messages = history.messages.slice(-this.MAX_HISTORY_MESSAGES);
+      }
+
+      history.updatedAt = new Date();
+
+      // Save to Redis with TTL
+      await this.redisService.set(key, history, this.CONVERSATION_TTL);
+
+      this.logger.debug(
+        `Saved message to user ${userId} conversation (${history.messages.length} messages)`,
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to save conversation message: ${error.message}`);
+      // Don't throw error, just log warning
+    }
   }
 }

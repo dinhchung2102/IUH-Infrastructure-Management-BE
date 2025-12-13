@@ -142,17 +142,46 @@ export class GeminiService implements AIService {
    * @param query User query
    * @param context Retrieved context
    * @param systemPrompt System instructions
+   * @param conversationHistory Optional conversation history
    * @returns Answer and usage stats
    */
   async chatWithContext(
     query: string,
     context: string,
     systemPrompt: string,
+    conversationHistory?: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp?: Date;
+    }>,
   ): Promise<{ answer: string; usage: any }> {
     try {
-      const prompt = `${systemPrompt}
+      // Build messages array with conversation history
+      const messages: Array<{ role: string; content: string }> = [];
 
-CONTEXT:
+      // Add system prompt as first message
+      messages.push({
+        role: 'user',
+        content: systemPrompt,
+      });
+
+      // Add conversation history if exists
+      if (conversationHistory && conversationHistory.length > 0) {
+        this.logger.log(
+          `Including ${conversationHistory.length} previous messages in context`,
+        );
+
+        // Add history messages (convert to Gemini format)
+        conversationHistory.forEach((msg) => {
+          messages.push({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            content: msg.content,
+          });
+        });
+      }
+
+      // Add current context and query
+      const currentPrompt = `CONTEXT:
 ${context}
 
 QUESTION:
@@ -160,10 +189,15 @@ ${query}
 
 ANSWER:`;
 
-      const result = await this.chatCompletion(
-        [{ role: 'user', content: prompt }],
-        { temperature: 0.3, maxTokens: 1024 },
-      );
+      messages.push({
+        role: 'user',
+        content: currentPrompt,
+      });
+
+      const result = await this.chatCompletion(messages, {
+        temperature: 0.3,
+        maxTokens: 1024,
+      });
 
       return {
         answer: result.content,

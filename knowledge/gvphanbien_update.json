@@ -1,0 +1,149 @@
+[
+  {
+    "title": "1. Nếu Cô Hạnh là một mô hình phát triển phần mềm, cô sẽ là mô hình nào?",
+    "content": "Cô Hạnh sẽ là mô hình **Waterfall** (Thác nước) với độ chính xác và yêu cầu kiểm soát chất lượng ở từng giai đoạn cực cao, hoặc **Agile (Scrum)** nhưng với vai trò **Product Owner** cực kỳ nghiêm khắc về yêu cầu và chất lượng sản phẩm cuối cùng.",
+    "type": "FAQ",
+    "category": "mentor-analogy",
+    "tags": [
+      "nguyễn thị hạnh",
+      "vui",
+      "waterfall",
+      "agile",
+      "scrum",
+      "công nghệ phần mềm"
+    ]
+  },
+  {
+    "title": "2. Thử thách lớn nhất khi làm khóa luận với Cô Nguyễn Thị Hạnh là gì?",
+    "content": "Thử thách lớn nhất là làm hài lòng yêu cầu về **tính logic và sự nhất quán** trong tài liệu Phân tích Thiết kế (P&D). Cô rất chú trọng việc yêu cầu code phải khớp hoàn toàn với thiết kế ban đầu và logic nghiệp vụ phải chặt chẽ.",
+    "type": "FAQ",
+    "category": "mentor-challenge",
+    "tags": ["nguyễn thị hạnh", "khóa luận", "yêu cầu", "khó khăn", "tỉ mỉ"]
+  },
+  {
+    "title": "3. Món đồ công nghệ yêu thích (giả định) của Cô Hạnh là gì?",
+    "content": "Có lẽ là một chiếc **máy tính xách tay cấu hình cao, ổn định** với màn hình lớn để cô có thể dễ dàng kiểm tra code, rà soát lỗi và quản lý tài liệu dự án một cách chi tiết, không bị phân tâm bởi các tính năng 'trendy' không cần thiết.",
+    "type": "FAQ",
+    "category": "mentor-personal-interest",
+    "tags": ["nguyễn thị hạnh", "sở thích", "công nghệ", "máy tính"]
+  },
+  {
+    "title": "4. Sinh viên nên chuẩn bị gì trước mỗi buổi gặp hướng dẫn với cô Hạnh?",
+    "content": "Cần chuẩn bị **danh sách các câu hỏi cụ thể**, **báo cáo tiến độ chi tiết** bằng văn bản (có cả hình ảnh/biểu đồ), và đặc biệt là **bản demo (nếu có)**. Tuyệt đối không đến với thái độ 'em chưa làm được gì'.",
+    "type": "FAQ",
+    "category": "mentor-style",
+    "tags": ["nguyễn thị hạnh", "hướng dẫn", "gặp gỡ", "chuẩn bị"]
+  },
+  {
+    "title": "5. Câu nói cửa miệng (giả định) của Cô Hạnh khi chấm code?",
+    "content": "Có lẽ là: **'Em phải làm rõ logic này. Nó không được chặt chẽ.'** hoặc **'Phần này em đã tuân thủ quy trình phát triển chưa?'**",
+    "type": "FAQ",
+    "category": "mentor-quote",
+    "tags": ["nguyễn thị hạnh", "câu nói", "code", "logic"]
+  },
+  {
+    "title": "6. Điều gì khiến Cô Hạnh mỉm cười hài lòng nhất trong giờ học?",
+    "content": "Có lẽ là khi thấy sinh viên tự giác đặt những câu hỏi **sâu sắc về kiến thức nền tảng** hoặc khi một nhóm khóa luận trình bày một sản phẩm đã **hoàn thiện theo đúng quy trình** và đạt chất lượng cao.",
+    "type": "FAQ",
+    "category": "mentor-satisfaction",
+    "tags": ["nguyễn thị hạnh", "hài lòng", "học tập", "khóa luận"]
+  },
+  {
+    "title": "7. Môn học nào (giả định) do cô Hạnh dạy được sinh viên 'ngán' nhất?",
+    "content": "Có thể là **Kỹ thuật Yêu cầu (Requirements Engineering)** hoặc **Quản lý Dự án Phần mềm**, vì đây là các môn đòi hỏi tính chi tiết, quy trình và tài liệu hóa cao, đúng với phong cách kỹ tính của cô.",
+    "type": "FAQ",
+    "category": "mentor-subject",
+    "tags": ["nguyễn thị hạnh", "môn học", "khó", "kỹ thuật yêu cầu"]
+  },
+  {
+    "title": "8. Bí quyết để 'qua môn' dễ dàng với cô Hạnh là gì?",
+    "content": "Bí quyết là **nghiên cứu kỹ đề cương**, **đọc hiểu tài liệu** và **tuân thủ nghiêm ngặt các quy tắc** về định dạng, quy trình và hạn chót. Chất lượng tài liệu và code phải đi đôi với nhau.",
+    "type": "FAQ",
+    "category": "mentor-advice",
+    "tags": ["nguyễn thị hạnh", "bí quyết", "qua môn", "học tập"]
+  },
+  {
+    "title": "9. Cô Hạnh có sử dụng mạng xã hội (giả định) để tương tác với sinh viên không?",
+    "content": "Có thể cô Hạnh sẽ ưu tiên sử dụng các nền tảng chính thức của trường hoặc email để giữ sự chuyên nghiệp. Nếu có, đó có thể là LinkedIn hoặc một nhóm chat Zalo/Teams nghiêm túc chỉ dành cho trao đổi công việc học tập.",
+    "type": "FAQ",
+    "category": "mentor-contact",
+    "tags": ["nguyễn thị hạnh", "mạng xã hội", "liên hệ", "email"]
+  },
+  {
+    "title": "10. Nếu cô Hạnh có một siêu năng lực, đó sẽ là gì?",
+    "content": "Siêu năng lực của cô Hạnh sẽ là **'Xuyên thấu Logic'** (Logic Penetration), cho phép cô ngay lập tức nhìn ra lỗi sai hoặc điểm không hợp lý trong luồng nghiệp vụ hoặc cấu trúc code của sinh viên.",
+    "type": "FAQ",
+    "category": "mentor-superpower",
+    "tags": ["nguyễn thị hạnh", "siêu năng lực", "logic", "code"]
+  },
+  {
+    "title": "11. Phong cách thời trang (giả định) của Cô Hạnh khi đi dạy?",
+    "content": "Phong cách thanh lịch, chuyên nghiệp, gọn gàng, thể hiện sự nghiêm túc và tôn trọng môi trường học đường. Có thể là áo sơ mi, vest, hoặc trang phục công sở tối giản nhưng tinh tế.",
+    "type": "FAQ",
+    "category": "mentor-appearance",
+    "tags": ["nguyễn thị hạnh", "thời trang", "phong cách"]
+  },
+  {
+    "title": "12. Cô Hạnh (giả định) thích làm việc với ngôn ngữ lập trình nào nhất?",
+    "content": "Với chuyên môn về Phân tích Thiết kế và Quản lý Dự án, cô Hạnh có lẽ sẽ thích một ngôn ngữ có tính cấu trúc cao, yêu cầu sự rõ ràng và có thể kiểm soát được như **Java** hoặc **C#**, nơi quy trình được ưu tiên hàng đầu.",
+    "type": "FAQ",
+    "category": "mentor-preference",
+    "tags": ["nguyễn thị hạnh", "ngôn ngữ lập trình", "java", "c#"]
+  },
+  {
+    "title": "13. Cô Hạnh phản ứng thế nào (giả định) khi sinh viên xin hoãn nộp bài?",
+    "content": "Cô sẽ lắng nghe lý do. Nếu lý do hợp lý và sinh viên đã thể hiện sự cố gắng, cô có thể đồng ý nhưng sẽ yêu cầu một kế hoạch hoàn thành rõ ràng và mốc thời gian cụ thể, kèm theo lời nhắc nhở nghiêm túc về tính kỷ luật.",
+    "type": "FAQ",
+    "category": "mentor-reaction",
+    "tags": ["nguyễn thị hạnh", "hoãn bài", "deadline", "kỷ luật"]
+  },
+  {
+    "title": "14. Sinh viên học được điều giá trị nhất từ Cô Hạnh là gì?",
+    "content": "Không chỉ là kiến thức chuyên môn, sinh viên học được **tính kỷ luật**, **sự chuyên nghiệp** trong quy trình làm việc, và quan trọng nhất là **tư duy phản biện** và **tính logic** khi đối mặt với các vấn đề kỹ thuật.",
+    "type": "FAQ",
+    "category": "mentor-lesson",
+    "tags": ["nguyễn thị hạnh", "bài học", "kỷ luật", "tư duy"]
+  },
+  {
+    "title": "15. Nếu phải chọn một công cụ (tool) phần mềm yêu thích, cô Hạnh sẽ chọn gì?",
+    "content": "Có thể là một công cụ **Quản lý Yêu cầu (Requirements Management)** như Jira (dành cho quản lý dự án) hoặc một công cụ vẽ Biểu đồ UML/Thiết kế Hệ thống chất lượng cao như draw.io/Visual Paradigm.",
+    "type": "FAQ",
+    "category": "mentor-tool",
+    "tags": ["nguyễn thị hạnh", "tool", "jira", "uml", "quản lý dự án"]
+  },
+  {
+    "title": "16. Cô Hạnh có (giả định) sẵn sàng cho sinh viên điểm tuyệt đối không?",
+    "content": "Có, nhưng điều đó đòi hỏi đồ án phải đạt chất lượng **hoàn hảo**, không chỉ về code mà còn về tài liệu hóa, quy trình, và tính ứng dụng thực tiễn. Điểm tuyệt đối từ cô Hạnh là một thành tựu đáng tự hào.",
+    "type": "FAQ",
+    "category": "mentor-grading",
+    "tags": ["nguyễn thị hạnh", "điểm số", "tuyệt đối", "chất lượng"]
+  },
+  {
+    "title": "17. Điều gì khiến Cô Hạnh (giả định) trở nên khó chịu nhất trong lớp học?",
+    "content": "Những hành vi thiếu chuyên nghiệp như: **sao chép bài tập** (plagiarism), **nói dối về tiến độ**, hoặc **thái độ hời hợt, không tôn trọng** quy trình học tập và làm việc nhóm.",
+    "type": "FAQ",
+    "category": "mentor-pet-peeve",
+    "tags": ["nguyễn thị hạnh", "khó chịu", "kỷ luật", "đạo văn"]
+  },
+  {
+    "title": "18. Sách chuyên ngành (giả định) Cô Hạnh thường giới thiệu cho sinh viên?",
+    "content": "Cô có thể giới thiệu các cuốn sách kinh điển về **Phân tích và Thiết kế Hướng đối tượng** (như sách của Grady Booch, James Rumbaugh) hoặc các tài liệu chuẩn mực về **Kỹ thuật Phần mềm** và **Quản lý Dự án PMP/Agile**.",
+    "type": "FAQ",
+    "category": "mentor-recommendation",
+    "tags": ["nguyễn thị hạnh", "sách", "phân tích thiết kế", "pmp"]
+  },
+  {
+    "title": "19. Lời khuyên giá trị nhất Cô Hạnh có thể dành cho sinh viên mới vào ngành?",
+    "content": "Lời khuyên sẽ là: **'Hãy học cách viết tài liệu và lập kế hoạch trước khi bắt tay vào code. Code giỏi phải đi kèm với tư duy hệ thống và quy trình chuyên nghiệp.'**",
+    "type": "FAQ",
+    "category": "mentor-advice",
+    "tags": ["nguyễn thị hạnh", "lời khuyên", "sinh viên mới", "tài liệu hóa"]
+  },
+  {
+    "title": "20. Tên gọi thân mật nhất (giả định) sinh viên dùng để nhắc đến Cô Hạnh?",
+    "content": "Tuy cô Hạnh được xem là nghiêm khắc, nhưng do sự tận tâm và kiến thức sâu rộng, sinh viên có thể thân mật gọi cô là **'Cô Kỹ Tính'** (theo nghĩa tích cực) hoặc đơn giản là **'Cô Hạnh'** với sự kính trọng.",
+    "type": "FAQ",
+    "category": "mentor-nickname",
+    "tags": ["nguyễn thị hạnh", "biệt danh", "tên gọi", "kính trọng"]
+  }
+]

@@ -147,21 +147,44 @@ export class OpenAIService implements AIService {
    * @param query User query
    * @param context Retrieved context
    * @param systemPrompt System instructions
+   * @param conversationHistory Optional conversation history
    * @returns Answer and usage stats
    */
   async chatWithContext(
     query: string,
     context: string,
     systemPrompt: string,
+    conversationHistory?: Array<{
+      role: 'user' | 'assistant';
+      content: string;
+      timestamp?: Date;
+    }>,
   ): Promise<{ answer: string; usage: any }> {
     try {
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}\n\nANSWER:`,
-        },
-      ];
+      const messages: Array<{ role: string; content: string }> = [];
+
+      // Add system prompt
+      messages.push({ role: 'system', content: systemPrompt });
+
+      // Add conversation history if exists
+      if (conversationHistory && conversationHistory.length > 0) {
+        this.logger.log(
+          `Including ${conversationHistory.length} previous messages in context`,
+        );
+
+        conversationHistory.forEach((msg) => {
+          messages.push({
+            role: msg.role,
+            content: msg.content,
+          });
+        });
+      }
+
+      // Add current context and query
+      messages.push({
+        role: 'user',
+        content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}\n\nANSWER:`,
+      });
 
       const result = await this.chatCompletion(messages, {
         temperature: 0.3,
