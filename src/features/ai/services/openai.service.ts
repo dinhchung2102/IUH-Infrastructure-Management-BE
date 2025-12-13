@@ -114,7 +114,7 @@ export class OpenAIService implements AIService {
           | { role: 'system'; content: string }
         >,
         temperature: options?.temperature ?? 0.7,
-        max_tokens: options?.maxTokens ?? 2048,
+        max_completion_tokens: options?.maxTokens ?? 2048,
       });
 
       const choice = response.choices[0];
