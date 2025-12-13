@@ -163,10 +163,11 @@ export class OpenAIService implements AIService {
     try {
       const messages: Array<{ role: string; content: string }> = [];
 
-      // Add system prompt
+      // Add system prompt first
       messages.push({ role: 'system', content: systemPrompt });
 
-      // Add conversation history if exists
+      // Add conversation history BEFORE current query (if exists)
+      // This helps AI understand context and references
       if (conversationHistory && conversationHistory.length > 0) {
         this.logger.log(
           `Including ${conversationHistory.length} previous messages in context`,
@@ -180,10 +181,20 @@ export class OpenAIService implements AIService {
         });
       }
 
-      // Add current context and query
+      // Add current context and query as a clear, structured message
       messages.push({
         role: 'user',
-        content: `CONTEXT:\n${context}\n\nQUESTION:\n${query}\n\nANSWER:`,
+        content: `CONTEXT (Thông tin từ cơ sở dữ liệu):
+${context}
+
+---
+
+QUESTION (Câu hỏi hiện tại):
+${query}
+
+---
+
+Hãy trả lời câu hỏi dựa trên CONTEXT và tham khảo lịch sử cuộc trò chuyện ở trên (nếu có) để hiểu ngữ cảnh.`,
       });
 
       const result = await this.chatCompletion(messages, {

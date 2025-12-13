@@ -159,13 +159,7 @@ export class GeminiService implements AIService {
       // Build messages array with conversation history
       const messages: Array<{ role: string; content: string }> = [];
 
-      // Add system prompt as first message
-      messages.push({
-        role: 'user',
-        content: systemPrompt,
-      });
-
-      // Add conversation history if exists
+      // Add conversation history FIRST (if exists) - this helps AI understand context
       if (conversationHistory && conversationHistory.length > 0) {
         this.logger.log(
           `Including ${conversationHistory.length} previous messages in context`,
@@ -180,14 +174,23 @@ export class GeminiService implements AIService {
         });
       }
 
-      // Add current context and query
-      const currentPrompt = `CONTEXT:
+      // Add system prompt and current context/query as a single user message
+      // This ensures system instructions are fresh and context is clear
+      const currentPrompt = `${systemPrompt}
+
+---
+
+CONTEXT (Thông tin từ cơ sở dữ liệu):
 ${context}
 
-QUESTION:
+---
+
+QUESTION (Câu hỏi hiện tại):
 ${query}
 
-ANSWER:`;
+---
+
+Hãy trả lời câu hỏi dựa trên CONTEXT và tham khảo lịch sử cuộc trò chuyện ở trên (nếu có) để hiểu ngữ cảnh.`;
 
       messages.push({
         role: 'user',

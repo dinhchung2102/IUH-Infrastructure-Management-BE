@@ -102,16 +102,60 @@ export class RAGService {
       }
 
       // Filter by threshold manually
-      const searchResults = allResults.filter(
+      let searchResults = allResults.filter(
         (r) => r.score >= (options?.minScore || 0.3),
       );
+
+      // Helper function to parse date (handles ISO string, Date object, or timestamp)
+      const parseDate = (value: any): number => {
+        if (!value) return 0;
+        if (value instanceof Date) return value.getTime();
+        if (typeof value === 'string') {
+          const parsed = new Date(value).getTime();
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        if (typeof value === 'number') return value;
+        return 0;
+      };
+
+      // Sort by createdAt (newest first) to prioritize recent documents
+      // This ensures that when user asks about "recent" events, newer reports appear first
+      // Balance between relevance (score) and recency (date)
+      searchResults = searchResults.sort((a, b) => {
+        const dateA = parseDate(a.payload?.createdAt);
+        const dateB = parseDate(b.payload?.createdAt);
+
+        // If both have dates, prioritize newer ones
+        if (dateA > 0 && dateB > 0) {
+          const dateDiff = Math.abs(dateA - dateB);
+          const oneHour = 60 * 60 * 1000;
+
+          // If dates are very close (within 1 hour), prioritize by score
+          if (dateDiff < oneHour) {
+            return b.score - a.score; // Higher score first
+          } else {
+            return dateB - dateA; // Newer first
+          }
+        }
+
+        // If only one has date, prioritize it
+        if (dateA > 0 && dateB === 0) return -1;
+        if (dateB > 0 && dateA === 0) return 1;
+
+        // If neither has date, sort by score
+        return b.score - a.score;
+      });
 
       this.logger.log(
         `Found ${searchResults.length} relevant documents (score >= ${options?.minScore || 0.3})`,
       );
       if (searchResults.length > 0) {
+        const topResult = searchResults[0];
+        const topDate = topResult.payload?.createdAt
+          ? new Date(topResult.payload.createdAt).toISOString()
+          : 'N/A';
         this.logger.log(
-          `Top result: ${searchResults[0].payload.title || 'No title'} (score: ${searchResults[0].score.toFixed(3)})`,
+          `Top result: ${topResult.payload.title || 'No title'} (score: ${topResult.score.toFixed(3)}, date: ${topDate})`,
         );
       }
 
@@ -234,7 +278,13 @@ NHIỆM VỤ:
 - Giữ giọng điệu thân thiện, chuyên nghiệp
 - Trả lời bằng tiếng Việt
 - KHÔNG trích dẫn nguồn dạng "Theo tài liệu [1]..." - trả lời trực tiếp
-- Nếu có lịch sử cuộc trò chuyện, hãy tham khảo để hiểu ngữ cảnh
+
+SỬ DỤNG LỊCH SỬ CUỘC TRÒ CHUYỆN (QUAN TRỌNG):
+- Bạn sẽ nhận được lịch sử các tin nhắn trước đó trong cuộc trò chuyện
+- PHẢI tham khảo lịch sử để hiểu ngữ cảnh và tham chiếu (ví dụ: "cô đó", "thầy đó", "sự cố đó")
+- Khi user dùng đại từ (đó, này, kia) hoặc nói "gần đây", "vừa nãy", "lúc trước", hãy xem lại lịch sử để hiểu họ đang nói về gì
+- Nếu user hỏi tiếp về chủ đề đã nói trước đó, hãy tham khảo lịch sử để trả lời chính xác
+- Ví dụ: Nếu trước đó user hỏi "Cô Hạnh có xinh đẹp không?" và bây giờ hỏi "Cô đó dạy môn gì?", thì "cô đó" là "Cô Hạnh"
 
 XỬ LÝ THỜI GIAN:
 - Mỗi report trong CONTEXT có thông tin "Thời gian báo cáo" với format: "lúc X:XX sáng/trưa/chiều ngày DD/MM/YYYY (X phút/giờ/ngày trước)"
@@ -250,6 +300,7 @@ CHÚ Ý QUAN TRỌNG:
 - Ưu tiên độ chính xác hơn là trả lời đầy đủ
 - Trả lời ngắn gọn, KHÔNG dài dòng
 - Khi user hỏi về thời gian, PHẢI kiểm tra thời gian báo cáo trong CONTEXT và chỉ trả lời các reports trong khoảng thời gian đó
+- LUÔN tham khảo lịch sử cuộc trò chuyện để hiểu ngữ cảnh và tham chiếu
     `.trim();
   }
 
