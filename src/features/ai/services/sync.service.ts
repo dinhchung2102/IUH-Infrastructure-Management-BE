@@ -54,6 +54,7 @@ export class SyncService {
             category: report.type,
             location: report.asset?.zone?.name || report.asset?.area?.name,
             status: report.status,
+            priority: report.priority, // Include priority in metadata
             createdAt: report.createdAt,
           },
         },
@@ -147,8 +148,20 @@ export class SyncService {
 
       const reports = await reportModel
         .find()
-        .populate('asset')
-        .populate('createdBy')
+        .populate({
+          path: 'asset',
+          populate: [
+            {
+              path: 'zone',
+              select: 'name',
+            },
+            {
+              path: 'area',
+              select: 'name',
+            },
+          ],
+        })
+        .populate('createdBy', 'fullName email')
         .lean();
 
       let indexed = 0;
@@ -168,15 +181,16 @@ export class SyncService {
               mongoId,
               sourceType: 'report',
               sourceId: mongoId,
-            text: this.formatReportText(report),
-            metadata: {
-              title: `Report ${report.type}`,
-              category: report.type,
-              location: report.asset?.zone?.name || report.asset?.area?.name,
-              status: report.status,
-              createdAt: report.createdAt,
+              text: this.formatReportText(report),
+              metadata: {
+                title: `Report ${report.type}`,
+                category: report.type,
+                location: report.asset?.zone?.name || report.asset?.area?.name,
+                status: report.status,
+                priority: report.priority, // Include priority in metadata
+                createdAt: report.createdAt,
+              },
             },
-          },
             opts: {
               attempts: 3,
               backoff: { type: 'exponential', delay: 2000 },
@@ -357,6 +371,56 @@ export class SyncService {
   }
 
   /**
+   * Format date to Vietnamese readable format
+   * @param date Date object
+   * @returns Formatted date string
+   */
+  private formatDateVietnamese(date: Date | string): string {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    if (!d || isNaN(d.getTime())) {
+      return '';
+    }
+
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // Format: "lúc 10:30 sáng ngày 13/12/2025"
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+
+    let timeStr = '';
+    if (hours < 12) {
+      timeStr = `${hours}:${minutes.toString().padStart(2, '0')} sáng`;
+    } else if (hours === 12) {
+      timeStr = `12:${minutes.toString().padStart(2, '0')} trưa`;
+    } else {
+      timeStr = `${hours - 12}:${minutes.toString().padStart(2, '0')} chiều`;
+    }
+
+    const dateStr = `ngày ${day}/${month}/${year}`;
+
+    // Add relative time for recent reports
+    let relativeStr = '';
+    if (diffMins < 60) {
+      relativeStr = ` (${diffMins} phút trước)`;
+    } else if (diffHours < 24) {
+      relativeStr = ` (${diffHours} giờ trước)`;
+    } else if (diffDays === 1) {
+      relativeStr = ' (hôm qua)';
+    } else if (diffDays < 7) {
+      relativeStr = ` (${diffDays} ngày trước)`;
+    }
+
+    return `lúc ${timeStr} ${dateStr}${relativeStr}`;
+  }
+
+  /**
    * Format report text for indexing
    * @param report Report document
    * @returns Formatted text
@@ -364,8 +428,35 @@ export class SyncService {
   private formatReportText(report: any): string {
     const parts: string[] = [];
 
+    // Include timestamp at the beginning for time-based queries
+    if (report.createdAt) {
+      const timeStr = this.formatDateVietnamese(report.createdAt);
+      if (timeStr) {
+        parts.push(`Thời gian báo cáo: ${timeStr}`);
+      }
+    }
+
     parts.push(`Loại báo cáo: ${report.type}`);
     parts.push(`Mô tả: ${report.description}`);
+
+    // Include priority for emergency/critical reports
+    if (report.priority) {
+      const priorityLabels: Record<string, string> = {
+        CRITICAL: 'khẩn cấp',
+        HIGH: 'cao',
+        MEDIUM: 'trung bình',
+        LOW: 'thấp',
+      };
+      const priorityLabel = priorityLabels[report.priority] || report.priority;
+      parts.push(`Mức độ ưu tiên: ${report.priority} (${priorityLabel})`);
+
+      // Emphasize critical/high priority reports
+      if (report.priority === 'CRITICAL') {
+        parts.push('Sự kiện khẩn cấp cần xử lý ngay');
+      } else if (report.priority === 'HIGH') {
+        parts.push('Sự kiện quan trọng cần xử lý sớm');
+      }
+    }
 
     if (report.asset) {
       parts.push(`Tài sản: ${report.asset.name} (${report.asset.code})`);
@@ -381,6 +472,10 @@ export class SyncService {
 
     if (report.createdBy) {
       parts.push(`Người báo cáo: ${report.createdBy.fullName}`);
+    }
+
+    if (report.status) {
+      parts.push(`Trạng thái: ${report.status}`);
     }
 
     return parts.join('\n');
